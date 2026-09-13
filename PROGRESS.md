@@ -2,28 +2,27 @@
 
 Last updated: 2026-09-14
 
-## Branch Map
+## Branch Map — All merged into `main`
 
-| Spec | Branch | Status | Notes |
+| Spec | Branch | Status | Merged |
 |---|---|---|---|
-| SPEC-01 Auth & Onboarding | `feat/auth-onboarding` | ✅ DONE | Login, register, Google OAuth, onboarding wizard, subdomain claim |
-| SPEC-02 Store Config | `feat/store-config` | ✅ DONE | Settings (general, social, policies, announcement), branding, image upload → WebP |
-| SPEC-03 Catalog | `feat/catalog` | ✅ DONE | Categories, products, variants, attributes, image upload, inventory tracking |
-| SPEC-04 Marketing | `feat/store-config` | ✅ DONE | Discounts (list/create/edit), shipping config — merged into same branch as SPEC-02 |
-| SPEC-05 Orders | `feat/orders` | ✅ DONE | Order dashboard, status workflow, WhatsApp notification trigger, review moderation, analytics |
-| SPEC-06 Storefront Shell | `feat/storefront` | ✅ DONE | PWA shell, PLP with filters/sort/search, order tracking page |
-| SPEC-07 PDP + Cart + Checkout | `feat/storefront` | ✅ DONE | PDP, swipeable gallery, variant selection, cart (localStorage), guest checkout, order confirmation — merged into same branch as SPEC-06 |
+| SPEC-01 Auth & Onboarding | `feat/auth-onboarding` | ✅ MERGED | commit 263c98e |
+| SPEC-02 Store Config | `feat/store-config` | ✅ MERGED | commit 7d3e030 |
+| SPEC-03 Catalog | `feat/catalog` | ✅ MERGED | commit 3ede293 |
+| SPEC-04 Marketing | `feat/store-config` | ✅ MERGED | same as SPEC-02 — discounts, shipping, announcement |
+| SPEC-05 Orders | `feat/orders` | ✅ MERGED | commit d0f8d40 |
+| SPEC-06 Storefront Shell | `feat/storefront` | ✅ MERGED | commit 590b9e7 |
+| SPEC-07 PDP + Cart + Checkout | `feat/storefront` | ✅ MERGED | same as SPEC-06 |
 
 ## What's Left
 
-1. **Open PRs** — All 5 branches exist but no PRs have been opened yet. Review and merge order matters (auth first, then config, then catalog, then orders, then storefront).
-2. **Integration pass** — Branches were built in parallel. After merging, verify:
+1. **Integration pass** — All specs are merged. Verify the wiring between them:
    - Auth session flows correctly into admin and storefront
    - Cart → Orders pipeline (guest checkout creating an order record)
    - Discount codes applied at checkout match the discount engine in store-config
    - Storefront subdomain routing (`hooks.server.ts`) resolves the correct store
-3. **Env / Deploy** — Need Postgres URL, better-auth secrets, Vercel project + subdomain wildcard (`*.vendwiz.com`) configured
-4. **WhatsApp** — `feat/orders` has the trigger; needs a real Twilio/WA Cloud API key wired via env var
+2. **Env / Deploy** — Need Postgres URL, better-auth secrets, Vercel project + subdomain wildcard (`*.vendwiz.com`) configured
+3. **WhatsApp** — orders has the trigger in `src/lib/utils/whatsapp.ts`; needs a real Twilio/WA Cloud API key wired via env var (`WHATSAPP_API_KEY`)
 
 ## Architecture Decisions (for context)
 
