@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
-  export let data;
+  import type { LayoutData } from './$types';
+  let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 </script>
 
-<slot />
+{@render children()}
