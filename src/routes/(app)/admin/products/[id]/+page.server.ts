@@ -1,0 +1,56 @@
+import type { PageServerLoad } from './$types';
+import { db } from '$lib/db';
+import {
+  categories,
+  products,
+  productImages,
+  productVariants,
+  productAttributes,
+  stores
+} from '$lib/db/schema';
+import { eq, and, asc } from 'drizzle-orm';
+import { error, redirect } from '@sveltejs/kit';
+
+export const load: PageServerLoad = async ({ params, locals }) => {
+  if (!locals.user) {
+    return redirect(302, '/');
+  }
+
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.ownerId, locals.user.id))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+
+  if (!store) {
+    return redirect(302, '/');
+  }
+
+  const product = await db
+    .select()
+    .from(products)
+    .where(and(eq(products.id, params.id), eq(products.storeId, store.id)))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+
+  if (!product) {
+    return error(404, 'Product not found');
+  }
+
+  const [images, variants, attributes, allCategories] = await Promise.all([
+    db.select().from(productImages).where(eq(productImages.productId, params.id)).orderBy(asc(productImages.sortOrder)),
+    db.select().from(productVariants).where(eq(productVariants.productId, params.id)),
+    db.select().from(productAttributes).where(eq(productAttributes.productId, params.id)),
+    db.select().from(categories).where(eq(categories.storeId, store.id)).orderBy(asc(categories.sortOrder))
+  ]);
+
+  return {
+    product,
+    images,
+    variants,
+    attributes,
+    categories: allCategories,
+    store
+  };
+};
