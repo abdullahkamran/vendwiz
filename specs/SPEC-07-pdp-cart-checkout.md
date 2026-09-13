@@ -1,5 +1,7 @@
 # SPEC-07: Product Detail Page, Cart & Guest Checkout
 
+**Status: ✅ COMPLETE** — implementation merged into feat/storefront branch, pushed to abdullahkamran/vendwiz.
+
 ## Goal
 Customer PDP with media gallery/variants/reviews/cross-sell, cart (localStorage), guest checkout, order confirmation.
 

@@ -1,5 +1,7 @@
 # SPEC-01: Auth & Onboarding
 
+**Status: ✅ COMPLETE** — implementation merged into branch, pushed to abdullahkamran/vendwiz.
+
 ## Goal
 Implement authentication pages and the store creation / onboarding flow.
 

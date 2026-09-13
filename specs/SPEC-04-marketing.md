@@ -1,5 +1,7 @@
 # SPEC-04: Marketing & Sales Tools
 
+**Status: ✅ COMPLETE** — implementation merged into branch, pushed to abdullahkamran/vendwiz.
+
 ## Goal
 Discount code engine + shipping/tax config (shipping is already in store settings, this spec focuses on discount codes management).
 

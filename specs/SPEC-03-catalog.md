@@ -1,5 +1,7 @@
 # SPEC-03: Product Catalog & Inventory Management
 
+**Status: ✅ COMPLETE** — implementation merged into branch, pushed to abdullahkamran/vendwiz.
+
 ## Goal
 Full product catalog management: categories, products with variants/attributes/media, inventory tracking, SEO.
 

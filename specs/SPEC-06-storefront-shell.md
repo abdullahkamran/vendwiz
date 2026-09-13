@@ -1,5 +1,7 @@
 # SPEC-06: Customer Storefront — Shell, PLP & Discovery
 
+**Status: ✅ COMPLETE** — implementation merged into feat/storefront branch, pushed to abdullahkamran/vendwiz.
+
 ## Goal
 Customer-facing PWA storefront: layout shell, homepage, product listing page with filters/sort/search, and order tracking page.
 

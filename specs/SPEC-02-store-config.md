@@ -1,5 +1,7 @@
 # SPEC-02: Store Configuration (Admin Settings)
 
+**Status: ✅ COMPLETE** — implementation merged into branch, pushed to abdullahkamran/vendwiz.
+
 ## Goal
 Admin settings pages for branding, theme, social links, announcement bar, shipping/taxes, and store policies.
 

@@ -1,5 +1,7 @@
 # SPEC-05: Order Management, Reviews & Analytics
 
+**Status: ✅ COMPLETE** — implementation merged into branch, pushed to abdullahkamran/vendwiz.
+
 ## Goal
 Admin order dashboard, order workflow, review moderation, basic analytics.
 
