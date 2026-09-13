@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+	--color-primary: #1a1a2e;
+	--color-primary-fg: #ffffff;
+	--color-accent: #e94560;
+	--color-accent-fg: #ffffff;
+	--color-surface: #ffffff;
+	--color-surface-2: #f5f5f5;
+	--color-text: #1a1a1a;
+	--color-text-muted: #6b7280;
+	--color-border: #e5e7eb;
+	--color-error: #dc2626;
+	--color-success: #16a34a;
+	--font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--radius: 0.5rem;
+}
+
+/* Store theme CSS variables — overridden per storefront */
+[data-theme='minimal'] {
+	--color-primary: #1a1a2e;
+	--color-accent: #e94560;
+}
+[data-theme='bold'] {
+	--color-primary: #0f172a;
+	--color-accent: #f97316;
+}
+[data-theme='playful'] {
+	--color-primary: #7c3aed;
+	--color-accent: #ec4899;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	font-family: var(--font-sans);
+	color: var(--color-text);
+	background: var(--color-surface);
+	margin: 0;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+img {
+	max-width: 100%;
+}
