@@ -1,3 +1,4 @@
+<svelte:options runes={false} />
 <script lang="ts">
   import '../app.css';
   export let data;

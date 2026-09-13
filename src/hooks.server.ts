@@ -32,9 +32,7 @@ const subdomain: Handle = async ({ event, resolve }) => {
   }
 
   // Ensure user is always initialized
-  if (!('user' in event.locals)) {
-    event.locals.user = null;
-  }
+  (event.locals as App.Locals).user ??= null;
 
   return resolve(event);
 };
