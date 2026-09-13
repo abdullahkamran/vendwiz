@@ -15,6 +15,7 @@
 		{ href: '/admin/orders', label: 'Orders', icon: '🛒' },
 		{ href: '/admin/discounts', label: 'Discounts', icon: '🏷️' },
 		{ href: '/admin/reviews', label: 'Reviews', icon: '⭐' },
+		{ href: '/admin/shipping', label: 'Shipping & Tax', icon: '🚚' },
 		{ href: '/admin/settings', label: 'Settings', icon: '⚙️' }
 	] as const;
 

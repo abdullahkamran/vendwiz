@@ -7,7 +7,7 @@ import type { LayoutServerLoad } from './$types';
 export const load: LayoutServerLoad = async ({ locals }) => {
 	// Must be authenticated
 	if (!locals.user) {
-		redirect(302, '/login');
+		throw redirect(302, '/login');
 	}
 
 	// Must have an active store
@@ -16,8 +16,11 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	});
 
 	if (!store || !store.isActive) {
-		redirect(302, '/onboarding');
+		throw redirect(302, '/onboarding');
 	}
 
-	return { store };
+	return {
+		store,
+		user: locals.user
+	};
 };
