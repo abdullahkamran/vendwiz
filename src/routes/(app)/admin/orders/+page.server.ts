@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { orders } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { orders } from '$lib/server/db/schema';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
@@ -41,7 +41,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const filtered = search
 		? results.filter(
 				(o) =>
-					o.orderRef.toLowerCase().includes(search.toLowerCase()) ||
+					o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
 					o.customerName.toLowerCase().includes(search.toLowerCase())
 			)
 		: results;

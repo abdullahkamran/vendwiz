@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { stores } from '$lib/server/db/schema';
+import { stores, STORE_THEMES, type StoreTheme } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -19,7 +19,10 @@ export const actions: Actions = {
 		const description = (data.get('description') as string)?.trim() || null;
 		const logoUrl = (data.get('logoUrl') as string)?.trim() || null;
 		const faviconUrl = (data.get('faviconUrl') as string)?.trim() || null;
-		const theme = (data.get('theme') as string) || 'minimal';
+		const rawTheme = (data.get('theme') as string) || 'basic';
+		const theme: StoreTheme = (STORE_THEMES as readonly string[]).includes(rawTheme)
+			? (rawTheme as StoreTheme)
+			: 'basic';
 		const primaryColor = (data.get('primaryColor') as string)?.trim() || null;
 		const accentColor = (data.get('accentColor') as string)?.trim() || null;
 		const secondaryColor = (data.get('secondaryColor') as string)?.trim() || null;

@@ -24,9 +24,10 @@ export const checkoutSchema = z.object({
 
 export const reviewSchema = z.object({
   productId: z.string(),
-  customerName: z.string().min(2).max(100),
+  reviewerName: z.string().min(2).max(100),
+  reviewerEmail: z.string().email().optional(),
   rating: z.number().int().min(1).max(5),
-  text: z.string().max(1000).optional()
+  body: z.string().max(1000).optional()
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

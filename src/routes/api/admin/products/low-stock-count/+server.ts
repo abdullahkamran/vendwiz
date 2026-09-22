@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { products, stores } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { products, stores } from '$lib/server/db/schema';
 import { eq, and, lte, gt, count, sql } from 'drizzle-orm';
 
 async function getStoreForUser(userId: string) {
@@ -30,8 +30,8 @@ export const GET: RequestHandler = async ({ locals }) => {
     .where(
       and(
         eq(products.storeId, store.id),
-        gt(products.stockQuantity, 0),
-        sql`${products.stockQuantity} <= ${products.lowStockThreshold}`
+        gt(products.stockQty, 0),
+        sql`${products.stockQty} <= ${products.lowStockThreshold}`
       )
     );
 
@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ locals }) => {
     .where(
       and(
         eq(products.storeId, store.id),
-        eq(products.stockQuantity, 0)
+        eq(products.stockQty, 0)
       )
     );
 

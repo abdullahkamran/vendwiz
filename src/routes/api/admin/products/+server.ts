@@ -1,8 +1,8 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { products, productImages, productVariants, productAttributes, stores } from '$lib/db/schema';
-import { eq, and, ilike, count, asc, desc, sql } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import { products, productVariants, productAttributes, stores } from '$lib/server/db/schema';
+import { eq, and, ilike, count, desc } from 'drizzle-orm';
 import { productSchema } from '$lib/schemas/catalog';
 import { nanoid } from 'nanoid';
 
@@ -33,17 +33,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
   const offset = (page - 1) * limit;
 
   const conditions = [eq(products.storeId, store.id)];
-  if (search) {
-    conditions.push(ilike(products.title, `%${search}%`));
-  }
-  if (categoryId) {
-    conditions.push(eq(products.categoryId, categoryId));
-  }
-  if (status === 'active') {
-    conditions.push(eq(products.isActive, true));
-  } else if (status === 'inactive') {
-    conditions.push(eq(products.isActive, false));
-  }
+  if (search) conditions.push(ilike(products.title, `%${search}%`));
+  if (categoryId) conditions.push(eq(products.categoryId, categoryId));
+  if (status === 'active') conditions.push(eq(products.isPublished, true));
+  else if (status === 'inactive') conditions.push(eq(products.isPublished, false));
 
   const where = and(...conditions);
 
@@ -60,28 +53,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
     .limit(limit)
     .offset(offset);
 
-  // Load primary image for each product
-  const productIds = rows.map((p) => p.id);
-  let primaryImages: Record<string, string> = {};
-  if (productIds.length > 0) {
-    const images = await db
-      .select()
-      .from(productImages)
-      .where(
-        and(
-          sql`${productImages.productId} = ANY(${sql.raw(`ARRAY[${productIds.map((id) => `'${id}'`).join(',')}]`)})`,
-          eq(productImages.sortOrder, 0)
-        )
-      );
-    for (const img of images) {
-      primaryImages[img.productId] = img.url;
-    }
-  }
-
-  const data = rows.map((p) => ({
-    ...p,
-    primaryImage: primaryImages[p.id] ?? null
-  }));
+  // Primary image comes from the JSONB images array (no productImages table)
+  type ProductImage = { url: string; alt?: string; order: number };
+  const data = rows.map((p) => {
+    const imgs = ((p.images as ProductImage[]) ?? []).sort((a, b) => a.order - b.order);
+    return { ...p, primaryImage: imgs[0]?.url ?? null };
+  });
 
   return json({
     data,
@@ -120,54 +97,58 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     categoryId,
     basePrice,
     description,
-    metaTitle,
-    metaDescription,
+    seoTitle,
+    seoDescription,
     youtubeUrl,
-    isActive,
-    stockQuantity,
+    isPublished,
+    stockQty,
     lowStockThreshold,
     images,
     variants,
     attributes
   } = parsed.data;
 
+  const id = nanoid();
+
   const [product] = await db
     .insert(products)
     .values({
+      id,
       storeId: store.id,
       title,
       slug,
       categoryId: categoryId ?? null,
       basePrice: String(basePrice),
       description: description ?? null,
-      metaTitle: metaTitle ?? null,
-      metaDescription: metaDescription ?? null,
+      seoTitle: seoTitle ?? null,
+      seoDescription: seoDescription ?? null,
       youtubeUrl: youtubeUrl || null,
-      isActive,
-      stockQuantity,
-      lowStockThreshold
+      isPublished,
+      stockQty,
+      lowStockThreshold,
+      images: images.map((img, i) => ({ url: img.url, alt: '', order: img.sortOrder ?? i }))
     })
     .returning();
-
-  // Insert images
-  if (images.length > 0) {
-    await db.insert(productImages).values(
-      images.map((img) => ({
-        productId: product.id,
-        url: img.url,
-        sortOrder: img.sortOrder
-      }))
-    );
-  }
 
   // Insert variants
   if (variants.length > 0) {
     await db.insert(productVariants).values(
-      variants.map((v) => ({
-        productId: product.id,
-        name: v.name,
-        options: v.options
-      }))
+      variants.map((v) => {
+        const variantId = nanoid();
+        return {
+          id: variantId,
+          productId: product.id,
+          // optionValueIds must be a string[]. For variants created through the
+          // admin form (which doesn't use productOptionGroups), we store the
+          // variant's own ID so the PDP legacy matcher
+          // (`ids.includes(variant.id)`) can resolve the selection correctly.
+          optionValueIds: [variantId],
+          label: v.name,
+          // Use the stock from the first option; the schema comment explicitly
+          // says stockQty is passed through so the handler can preserve it.
+          stockQty: v.options[0]?.stockQty ?? 0
+        };
+      })
     );
   }
 
@@ -175,6 +156,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (attributes.length > 0) {
     await db.insert(productAttributes).values(
       attributes.map((a) => ({
+        id: nanoid(),
         productId: product.id,
         name: a.name,
         value: a.value

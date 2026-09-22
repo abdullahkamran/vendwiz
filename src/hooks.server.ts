@@ -28,23 +28,45 @@ const subdomainHook: Handle = async ({ event, resolve }) => {
 	// Strip port for local dev (e.g. mystore.localhost:5173)
 	const hostWithoutPort = host.split(':')[0];
 
+	// Default: not a storefront request
+	event.locals.storefront = null;
+	event.locals.isStorefront = false;
+	event.locals.store = null;
+
 	if (hostWithoutPort.endsWith(`.${rootDomain}`) || hostWithoutPort.endsWith('.localhost')) {
 		// Extract subdomain
 		const subdomain = hostWithoutPort.split('.')[0];
 
 		if (subdomain && subdomain !== 'www' && subdomain !== 'app') {
 			// Look up the store
-			const store = await db.query.stores.findFirst({
+			const storeRow = await db.query.stores.findFirst({
 				where: eq(stores.subdomain, subdomain),
 				with: { owner: true }
 			});
 
-			event.locals.storefront = store ?? null;
+			event.locals.storefront = storeRow ?? null;
 			event.locals.subdomain = subdomain;
+			// Convenience aliases used by storefront routes
+			event.locals.store = storeRow ?? null;
+			event.locals.isStorefront = !!storeRow;
 		}
 	}
 
 	return resolve(event);
 };
 
-export const handle = sequence(authHook, subdomainHook);
+// ── Admin store hook ───────────────────────────────────────────────────────────
+// For requests that are NOT on a storefront subdomain but have an authenticated
+// user, set locals.store to that user's own store so admin/API routes can use it.
+const adminStoreHook: Handle = async ({ event, resolve }) => {
+	if (!event.locals.isStorefront && event.locals.user && !event.locals.store) {
+		const userStore = await db.query.stores.findFirst({
+			where: eq(stores.ownerId, event.locals.user.id)
+		});
+		event.locals.store = userStore ?? null;
+		event.locals.isStorefront = false;
+	}
+	return resolve(event);
+};
+
+export const handle = sequence(authHook, subdomainHook, adminStoreHook);

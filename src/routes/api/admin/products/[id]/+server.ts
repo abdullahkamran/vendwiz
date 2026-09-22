@@ -1,9 +1,10 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { products, productImages, productVariants, productAttributes, stores } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { products, productVariants, productAttributes, stores } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { productSchema } from '$lib/schemas/catalog';
+import { nanoid } from 'nanoid';
 
 async function getStoreForUser(userId: string) {
   return db
@@ -35,11 +36,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
     return error(404, 'Product not found');
   }
 
-  const [images, variants, attributes] = await Promise.all([
-    db.select().from(productImages).where(eq(productImages.productId, params.id)),
+  const [variants, attributes] = await Promise.all([
     db.select().from(productVariants).where(eq(productVariants.productId, params.id)),
     db.select().from(productAttributes).where(eq(productAttributes.productId, params.id))
   ]);
+
+  // Normalize images from JSONB into a flat array with sortOrder
+  type ProductImage = { url: string; alt?: string; order: number };
+  const images = ((product.images as ProductImage[]) ?? [])
+    .sort((a, b) => a.order - b.order)
+    .map((img, i) => ({ url: img.url, sortOrder: i }));
 
   return json({ ...product, images, variants, attributes });
 };
@@ -83,11 +89,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     categoryId,
     basePrice,
     description,
-    metaTitle,
-    metaDescription,
+    seoTitle,
+    seoDescription,
     youtubeUrl,
-    isActive,
-    stockQuantity,
+    isPublished,
+    stockQty,
     lowStockThreshold,
     images,
     variants,
@@ -102,38 +108,39 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
       categoryId: categoryId ?? null,
       basePrice: String(basePrice),
       description: description ?? null,
-      metaTitle: metaTitle ?? null,
-      metaDescription: metaDescription ?? null,
+      seoTitle: seoTitle ?? null,
+      seoDescription: seoDescription ?? null,
       youtubeUrl: youtubeUrl || null,
-      isActive,
-      stockQuantity,
+      isPublished,
+      stockQty,
       lowStockThreshold,
+      // Store images in JSONB
+      images: images.map((img, i) => ({ url: img.url, alt: '', order: img.sortOrder ?? i })),
       updatedAt: new Date()
     })
     .where(eq(products.id, params.id))
     .returning();
 
-  // Replace images: delete all then re-insert
-  await db.delete(productImages).where(eq(productImages.productId, params.id));
-  if (images.length > 0) {
-    await db.insert(productImages).values(
-      images.map((img) => ({
-        productId: params.id,
-        url: img.url,
-        sortOrder: img.sortOrder
-      }))
-    );
-  }
-
   // Replace variants: delete all then re-insert
   await db.delete(productVariants).where(eq(productVariants.productId, params.id));
   if (variants.length > 0) {
     await db.insert(productVariants).values(
-      variants.map((v) => ({
-        productId: params.id,
-        name: v.name,
-        options: v.options
-      }))
+      variants.map((v) => {
+        const variantId = nanoid();
+        return {
+          id: variantId,
+          productId: params.id,
+          // optionValueIds must be a string[]. For variants created through the
+          // admin form (which doesn't use productOptionGroups), we store the
+          // variant's own ID so the PDP legacy matcher
+          // (`ids.includes(variant.id)`) can resolve the selection correctly.
+          optionValueIds: [variantId],
+          label: v.name,
+          // Use the stock from the first option; the schema comment explicitly
+          // says stockQty is passed through so the handler can preserve it.
+          stockQty: v.options[0]?.stockQty ?? 0
+        };
+      })
     );
   }
 
@@ -142,6 +149,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
   if (attributes.length > 0) {
     await db.insert(productAttributes).values(
       attributes.map((a) => ({
+        id: nanoid(),
         productId: params.id,
         name: a.name,
         value: a.value
@@ -149,15 +157,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     );
   }
 
-  const [finalImages, finalVariants, finalAttributes] = await Promise.all([
-    db.select().from(productImages).where(eq(productImages.productId, params.id)),
+  const [finalVariants, finalAttributes] = await Promise.all([
     db.select().from(productVariants).where(eq(productVariants.productId, params.id)),
     db.select().from(productAttributes).where(eq(productAttributes.productId, params.id))
   ]);
 
   return json({
     ...updated,
-    images: finalImages,
+    images,
     variants: finalVariants,
     attributes: finalAttributes
   });

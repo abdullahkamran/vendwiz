@@ -1,9 +1,8 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { orders, products } from '$lib/db/schema';
-import { eq, and, gte, lte, ne, sql, count } from 'drizzle-orm';
-import type { OrderItem } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { orders, orderItems, products } from '$lib/server/db/schema';
+import { eq, and, gte, lte, sql, inArray } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -57,20 +56,24 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		count
 	}));
 
-	// Top products — aggregate from JSONB items
+	// Top products — fetch from orderItems table
+	const revenueOrderIds = revenueOrders.map((o) => o.id);
+	const allOrderItems =
+		revenueOrderIds.length > 0
+			? await db.select().from(orderItems).where(inArray(orderItems.orderId, revenueOrderIds))
+			: [];
+
 	const productMap = new Map<string, { title: string; qtySold: number; revenue: number }>();
-	for (const o of revenueOrders) {
-		const items = o.items as OrderItem[];
-		for (const item of items) {
-			const existing = productMap.get(item.productId) ?? {
-				title: item.title,
-				qtySold: 0,
-				revenue: 0
-			};
-			existing.qtySold += item.quantity;
-			existing.revenue += item.price * item.quantity;
-			productMap.set(item.productId, existing);
-		}
+	for (const item of allOrderItems) {
+		const id = item.productId ?? item.id;
+		const existing = productMap.get(id) ?? {
+			title: item.productTitle,
+			qtySold: 0,
+			revenue: 0
+		};
+		existing.qtySold += item.quantity;
+		existing.revenue += parseFloat(item.subtotal);
+		productMap.set(id, existing);
 	}
 	const topProducts = Array.from(productMap.entries())
 		.map(([productId, v]) => ({ productId, ...v }))
@@ -82,15 +85,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		.select({
 			id: products.id,
 			title: products.title,
-			stock: products.stockQuantity,
+			stock: products.stockQty,
 			threshold: products.lowStockThreshold
 		})
 		.from(products)
 		.where(
 			and(
 				eq(products.storeId, store.id),
-				eq(products.isActive, true),
-				sql`${products.stockQuantity} <= ${products.lowStockThreshold}`
+				eq(products.isPublished, true),
+				sql`${products.stockQty} <= ${products.lowStockThreshold}`
 			)
 		);
 

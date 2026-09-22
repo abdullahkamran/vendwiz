@@ -46,7 +46,7 @@
 			</a>
 		</div>
 	{:else}
-		<div class="border border-[--color-border] rounded-xl overflow-hidden bg-[--color-surface]">
+		<div class="border border-[--color-border] rounded-xl overflow-x-auto bg-[--color-surface]">
 			<table class="w-full text-sm">
 				<thead>
 					<tr class="border-b border-[--color-border] bg-[--color-surface-2]">

@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const parsed = verifyCodeSchema.safeParse(body);
 
 	if (!parsed.success) {
-		return json({ error: parsed.error.errors[0].message }, { status: 400 });
+		return json({ error: parsed.error.issues[0].message }, { status: 400 });
 	}
 
 	const { code } = parsed.data;

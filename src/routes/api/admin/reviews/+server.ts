@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { reviews, products } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { reviews, products } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -14,9 +14,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const conditions = [eq(reviews.storeId, store.id)];
 
 	if (status === 'approved') {
-		conditions.push(eq(reviews.isApproved, true));
+		conditions.push(eq(reviews.status, 'approved'));
 	} else if (status === 'pending') {
-		conditions.push(eq(reviews.isApproved, false));
+		conditions.push(eq(reviews.status, 'pending'));
+	} else if (status === 'hidden') {
+		conditions.push(eq(reviews.status, 'hidden'));
 	}
 	// 'all' => no extra filter
 
@@ -25,10 +27,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			id: reviews.id,
 			productId: reviews.productId,
 			storeId: reviews.storeId,
-			customerName: reviews.customerName,
+			reviewerName: reviews.reviewerName,
 			rating: reviews.rating,
-			text: reviews.text,
-			isApproved: reviews.isApproved,
+			body: reviews.body,
+			status: reviews.status,
 			createdAt: reviews.createdAt,
 			productTitle: products.title
 		})

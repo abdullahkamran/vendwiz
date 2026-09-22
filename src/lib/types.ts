@@ -70,7 +70,7 @@ export interface CheckoutForm {
 }
 
 // Store theme
-export type ThemeSlug = 'minimal' | 'bold' | 'playful' | 'custom';
+export type ThemeSlug = 'basic' | 'minimal' | 'bold' | 'playful' | 'custom';
 
 export interface CustomTheme {
 	primaryColor: string;

@@ -67,6 +67,11 @@ export const verifications = pgTable('verifications', {
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
+// ─── Theme enum ───────────────────────────────────────────────────────────────
+
+export const STORE_THEMES = ['basic', 'minimal', 'bold', 'playful', 'custom'] as const;
+export type StoreTheme = (typeof STORE_THEMES)[number];
+
 // ─── Stores (multi-tenant) ────────────────────────────────────────────────────
 
 export const stores = pgTable('stores', {
@@ -79,8 +84,8 @@ export const stores = pgTable('stores', {
 	description: text('description'),
 	logoUrl: text('logo_url'),
 	faviconUrl: text('favicon_url'),
-	// Theme: predefined slug or 'custom' with customTheme JSON
-	theme: text('theme').notNull().default('minimal'), // 'minimal' | 'bold' | 'playful' | 'custom'
+	// Theme: 'basic' | 'minimal' | 'bold' | 'playful' | 'custom'
+	theme: text('theme', { enum: STORE_THEMES }).notNull().default('basic'),
 	customTheme: jsonb('custom_theme'), // { primaryColor, secondaryColor, fontFamily, ... }
 	// Social links
 	whatsapp: text('whatsapp'),
@@ -166,6 +171,8 @@ export const products = pgTable('products', {
 	// SEO
 	seoTitle: text('seo_title'),
 	seoDescription: text('seo_description'),
+	// Sale pricing: set a salePrice to mark a product as "on sale"
+	salePrice: numeric('sale_price', { precision: 10, scale: 2 }),
 	isPublished: boolean('is_published').notNull().default(true),
 	sortOrder: integer('sort_order').notNull().default(0),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -360,3 +367,8 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
 	store: one(stores, { fields: [categories.storeId], references: [stores.id] }),
 	products: many(products)
 }));
+
+// ─── Convenience type aliases ─────────────────────────────────────────────────
+
+export type Category = typeof categories.$inferSelect;
+export type ProductAttribute = typeof productAttributes.$inferSelect;

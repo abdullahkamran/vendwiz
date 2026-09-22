@@ -20,7 +20,7 @@ export const createStoreSchema = z.object({
 		.regex(/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/, 'Invalid subdomain format'),
 	name: z.string().min(2, 'Store name must be at least 2 characters').max(60, 'Store name too long'),
 	description: z.string().max(500, 'Description too long').optional(),
-	theme: z.enum(['minimal', 'bold', 'playful']).default('minimal')
+	theme: z.enum(['basic', 'minimal', 'bold', 'playful']).default('basic')
 });
 
 export type VerifyCodeInput = z.infer<typeof verifyCodeSchema>;

@@ -1,27 +1,30 @@
 import type { PageServerLoad } from './$types';
-import { db } from '$lib/db';
-import { products, productImages, categories } from '$lib/db/schema';
-import { eq, and, ilike, gte, lte, asc, desc } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import { products, categories } from '$lib/server/db/schema';
+import { eq, and, ilike, lte, asc, desc, gt, isNotNull, sql } from 'drizzle-orm';
 
 const PAGE_SIZE = 24;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  const storeId = locals.store!.id;
+  const storeId = locals.storefront!.id;
 
   const q = url.searchParams.get('q') ?? '';
   const categoryId = url.searchParams.get('category') ?? '';
-  const minPrice = url.searchParams.get('minPrice');
   const maxPrice = url.searchParams.get('maxPrice');
+  const inStockOnly = url.searchParams.get('inStock') === '1';
+  const onSaleOnly = url.searchParams.get('onSale') === '1';
   const sort = url.searchParams.get('sort') ?? 'newest';
   const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
   const offset = (page - 1) * PAGE_SIZE;
 
   // Build where conditions
-  const conditions = [eq(products.storeId, storeId), eq(products.isActive, true)];
+  const conditions = [eq(products.storeId, storeId), eq(products.isPublished, true)];
   if (q) conditions.push(ilike(products.title, `%${q}%`));
   if (categoryId) conditions.push(eq(products.categoryId, categoryId));
-  if (minPrice) conditions.push(gte(products.basePrice, minPrice));
   if (maxPrice) conditions.push(lte(products.basePrice, maxPrice));
+  // Push in-stock / on-sale as DB-level conditions so count and pagination are accurate
+  if (inStockOnly) conditions.push(gt(products.stockQty, 0));
+  if (onSaleOnly) conditions.push(isNotNull(products.salePrice));
 
   // Sort order
   const orderBy =
@@ -35,40 +38,37 @@ export const load: PageServerLoad = async ({ locals, url }) => {
             ? desc(products.title)
             : desc(products.createdAt); // newest (default)
 
-  const rows = await db
-    .select()
-    .from(products)
-    .where(and(...conditions))
-    .orderBy(orderBy)
-    .limit(PAGE_SIZE)
-    .offset(offset);
+  // Run count and page rows in parallel — both use the same conditions
+  const [countRow, rows] = await Promise.all([
+    db
+      .select({ total: sql<number>`cast(count(*) as int)` })
+      .from(products)
+      .where(and(...conditions))
+      .then((r) => r[0]),
+    db
+      .select()
+      .from(products)
+      .where(and(...conditions))
+      .orderBy(orderBy)
+      .limit(PAGE_SIZE)
+      .offset(offset)
+  ]);
 
-  // Attach first image
-  const items = await Promise.all(
-    rows.map(async (p) => {
-      const [img] = await db
-        .select({ url: productImages.url })
-        .from(productImages)
-        .where(eq(productImages.productId, p.id))
-        .orderBy(productImages.sortOrder)
-        .limit(1);
-      return { ...p, imageUrl: img?.url ?? null };
-    })
-  );
+  const total = countRow?.total ?? 0;
 
-  // All store categories for sidebar
+  // Attach first image from JSONB
+  type ProductImage = { url: string; alt?: string; order: number };
+  const items = rows.map((p) => {
+    const imgs = (p.images as ProductImage[]) ?? [];
+    return { ...p, imageUrl: imgs[0]?.url ?? null };
+  });
+
+  // All store categories for filter sheet
   const allCategories = await db
     .select()
     .from(categories)
     .where(eq(categories.storeId, storeId))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
-
-  // Total count for pagination (simple approach — re-query without limit)
-  const totalRows = await db
-    .select({ id: products.id })
-    .from(products)
-    .where(and(...conditions));
-  const total = totalRows.length;
 
   return {
     items,
@@ -77,6 +77,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     page,
     pageSize: PAGE_SIZE,
     totalPages: Math.ceil(total / PAGE_SIZE),
-    filters: { q, categoryId, minPrice: minPrice ?? '', maxPrice: maxPrice ?? '', sort }
+    filters: { q, categoryId, maxPrice: maxPrice ?? '', inStockOnly, onSaleOnly, sort }
   };
 };

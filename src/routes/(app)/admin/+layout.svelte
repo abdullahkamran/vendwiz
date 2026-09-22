@@ -36,7 +36,7 @@
 	{#if sidebarOpen}
 		<button
 			type="button"
-			class="fixed inset-0 z-20 bg-black/40 lg:hidden cursor-default"
+			class="fixed inset-0 z-20 bg-black/40 md:hidden cursor-default"
 			onclick={() => (sidebarOpen = false)}
 			aria-label="Close sidebar"
 		></button>
@@ -44,7 +44,7 @@
 
 	<!-- Sidebar -->
 	<aside
-		class="fixed inset-y-0 left-0 z-30 flex flex-col w-60 bg-[var(--color-primary)] text-white transition-transform lg:relative lg:translate-x-0
+		class="fixed inset-y-0 left-0 z-30 flex flex-col w-60 bg-[var(--color-primary)] text-white transition-transform md:relative md:translate-x-0
 			{sidebarOpen ? 'translate-x-0' : '-translate-x-full'}"
 	>
 		<!-- Store brand -->
@@ -110,7 +110,7 @@
 	<!-- Main area -->
 	<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 		<!-- Top bar (mobile) -->
-		<header class="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-[var(--color-border)]">
+		<header class="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-[var(--color-border)]">
 			<button
 				type="button"
 				onclick={() => (sidebarOpen = true)}

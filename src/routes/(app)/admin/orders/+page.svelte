@@ -103,7 +103,7 @@
 	</form>
 
 	<!-- Table -->
-	<div class="bg-white shadow rounded-lg overflow-hidden">
+	<div class="bg-white shadow rounded-lg overflow-x-auto">
 		<table class="min-w-full divide-y divide-gray-200">
 			<thead class="bg-gray-50">
 				<tr>
@@ -119,7 +119,7 @@
 				{#each data.orders as order}
 					<tr class="hover:bg-gray-50">
 						<td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-							{order.orderRef}
+							{order.orderNumber}
 						</td>
 						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
 							<div>{order.customerName}</div>

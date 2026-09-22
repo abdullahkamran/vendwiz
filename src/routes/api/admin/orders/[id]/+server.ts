@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { orders } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { orders } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { orderNotesSchema } from '$lib/schemas/orders';
 

@@ -1,8 +1,9 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { categories, stores } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { categories, stores } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import { categorySchema } from '$lib/schemas/catalog';
 
 async function getStoreForUser(userId: string) {
@@ -56,15 +57,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 400 });
   }
 
-  const { name, slug, parentId, sortOrder } = parsed.data;
+  const { name, slug, sortOrder } = parsed.data;
 
   const [created] = await db
     .insert(categories)
     .values({
+      id: nanoid(),
       storeId: store.id,
       name,
       slug,
-      parentId: parentId ?? null,
       sortOrder: sortOrder ?? 0
     })
     .returning();

@@ -1,12 +1,12 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { reviews } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { reviews } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 
 const updateSchema = z.object({
-	isApproved: z.boolean()
+	status: z.enum(['pending', 'approved', 'hidden'])
 });
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
@@ -20,7 +20,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 	const [updated] = await db
 		.update(reviews)
-		.set({ isApproved: parsed.data.isApproved })
+		.set({ status: parsed.data.status })
 		.where(and(eq(reviews.id, params.id), eq(reviews.storeId, store.id)))
 		.returning();
 

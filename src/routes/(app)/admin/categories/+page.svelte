@@ -8,10 +8,12 @@
     id: string;
     name: string;
     slug: string;
-    parentId: string | null;
     sortOrder: number;
     storeId: string;
+    description: string | null;
+    imageUrl: string | null;
     createdAt: Date;
+    parentId?: string | null; // legacy field — not present in DB, kept for template compat
   };
 
   let categories = $state<Category[]>(data.categories as Category[]);
@@ -236,7 +238,7 @@
                 {cat.name}
               </td>
               <td><code>{cat.slug}</code></td>
-              <td>{getParentName(cat.parentId)}</td>
+              <td>{getParentName(cat.parentId ?? null)}</td>
               <td>{cat.sortOrder}</td>
               <td class="actions-cell">
                 <button class="btn-edit" onclick={() => openEdit(cat)}>Edit</button>

@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { db } from '$lib/db';
-import { categories, stores } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { categories, stores } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 
