@@ -141,25 +141,25 @@
 							/>
 						</td>
 						<td class="px-6 py-4 text-sm text-gray-900">{review.productTitle ?? '—'}</td>
-						<td class="px-6 py-4 text-sm text-gray-900">{review.customerName}</td>
+						<td class="px-6 py-4 text-sm text-gray-900">{review.reviewerName}</td>
 						<td class="px-6 py-4 text-sm text-amber-500">{stars(review.rating)}</td>
 						<td class="px-6 py-4 text-sm text-gray-700 max-w-xs">
-							<p class="line-clamp-2">{review.text ?? '—'}</p>
+							<p class="line-clamp-2">{review.body ?? '—'}</p>
 						</td>
 						<td class="px-6 py-4 text-sm text-gray-500">
 							{new Date(review.createdAt).toLocaleDateString()}
 						</td>
 						<td class="px-6 py-4">
 							<span
-								class="px-2 py-1 rounded-full text-xs font-medium {review.isApproved
+								class="px-2 py-1 rounded-full text-xs font-medium {review.status === 'approved'
 									? 'bg-green-100 text-green-800'
 									: 'bg-gray-100 text-gray-800'}"
 							>
-								{review.isApproved ? 'Approved' : 'Hidden'}
+								{review.status === 'approved' ? 'Approved' : 'Hidden'}
 							</span>
 						</td>
 						<td class="px-6 py-4 text-sm flex gap-2">
-							{#if !review.isApproved}
+							{#if review.status !== 'approved'}
 								<form method="POST" action="?/approve">
 									<input type="hidden" name="id" value={review.id} />
 									<button

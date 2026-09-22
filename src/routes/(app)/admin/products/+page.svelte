@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import type { Category } from '$lib/db/schema';
+  import type { Category } from '$lib/server/db/schema';
 
   let { data }: { data: PageData } = $props();
 
@@ -10,8 +10,8 @@
     slug: string;
     categoryId: string | null;
     basePrice: string;
-    isActive: boolean;
-    stockQuantity: number;
+    isPublished: boolean;
+    stockQty: number;
     lowStockThreshold: number;
     primaryImage: string | null;
     createdAt: Date;
@@ -199,13 +199,13 @@
               <td>{getCategoryName(product.categoryId)}</td>
               <td>${Number(product.basePrice).toFixed(2)}</td>
               <td>
-                <span class="badge {stockBadgeClass(product.stockQuantity, product.lowStockThreshold)}">
-                  {stockBadgeLabel(product.stockQuantity, product.lowStockThreshold)}
+                <span class="badge {stockBadgeClass(product.stockQty, product.lowStockThreshold)}">
+                  {stockBadgeLabel(product.stockQty, product.lowStockThreshold)}
                 </span>
               </td>
               <td>
-                <span class="badge {product.isActive ? 'badge-green' : 'badge-gray'}">
-                  {product.isActive ? 'Active' : 'Inactive'}
+                <span class="badge {product.isPublished ? 'badge-green' : 'badge-gray'}">
+                  {product.isPublished ? 'Published' : 'Draft'}
                 </span>
               </td>
               <td class="actions-cell">
@@ -315,7 +315,8 @@
     background: #fff;
     border: 1px solid #e5e5e5;
     border-radius: 8px;
-    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   table {

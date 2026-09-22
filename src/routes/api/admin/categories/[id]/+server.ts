@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { categories, products, stores } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { categories, products, stores } from '$lib/server/db/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { categorySchema } from '$lib/schemas/catalog';
 
@@ -53,7 +53,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     .set({
       ...(parsed.data.name !== undefined && { name: parsed.data.name }),
       ...(parsed.data.slug !== undefined && { slug: parsed.data.slug }),
-      ...(parsed.data.parentId !== undefined && { parentId: parsed.data.parentId }),
       ...(parsed.data.sortOrder !== undefined && { sortOrder: parsed.data.sortOrder })
     })
     .where(eq(categories.id, params.id))

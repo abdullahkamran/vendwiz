@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { stores } from '$lib/server/db/schema';
+import { stores, STORE_THEMES, type StoreTheme } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 import type { InferSelectModel } from 'drizzle-orm';
@@ -58,7 +58,9 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 	if ('description' in body) updates.description = body.description as string | null;
 	if ('logoUrl' in body) updates.logoUrl = body.logoUrl as string | null;
 	if ('faviconUrl' in body) updates.faviconUrl = body.faviconUrl as string | null;
-	if (typeof body.theme === 'string') updates.theme = body.theme;
+	if (typeof body.theme === 'string' && (STORE_THEMES as readonly string[]).includes(body.theme)) {
+		updates.theme = body.theme as StoreTheme;
+	}
 	if ('customTheme' in body) updates.customTheme = body.customTheme;
 	if ('whatsapp' in body) updates.whatsapp = body.whatsapp as string | null;
 	if ('instagram' in body) updates.instagram = body.instagram as string | null;

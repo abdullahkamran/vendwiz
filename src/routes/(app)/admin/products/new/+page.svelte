@@ -2,7 +2,7 @@
   import type { PageData } from './$types';
   import { goto } from '$app/navigation';
   import ProductForm from '$lib/components/admin/ProductForm.svelte';
-  import type { Category } from '$lib/db/schema';
+  import type { Category } from '$lib/server/db/schema';
 
   let { data }: { data: PageData } = $props();
   let categories = data.categories as Category[];

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ProductAttribute } from '$lib/db/schema';
+  import type { ProductAttribute } from '$lib/server/db/schema';
 
   type AttributeRow = { id?: string; name: string; value: string };
 

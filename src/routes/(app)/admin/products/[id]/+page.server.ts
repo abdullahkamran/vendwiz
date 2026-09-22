@@ -1,13 +1,12 @@
 import type { PageServerLoad } from './$types';
-import { db } from '$lib/db';
+import { db } from '$lib/server/db';
 import {
   categories,
   products,
-  productImages,
   productVariants,
   productAttributes,
   stores
-} from '$lib/db/schema';
+} from '$lib/server/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { error, redirect } from '@sveltejs/kit';
 
@@ -38,8 +37,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     return error(404, 'Product not found');
   }
 
-  const [images, variants, attributes, allCategories] = await Promise.all([
-    db.select().from(productImages).where(eq(productImages.productId, params.id)).orderBy(asc(productImages.sortOrder)),
+  // Images are stored in products.images JSONB column
+  type ProductImage = { url: string; alt?: string; order: number };
+  const rawImages = ((product.images as ProductImage[]) ?? []).sort((a, b) => a.order - b.order);
+  const images = rawImages.map((img, i) => ({ id: undefined, url: img.url, sortOrder: i }));
+
+  const [variants, attributes, allCategories] = await Promise.all([
     db.select().from(productVariants).where(eq(productVariants.productId, params.id)),
     db.select().from(productAttributes).where(eq(productAttributes.productId, params.id)),
     db.select().from(categories).where(eq(categories.storeId, store.id)).orderBy(asc(categories.sortOrder))

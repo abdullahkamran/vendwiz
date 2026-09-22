@@ -1,8 +1,8 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db';
-import { categories, stores } from '$lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import { categories, stores } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { reorderSchema } from '$lib/schemas/catalog';
 
 async function getStoreForUser(userId: string) {
@@ -36,13 +36,14 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 400 });
   }
 
-  // Batch update sort orders
+  // Batch update sort orders — guard with storeId so an admin cannot reorder
+  // categories belonging to a different store.
   await Promise.all(
     parsed.data.map(({ id, sortOrder }) =>
       db
         .update(categories)
         .set({ sortOrder })
-        .where(eq(categories.id, id))
+        .where(and(eq(categories.id, id), eq(categories.storeId, store.id)))
     )
   );
 

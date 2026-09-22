@@ -37,12 +37,12 @@ export const actions: Actions = {
 			subdomain: formData.get('subdomain') as string,
 			name: formData.get('name') as string,
 			description: (formData.get('description') as string) || undefined,
-			theme: (formData.get('theme') as string) || 'minimal'
+			theme: (formData.get('theme') as string) || 'basic'
 		};
 
 		const parsed = createStoreSchema.safeParse(raw);
 		if (!parsed.success) {
-			return fail(400, { error: parsed.error.errors[0].message });
+			return fail(400, { error: parsed.error.issues[0].message });
 		}
 
 		const { licenseCode, subdomain, name, description, theme } = parsed.data;

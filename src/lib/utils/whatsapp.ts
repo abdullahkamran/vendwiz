@@ -1,23 +1,12 @@
-import type { Order, OrderItem } from '$lib/db/schema';
-
-export function buildOrderConfirmationMessage(order: Order): string {
-	const items = (order.items as OrderItem[])
-		.map((i) => `• ${i.title} x${i.quantity} — PKR ${i.price * i.quantity}`)
-		.join('\n');
-
-	return (
-		`🛍️ *New Order: #${order.orderRef}*\n\n` +
-		`*Customer:* ${order.customerName}\n` +
-		`*Phone:* ${order.customerPhone}\n` +
-		`*Address:* ${order.shippingAddress}\n\n` +
-		`*Items:*\n${items}\n\n` +
-		`*Total:* PKR ${order.total}\n` +
-		(order.discountCode ? `*Discount:* ${order.discountCode} (-PKR ${order.discountAmount})\n` : '') +
-		`\nThank you for your order! 🙏`
-	);
-}
-
-export function buildWhatsAppUrl(phone: string, message: string): string {
+/**
+ * Build a wa.me deep-link URL.
+ * If phone is null/empty the URL omits the number (opens WhatsApp
+ * with the message pre-filled but no pre-selected contact).
+ */
+export function buildWhatsAppUrl(phone: string | null | undefined, message: string): string {
+	if (!phone) {
+		return `https://wa.me/?text=${encodeURIComponent(message)}`;
+	}
 	const clean = phone.replace(/\D/g, '');
 	return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
 }

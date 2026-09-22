@@ -3,13 +3,15 @@ import { z } from 'zod';
 export const categorySchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
-  parentId: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0)
 });
 
 export const variantOptionSchema = z.object({
   label: z.string().min(1),
-  price_modifier: z.number().default(0)
+  price_modifier: z.number().default(0),
+  // stockQty per option is passed through from the edit form so the PUT handler
+  // can preserve existing stock rather than hard-coding 0.
+  stockQty: z.number().int().min(0).default(0)
 });
 
 export const variantSchema = z.object({
@@ -30,11 +32,12 @@ export const productSchema = z.object({
   categoryId: z.string().optional().nullable(),
   basePrice: z.number().min(0),
   description: z.string().optional(),
-  metaTitle: z.string().max(60).optional(),
-  metaDescription: z.string().max(160).optional(),
+  // SEO fields stored as seoTitle / seoDescription in DB
+  seoTitle: z.string().max(60).optional(),
+  seoDescription: z.string().max(160).optional(),
   youtubeUrl: z.string().url().optional().or(z.literal('')),
-  isActive: z.boolean().default(true),
-  stockQuantity: z.number().int().min(0).default(0),
+  isPublished: z.boolean().default(true),
+  stockQty: z.number().int().min(0).default(0),
   lowStockThreshold: z.number().int().min(0).default(5),
   images: z.array(z.object({ url: z.string(), sortOrder: z.number() })),
   variants: z.array(variantSchema),

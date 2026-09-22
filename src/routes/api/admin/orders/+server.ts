@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { orders } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { orders } from '$lib/server/db/schema';
 import { eq, and, gte, lte, like, or, desc } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -44,11 +44,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		.limit(limit + 1)
 		.offset(offset);
 
-	// Filter by search term in JS (orderRef or customerName)
+	// Filter by search term in JS (orderNumber or customerName)
 	const filtered = search
 		? results.filter(
 				(o) =>
-					o.orderRef.toLowerCase().includes(search.toLowerCase()) ||
+					o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
 					o.customerName.toLowerCase().includes(search.toLowerCase())
 			)
 		: results;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Category, ProductImage, ProductVariant, ProductAttribute } from '$lib/db/schema';
+  import type { Category } from '$lib/server/db/schema';
   import ImageUploader from './ImageUploader.svelte';
   import VariantsEditor from './VariantsEditor.svelte';
   import AttributesTable from './AttributesTable.svelte';
@@ -16,11 +16,11 @@
     categoryId: string | null;
     basePrice: string | number;
     description: string | null;
-    metaTitle: string | null;
-    metaDescription: string | null;
+    seoTitle: string | null;
+    seoDescription: string | null;
     youtubeUrl: string | null;
-    isActive: boolean;
-    stockQuantity: number;
+    isPublished: boolean;
+    stockQty: number;
     lowStockThreshold: number;
   };
 
@@ -52,11 +52,11 @@
   let basePrice = $state(Number(product?.basePrice ?? 0));
   let description = $state(product?.description ?? '');
   let youtubeUrl = $state(product?.youtubeUrl ?? '');
-  let isActive = $state(product?.isActive ?? true);
-  let stockQuantity = $state(product?.stockQuantity ?? 0);
+  let isPublished = $state(product?.isPublished ?? true);
+  let stockQty = $state(product?.stockQty ?? 0);
   let lowStockThreshold = $state(product?.lowStockThreshold ?? 5);
-  let metaTitle = $state(product?.metaTitle ?? '');
-  let metaDescription = $state(product?.metaDescription ?? '');
+  let seoTitle = $state(product?.seoTitle ?? '');
+  let seoDescription = $state(product?.seoDescription ?? '');
 
   let images = $state<ImageRow[]>(initialImages.map((i) => ({ ...i })));
   let variants = $state<VariantRow[]>(
@@ -75,8 +75,8 @@
 
   // Mark unsaved on any change
   $effect(() => {
-    title; slug; categoryId; basePrice; description; youtubeUrl; isActive;
-    stockQuantity; lowStockThreshold; metaTitle; metaDescription;
+    title; slug; categoryId; basePrice; description; youtubeUrl; isPublished;
+    stockQty; lowStockThreshold; seoTitle; seoDescription;
     unsaved = true;
   });
 
@@ -92,12 +92,12 @@
     slugManuallyEdited = true;
   }
 
-  let metaTitleCount = $derived(metaTitle.length);
-  let metaDescCount = $derived(metaDescription.length);
+  let metaTitleCount = $derived(seoTitle.length);
+  let metaDescCount = $derived(seoDescription.length);
 
   function stockStatus(): { label: string; cls: string } {
-    if (stockQuantity === 0) return { label: 'Out of Stock', cls: 'badge-red' };
-    if (stockQuantity <= lowStockThreshold) return { label: 'Low Stock', cls: 'badge-yellow' };
+    if (stockQty === 0) return { label: 'Out of Stock', cls: 'badge-red' };
+    if (stockQty <= lowStockThreshold) return { label: 'Low Stock', cls: 'badge-yellow' };
     return { label: 'In Stock', cls: 'badge-green' };
   }
 
@@ -112,11 +112,11 @@
         basePrice,
         description,
         youtubeUrl: youtubeUrl || '',
-        isActive,
-        stockQuantity,
+        isPublished,
+        stockQty,
         lowStockThreshold,
-        metaTitle,
-        metaDescription,
+        seoTitle,
+        seoDescription,
         images: images.map((img, i) => ({ url: img.url, sortOrder: i })),
         variants,
         attributes
@@ -230,8 +230,8 @@
 
         <div class="form-field form-field-toggle">
           <label>
-            <input type="checkbox" bind:checked={isActive} />
-            Active (visible to customers)
+            <input type="checkbox" bind:checked={isPublished} />
+            Published (visible to customers)
           </label>
         </div>
       </div>
@@ -281,7 +281,7 @@
             <input
               id="f-stock"
               type="number"
-              bind:value={stockQuantity}
+              bind:value={stockQty}
               min="0"
               step="1"
             />
@@ -315,7 +315,7 @@
           <input
             id="f-meta-title"
             type="text"
-            bind:value={metaTitle}
+            bind:value={seoTitle}
             maxlength="60"
             placeholder="Page title for search engines"
           />
@@ -330,20 +330,20 @@
           </label>
           <textarea
             id="f-meta-desc"
-            bind:value={metaDescription}
+            bind:value={seoDescription}
             maxlength="160"
             rows="3"
             placeholder="Brief description for search engines"
           ></textarea>
         </div>
 
-        {#if metaTitle || metaDescription || title}
+        {#if seoTitle || seoDescription || title}
           <div class="seo-preview">
             <div class="seo-preview-label">Google Preview</div>
             <div class="seo-snippet">
-              <div class="seo-title">{metaTitle || title || 'Page Title'}</div>
+              <div class="seo-title">{seoTitle || title || 'Page Title'}</div>
               <div class="seo-url">yourstore.vendwiz.com/{slug || 'product-slug'}</div>
-              <div class="seo-desc">{metaDescription || description || 'No description set.'}</div>
+              <div class="seo-desc">{seoDescription || description || 'No description set.'}</div>
             </div>
           </div>
         {/if}

@@ -1,15 +1,12 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import ProductForm from '$lib/components/admin/ProductForm.svelte';
-  import type { Category, ProductImage, ProductVariant, ProductAttribute } from '$lib/db/schema';
+  import type { Category } from '$lib/server/db/schema';
 
   let { data }: { data: PageData } = $props();
 
   let product = data.product;
   let categories = data.categories as Category[];
-  let images = data.images as ProductImage[];
-  let variants = data.variants as ProductVariant[];
-  let attributes = data.attributes as ProductAttribute[];
 
   type ImageRow = { id?: string; url: string; sortOrder: number };
   type VariantRow = {
@@ -19,21 +16,22 @@
   };
   type AttributeRow = { id?: string; name: string; value: string };
 
-  const imageRows: ImageRow[] = images.map((img) => ({
+  const imageRows: ImageRow[] = (data.images as ImageRow[]).map((img) => ({
     id: img.id,
     url: img.url,
     sortOrder: img.sortOrder
   }));
 
-  const variantRows: VariantRow[] = variants.map((v) => ({
+  // DB variants use `label` (not `name`) and `optionValueIds` (not `options`)
+  type RawVariant = typeof data.variants[number];
+  const variantRows: VariantRow[] = data.variants.map((v: RawVariant) => ({
     id: v.id,
-    name: v.name,
-    options: Array.isArray(v.options)
-      ? (v.options as { label: string; price_modifier: number }[])
-      : []
+    name: v.label ?? '',
+    options: []
   }));
 
-  const attributeRows: AttributeRow[] = attributes.map((a) => ({
+  type RawAttr = { id?: string; name: string; value: string };
+  const attributeRows: AttributeRow[] = (data.attributes as RawAttr[]).map((a) => ({
     id: a.id,
     name: a.name,
     value: a.value

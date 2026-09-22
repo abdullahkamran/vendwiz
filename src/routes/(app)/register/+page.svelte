@@ -15,7 +15,7 @@
 
 		const parsed = registerSchema.safeParse({ name, email, password });
 		if (!parsed.success) {
-			error = parsed.error.errors[0].message;
+			error = parsed.error.issues[0].message;
 			return;
 		}
 

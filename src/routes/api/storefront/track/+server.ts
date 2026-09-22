@@ -1,9 +1,8 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { orders } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { orders, orderItems } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
-import type { OrderItem } from '$lib/db/schema';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
   if (!locals.store) {
@@ -23,7 +22,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
     .where(
       and(
         eq(orders.storeId, locals.store.id),
-        eq(orders.orderRef, ref),
+        eq(orders.orderNumber, ref),
         eq(orders.customerEmail, email)
       )
     )
@@ -33,14 +32,16 @@ export const GET: RequestHandler = async ({ url, locals }) => {
     return json({ error: 'Not found' }, { status: 404 });
   }
 
-  // Return only public-safe fields (no financial data)
-  const items = (order.items as OrderItem[]).map((i) => ({
-    title: i.title,
-    quantity: i.quantity
-  }));
+  // Fetch order items from the separate table
+  const lineItems = await db
+    .select({ title: orderItems.productTitle, quantity: orderItems.quantity })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, order.id));
+
+  const items = lineItems.map((i) => ({ title: i.title, quantity: i.quantity }));
 
   return json({
-    orderRef: order.orderRef,
+    orderRef: order.orderNumber,
     status: order.status,
     createdAt: order.createdAt,
     items

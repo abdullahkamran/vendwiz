@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
-	import type { OrderItem } from '$lib/db/schema';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -27,7 +26,8 @@
 		return STATUS_COLORS[status] ?? 'bg-gray-100 text-gray-800';
 	}
 
-	const items: OrderItem[] = data.order.items as OrderItem[];
+	type OrderItemRow = typeof data.items[number];
+	const items: OrderItemRow[] = data.items;
 
 	function handleStatusChange(e: Event) {
 		const val = (e.target as HTMLSelectElement).value as OrderStatus;
@@ -39,7 +39,7 @@
 <div class="p-6 max-w-4xl mx-auto">
 	<div class="mb-6 flex items-center gap-4">
 		<a href="/admin/orders" class="text-indigo-600 hover:text-indigo-900 text-sm">← Back to Orders</a>
-		<h1 class="text-2xl font-bold text-gray-900">Order #{data.order.orderRef}</h1>
+		<h1 class="text-2xl font-bold text-gray-900">Order #{data.order.orderNumber}</h1>
 		<span class="px-3 py-1 rounded-full text-sm font-medium {statusColor(data.order.status)}">
 			{data.order.status}
 		</span>
@@ -93,26 +93,20 @@
 				<div class="divide-y divide-gray-200">
 					{#each items as item}
 						<div class="py-3 flex items-start gap-4">
-							{#if item.imageUrl}
-								<img src={item.imageUrl} alt={item.title} class="w-14 h-14 object-cover rounded" />
-							{:else}
-								<div class="w-14 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
-									No img
-								</div>
-							{/if}
+							<div class="w-14 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
+								No img
+							</div>
 							<div class="flex-1">
-								<div class="font-medium text-gray-900">{item.title}</div>
-								{#if item.variantSelections}
-									{#each Object.entries(item.variantSelections) as [k, v]}
-										<div class="text-xs text-gray-500">{k}: {v}</div>
-									{/each}
+								<div class="font-medium text-gray-900">{item.productTitle}</div>
+								{#if item.variantLabel}
+									<div class="text-xs text-gray-500">{item.variantLabel}</div>
 								{/if}
 								<div class="text-sm text-gray-600 mt-1">
-									Qty: {item.quantity} × PKR {item.price}
+									Qty: {item.quantity} × PKR {item.unitPrice}
 								</div>
 							</div>
 							<div class="font-medium text-gray-900">
-								PKR {item.price * item.quantity}
+								PKR {item.subtotal}
 							</div>
 						</div>
 					{/each}
@@ -137,7 +131,7 @@
 					</div>
 					{#if parseFloat(data.order.discountAmount) > 0}
 						<div class="flex justify-between text-green-600">
-							<dt>Discount {data.order.discountCode ? `(${data.order.discountCode})` : ''}</dt>
+							<dt>Discount {data.order.discountCodeId ? `(${data.order.discountCodeId})` : ''}</dt>
 							<dd>-PKR {data.order.discountAmount}</dd>
 						</div>
 					{/if}

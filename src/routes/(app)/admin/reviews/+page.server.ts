@@ -1,7 +1,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { reviews, products } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { reviews, products } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
@@ -12,18 +12,19 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const status = url.searchParams.get('status') ?? 'all';
 	const conditions = [eq(reviews.storeId, store.id)];
 
-	if (status === 'approved') conditions.push(eq(reviews.isApproved, true));
-	else if (status === 'pending') conditions.push(eq(reviews.isApproved, false));
+	if (status === 'approved') conditions.push(eq(reviews.status, 'approved'));
+	else if (status === 'pending') conditions.push(eq(reviews.status, 'pending'));
+	else if (status === 'hidden') conditions.push(eq(reviews.status, 'hidden'));
 
 	const results = await db
 		.select({
 			id: reviews.id,
 			productId: reviews.productId,
 			storeId: reviews.storeId,
-			customerName: reviews.customerName,
+			reviewerName: reviews.reviewerName,
 			rating: reviews.rating,
-			text: reviews.text,
-			isApproved: reviews.isApproved,
+			body: reviews.body,
+			status: reviews.status,
 			createdAt: reviews.createdAt,
 			productTitle: products.title
 		})
@@ -46,7 +47,7 @@ export const actions: Actions = {
 
 		await db
 			.update(reviews)
-			.set({ isApproved: true })
+			.set({ status: 'approved' })
 			.where(and(eq(reviews.id, id), eq(reviews.storeId, store.id)));
 
 		return { success: true };
@@ -62,7 +63,7 @@ export const actions: Actions = {
 
 		await db
 			.update(reviews)
-			.set({ isApproved: false })
+			.set({ status: 'hidden' })
 			.where(and(eq(reviews.id, id), eq(reviews.storeId, store.id)));
 
 		return { success: true };
@@ -94,7 +95,7 @@ export const actions: Actions = {
 		for (const id of ids) {
 			await db
 				.update(reviews)
-				.set({ isApproved: true })
+				.set({ status: 'approved' })
 				.where(and(eq(reviews.id, id), eq(reviews.storeId, store.id)));
 		}
 

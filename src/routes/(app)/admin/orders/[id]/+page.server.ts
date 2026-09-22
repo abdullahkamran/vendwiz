@@ -1,9 +1,9 @@
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { orders } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { orders, orderItems } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { buildOrderConfirmationMessage, buildWhatsAppUrl } from '$lib/utils/whatsapp';
+import { buildWhatsAppUrl } from '$lib/utils/whatsapp';
 
 type OrderStatus = 'pending' | 'processing' | 'dispatched' | 'completed' | 'cancelled';
 
@@ -29,11 +29,22 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	if (!order) throw error(404, 'Order not found');
 
-	const allowedNext = ALLOWED_TRANSITIONS[order.status as OrderStatus] ?? [];
-	const waMessage = buildOrderConfirmationMessage(order);
-	const waUrl = store.whatsapp ? buildWhatsAppUrl(store.whatsapp, waMessage) : null;
+	const items = await db
+		.select()
+		.from(orderItems)
+		.where(eq(orderItems.orderId, order.id));
 
-	return { order, allowedNext, waUrl, storeWhatsapp: store.whatsapp };
+	const allowedNext = ALLOWED_TRANSITIONS[order.status as OrderStatus] ?? [];
+
+	// Build a simple WhatsApp message without the deleted helper
+	const waMessage = store.whatsapp
+		? encodeURIComponent(
+				`Hi ${order.customerName}, your order #${order.orderNumber} status is: ${order.status}.`
+			)
+		: null;
+	const waUrl = store.whatsapp && waMessage ? buildWhatsAppUrl(store.whatsapp, decodeURIComponent(waMessage)) : null;
+
+	return { order, items, allowedNext, waUrl, storeWhatsapp: store.whatsapp };
 };
 
 export const actions: Actions = {

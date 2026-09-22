@@ -14,7 +14,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const parsed = subdomainSchema.safeParse({ subdomain: q });
 
 	if (!parsed.success) {
-		return json({ available: false, error: parsed.error.errors[0].message });
+		return json({ available: false, error: parsed.error.issues[0].message });
 	}
 
 	const existing = await db.query.stores.findFirst({

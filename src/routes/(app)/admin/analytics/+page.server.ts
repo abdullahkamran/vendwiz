@@ -1,9 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { orders, products } from '$lib/db/schema';
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
-import type { OrderItem } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { orders, orderItems, products } from '$lib/server/db/schema';
+import { eq, and, gte, lte, sql, inArray } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -67,35 +66,40 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	for (const o of allOrders) statusMap.set(o.status, (statusMap.get(o.status) ?? 0) + 1);
 	const statusBreakdown = Array.from(statusMap.entries()).map(([status, count]) => ({ status, count }));
 
-	// Top products
+	// Top products — fetch from orderItems table
+	const revenueOrderIds = revenueOrders.map((o) => o.id);
+	const allItems =
+		revenueOrderIds.length > 0
+			? await db.select().from(orderItems).where(inArray(orderItems.orderId, revenueOrderIds))
+			: [];
+
 	const productMap = new Map<string, { title: string; qtySold: number; revenue: number }>();
-	for (const o of revenueOrders) {
-		for (const item of o.items as OrderItem[]) {
-			const ex = productMap.get(item.productId) ?? { title: item.title, qtySold: 0, revenue: 0 };
-			ex.qtySold += item.quantity;
-			ex.revenue += item.price * item.quantity;
-			productMap.set(item.productId, ex);
-		}
+	for (const item of allItems) {
+		const id = item.productId ?? item.id;
+		const ex = productMap.get(id) ?? { title: item.productTitle, qtySold: 0, revenue: 0 };
+		ex.qtySold += item.quantity;
+		ex.revenue += parseFloat(item.subtotal);
+		productMap.set(id, ex);
 	}
 	const topProducts = Array.from(productMap.entries())
 		.map(([productId, v]) => ({ productId, ...v }))
 		.sort((a, b) => b.revenue - a.revenue)
 		.slice(0, 10);
 
-	// Low stock
+	// Low stock — use correct column names: isPublished, stockQty, lowStockThreshold
 	const lowStockProducts = await db
 		.select({
 			id: products.id,
 			title: products.title,
-			stock: products.stockQuantity,
+			stock: products.stockQty,
 			threshold: products.lowStockThreshold
 		})
 		.from(products)
 		.where(
 			and(
 				eq(products.storeId, store.id),
-				eq(products.isActive, true),
-				sql`${products.stockQuantity} <= ${products.lowStockThreshold}`
+				eq(products.isPublished, true),
+				sql`${products.stockQty} <= ${products.lowStockThreshold}`
 			)
 		);
 

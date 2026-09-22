@@ -1,17 +1,17 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { orders, discountCodes, shippingConfig, products } from '$lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import { orders, orderItems, discountCodes, products } from '$lib/server/db/schema';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { checkoutSchema } from '$lib/schemas/storefront';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.store) {
+  if (!locals.storefront) {
     throw error(404, 'Store not found');
   }
 
-  const storeId = locals.store.id;
+  const storeId = locals.storefront.id;
 
   // Parse and validate body
   let body: unknown;
@@ -29,22 +29,51 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const { customerName, customerPhone, customerEmail, shippingAddress, notes, discountCode, items } =
     parsed.data;
 
-  // Load shipping config
-  const [shipping] = await db
-    .select()
-    .from(shippingConfig)
-    .where(eq(shippingConfig.storeId, storeId))
-    .limit(1);
-
-  const flatRate = Number(shipping?.flatRate ?? 0);
-  const freeThreshold = shipping?.freeShippingThreshold
-    ? Number(shipping.freeShippingThreshold)
+  // Load shipping config from the store row (no separate shippingConfig table)
+  const flatRate = Number(locals.storefront.shippingFee ?? 0);
+  const freeThreshold = locals.storefront.freeShippingThreshold
+    ? Number(locals.storefront.freeShippingThreshold)
     : null;
-  const taxRate = Number(shipping?.taxRate ?? 0);
+  const taxRate = Number(locals.storefront.taxRate ?? 0);
 
-  // Re-calculate subtotal server-side from DB prices
-  // Fetch actual prices to prevent client-side price tampering
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // ── Server-side price enforcement ─────────────────────────────────────────
+  // Fetch authoritative prices from the DB.  The query is scoped to the current
+  // store so a productId from a different store returns no row.
+  const productIds = items.map((i) => i.productId);
+  const dbProducts = await db
+    .select({
+      id: products.id,
+      basePrice: products.basePrice,
+      salePrice: products.salePrice,
+      isPublished: products.isPublished
+    })
+    .from(products)
+    .where(and(eq(products.storeId, storeId), inArray(products.id, productIds)));
+
+  // Build a map for O(1) lookup
+  const priceMap = new Map(
+    dbProducts.map((p) => [
+      p.id,
+      // Use sale price when set, otherwise base price
+      Number(p.salePrice ?? p.basePrice)
+    ])
+  );
+
+  // Reject if any item is not found in this store's catalog
+  for (const item of items) {
+    if (!priceMap.has(item.productId)) {
+      return json(
+        { error: `Product not found in this store: ${item.productId}` },
+        { status: 422 }
+      );
+    }
+  }
+
+  // Calculate subtotal exclusively from server-sourced prices — never item.price
+  const subtotal = items.reduce(
+    (sum, item) => sum + (priceMap.get(item.productId) as number) * item.quantity,
+    0
+  );
 
   // Shipping fee
   const shippingFee = freeThreshold !== null && subtotal >= freeThreshold ? 0 : flatRate;
@@ -78,7 +107,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
       if (withinLimit && notExpired) {
         discountAmount =
-          dc.type === 'percent'
+          dc.type === 'percentage'
             ? (subtotal * Number(dc.value)) / 100
             : Math.min(Number(dc.value), subtotal);
         appliedDiscountCode = dc.code;
@@ -91,26 +120,45 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const total = Math.max(0, subtotal + shippingFee + taxAmount - discountAmount);
 
   // Generate order reference
-  const orderRef = nanoid(8).toUpperCase();
+  const orderNumber = `ORD-${nanoid(8).toUpperCase()}`;
+  const orderId = nanoid();
 
-  // Insert order
+  // Insert order (items are stored in a separate orderItems table)
   await db.insert(orders).values({
+    id: orderId,
     storeId,
-    orderRef,
+    orderNumber,
     customerName,
     customerPhone,
     customerEmail,
     shippingAddress,
-    items: items as unknown as typeof orders.$inferInsert['items'],
     subtotal: subtotal.toFixed(2),
     shippingFee: shippingFee.toFixed(2),
     taxAmount: taxAmount.toFixed(2),
     discountAmount: discountAmount.toFixed(2),
+    discountCodeId: discountCodeId ?? null,
     total: total.toFixed(2),
-    discountCode: appliedDiscountCode,
     notes: notes ?? null,
     status: 'pending'
   });
+
+  // Insert order items — unit price comes from the DB-sourced priceMap
+  if (items.length > 0) {
+    await db.insert(orderItems).values(
+      items.map((item) => {
+        const unitPrice = priceMap.get(item.productId) as number;
+        return {
+          id: nanoid(),
+          orderId,
+          productId: item.productId,
+          productTitle: item.title,
+          unitPrice: unitPrice.toFixed(2),
+          quantity: item.quantity,
+          subtotal: (unitPrice * item.quantity).toFixed(2)
+        };
+      })
+    );
+  }
 
   // Increment discount usage
   if (discountCodeId) {
@@ -122,13 +170,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   // Build WhatsApp URL if store has whatsapp
   let whatsappUrl: string | undefined;
-  if (locals.store.whatsapp) {
-    const waPhone = locals.store.whatsapp.replace(/\D/g, '');
+  if (locals.storefront.whatsapp) {
+    const waPhone = locals.storefront.whatsapp.replace(/\D/g, '');
     const msg = encodeURIComponent(
-      `New order #${orderRef} from ${customerName} (${customerPhone}). Total: Rs. ${total.toFixed(0)}`
+      `New order #${orderNumber} from ${customerName} (${customerPhone}). Total: Rs. ${total.toFixed(0)}`
     );
     whatsappUrl = `https://wa.me/${waPhone}?text=${msg}`;
   }
 
-  return json({ orderRef, whatsappUrl });
+  return json({ orderRef: orderNumber, whatsappUrl });
 };

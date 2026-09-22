@@ -1,28 +1,29 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/db';
-import { reviews, products } from '$lib/db/schema';
+import { db } from '$lib/server/db';
+import { reviews, products } from '$lib/server/db/schema';
 import { eq, and, gte } from 'drizzle-orm';
 import { reviewSchema } from '$lib/schemas/storefront';
+import { nanoid } from 'nanoid';
 
 export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
   if (!locals.store) {
     throw error(404, 'Store not found');
   }
 
-  let body: unknown;
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     throw error(400, 'Invalid JSON');
   }
 
-  const parsed = reviewSchema.safeParse(body);
+  const parsed = reviewSchema.safeParse(rawBody);
   if (!parsed.success) {
     return json({ error: parsed.error.issues[0]?.message ?? 'Validation failed' }, { status: 422 });
   }
 
-  const { productId, customerName, rating, text } = parsed.data;
+  const { productId, reviewerName, rating, body: reviewBody } = parsed.data;
 
   // Verify product belongs to this store
   const [product] = await db
@@ -54,12 +55,13 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
   }
 
   await db.insert(reviews).values({
+    id: nanoid(),
     productId,
     storeId: locals.store.id,
-    customerName,
+    reviewerName,
     rating,
-    text: text ?? null,
-    isApproved: false // requires admin approval
+    body: reviewBody ?? null,
+    status: 'pending' // requires admin approval
   });
 
   return json({ success: true, message: 'Review submitted, pending approval.' });
