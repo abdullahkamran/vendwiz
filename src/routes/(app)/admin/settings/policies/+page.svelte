@@ -110,7 +110,7 @@
 							class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[--color-accent] resize-y"
 							placeholder="Write your {pt.label.toLowerCase()} policy here…"
 						></textarea>
-						<p class="text-xs text-[--color-text-muted] mt-1">HTML is supported.</p>
+						<p class="text-xs text-[--color-text-muted] mt-1">Markdown is supported (e.g. **bold**, _italic_, # Heading).</p>
 					</div>
 				</div>
 

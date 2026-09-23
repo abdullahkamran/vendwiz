@@ -12,7 +12,7 @@ import { eq, and, ne, desc, asc } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-  const storeId = locals.storefront!.id;
+  const storeId = locals.store!.id;
 
   // Load product by slug + storeId
   const [product] = await db

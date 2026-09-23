@@ -1,7 +1,7 @@
 <script lang="ts">
   import { cart } from '$lib/stores/cart';
   import { darkMode } from '$lib/stores/darkMode';
-  import { DARK_TOKENS, tokensToCSS, themeRootCSS } from '$lib/theme/tokens';
+  import { themeRootCSS, themeDarkCSS } from '$lib/theme/tokens';
   import { onMount } from 'svelte';
 
   let { data, children }: {
@@ -41,13 +41,6 @@
     try { localStorage.setItem('vendwiz-install-dismissed', 'true'); } catch (_) {}
   }
 
-  // Dark overlay CSS
-  let darkCSS = $derived(
-    isDark
-      ? `[data-dark] {\n${tokensToCSS(DARK_TOKENS[store.theme] ?? DARK_TOKENS.basic)}\n}`
-      : ''
-  );
-
   // Apply data-dark attribute to <html>
   $effect(() => {
     if (typeof document !== 'undefined') {
@@ -60,9 +53,12 @@
   });
 </script>
 
-<!-- Inject all 20 --sf-* theme CSS variables + dark overlay into :root -->
+<!-- Inject all --sf-* theme CSS variables + dark override into :root.
+     Both light and dark rules are emitted as static CSS so SSR and client
+     output are identical — avoiding a head hydration mismatch that would
+     prevent onclick handlers from binding on first load. -->
 <svelte:head>
-  {@html `<style>${themeRootCSS(store.theme)}${darkCSS}</style>`}
+  {@html `<style>${themeRootCSS(store.theme)}${themeDarkCSS(store.theme)}</style>`}
 </svelte:head>
 
 <!-- Announcement bar -->
@@ -247,7 +243,7 @@
   .sf-drawer-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--sf-overlay);
     z-index: 40;
   }
 

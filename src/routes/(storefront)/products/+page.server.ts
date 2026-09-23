@@ -6,7 +6,7 @@ import { eq, and, ilike, lte, asc, desc, gt, isNotNull, sql } from 'drizzle-orm'
 const PAGE_SIZE = 24;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  const storeId = locals.storefront!.id;
+  const storeId = locals.store!.id;
 
   const q = url.searchParams.get('q') ?? '';
   const categoryId = url.searchParams.get('category') ?? '';

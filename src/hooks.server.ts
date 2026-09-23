@@ -29,7 +29,6 @@ const subdomainHook: Handle = async ({ event, resolve }) => {
 	const hostWithoutPort = host.split(':')[0];
 
 	// Default: not a storefront request
-	event.locals.storefront = null;
 	event.locals.isStorefront = false;
 	event.locals.store = null;
 

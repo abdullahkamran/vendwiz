@@ -5,7 +5,7 @@ import { eq, desc, and } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ locals }) => {
   // store is guaranteed by layout load
-  const storeId = locals.storefront!.id;
+  const storeId = locals.store!.id;
 
   // Featured: up to 8 published products, newest first
   const featuredRows = await db
