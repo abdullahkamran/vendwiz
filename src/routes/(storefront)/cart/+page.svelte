@@ -75,127 +75,149 @@
   <title>Cart | {store.name}</title>
 </svelte:head>
 
-<div style="max-width:1100px; margin:0 auto; padding:32px 24px;">
-  <h1 style="font-size:1.75rem; font-weight:800; margin:0 0 32px;">Your Cart</h1>
+<div style="padding:16px;">
+  <h1 style="font-size:1.5rem; font-weight:800; margin:0 0 24px; color:var(--sf-text);">Your Cart</h1>
 
   {#if $cart.length === 0}
-    <div style="text-align:center; padding:80px 0; color:#6b7280;">
-      <div style="font-size:4rem; margin-bottom:16px;">🛒</div>
-      <p style="font-size:1.1rem; margin-bottom:24px;">Your cart is empty.</p>
-      <a href="/products" style="padding:12px 28px; background:var(--store-primary,#111827); color:#fff; border-radius:8px; text-decoration:none; font-weight:600;">
+    <!-- Empty state: dashed circle -->
+    <div style="text-align:center; padding:64px 0;">
+      <div style="width:80px; height:80px; border-radius:50%; border:2px dashed var(--sf-border); display:inline-flex; align-items:center; justify-content:center; font-size:2rem; margin-bottom:16px; color:var(--sf-muted);">
+        🛒
+      </div>
+      <p style="font-size:1rem; color:var(--sf-muted); margin:0 0 20px;">Your cart is empty.</p>
+      <a href="/products"
+        style="padding:10px 24px; background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-pill); text-decoration:none; font-weight:var(--sf-btn-weight); font-size:0.9rem; text-transform:var(--sf-btn-transform); letter-spacing:var(--sf-letter-spacing);">
         Continue Shopping
       </a>
     </div>
   {:else}
-    <div class="cart-grid" style="display:grid; grid-template-columns:1fr 360px; gap:40px;">
-      <!-- Item list -->
-      <div>
-        {#each $cart as item}
-          <div style="display:flex; gap:16px; padding:20px 0; border-bottom:1px solid #f3f4f6; align-items:flex-start;">
-            <div style="width:80px; height:80px; flex-shrink:0; border-radius:8px; overflow:hidden; background:#f3f4f6;">
-              {#if item.imageUrl}
-                <img src={item.imageUrl} alt={item.title} style="width:100%; height:100%; object-fit:cover;" />
-              {:else}
-                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:1.75rem; color:#d1d5db;">📦</div>
-              {/if}
-            </div>
-            <div style="flex:1; min-width:0;">
-              <a href="/products/{item.slug}" style="font-size:0.9rem; font-weight:600; color:#111827; text-decoration:none;">{item.title}</a>
-              {#if item.variantSelections && Object.keys(item.variantSelections).length > 0}
-                <p style="font-size:0.75rem; color:#6b7280; margin:4px 0 0;">
-                  {Object.entries(item.variantSelections).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                </p>
-              {/if}
-              <p style="font-size:0.9rem; font-weight:700; color:var(--store-primary,#111827); margin:8px 0 0;">
-                Rs. {(item.price * item.quantity).toLocaleString()}
-              </p>
-            </div>
-            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-              <div style="display:flex; align-items:center; border:1px solid #d1d5db; border-radius:8px; overflow:hidden;">
-                <button onclick={() => cart.updateQuantity(item.productId, item.quantity - 1, item.variantSelections)}
-                  style="width:32px; height:32px; border:none; background:#f9fafb; cursor:pointer; color:#374151;">−</button>
-                <span style="width:36px; text-align:center; font-size:0.875rem; font-weight:600;">{item.quantity}</span>
-                <button onclick={() => cart.updateQuantity(item.productId, item.quantity + 1, item.variantSelections)}
-                  style="width:32px; height:32px; border:none; background:#f9fafb; cursor:pointer; color:#374151;">+</button>
-              </div>
-              <button onclick={() => cart.removeItem(item.productId, item.variantSelections)}
-                style="font-size:0.75rem; color:#dc2626; background:none; border:none; cursor:pointer;">Remove</button>
-            </div>
+    <!-- Item list -->
+    {#each $cart as item}
+      <div style="display:flex; gap:12px; padding:16px 0; border-top:1px solid var(--sf-border); align-items:flex-start;">
+        <!-- Thumb: 72 × 82 -->
+        <div style="width:72px; height:82px; flex-shrink:0; border-radius:var(--sf-radius); overflow:hidden; background:var(--sf-surface);">
+          {#if item.imageUrl}
+            <img src={item.imageUrl} alt={item.title} style="width:100%; height:100%; object-fit:cover;" />
+          {:else}
+            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:1.75rem; color:var(--sf-muted);">📦</div>
+          {/if}
+        </div>
+
+        <!-- Details -->
+        <div style="flex:1; min-width:0;">
+          <a href="/products/{item.slug}" style="font-size:0.875rem; font-weight:600; color:var(--sf-text); text-decoration:none; display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">{item.title}</a>
+          {#if item.variantSelections && Object.keys(item.variantSelections).length > 0}
+            <p style="font-size:0.75rem; color:var(--sf-muted); margin:3px 0 0;">
+              {Object.entries(item.variantSelections).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+            </p>
+          {/if}
+          <p style="font-size:0.875rem; font-weight:700; color:var(--sf-primary); margin:6px 0 0;">
+            Rs. {(item.price * item.quantity).toLocaleString()}
+          </p>
+          <!-- Unit price when qty > 1 -->
+          {#if item.quantity > 1}
+            <p style="font-size:0.75rem; color:var(--sf-muted); margin:2px 0 0;">Rs. {item.price.toLocaleString()} each</p>
+          {/if}
+        </div>
+
+        <!-- Qty stepper + remove -->
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0;">
+          <div style="display:flex; align-items:center; border:1px solid var(--sf-border); border-radius:var(--sf-radius); overflow:hidden;">
+            <button
+              onclick={() => cart.updateQuantity(item.productId, item.quantity - 1, item.variantSelections)}
+              style="width:30px; height:30px; border:none; background:var(--sf-surface); cursor:pointer; color:var(--sf-text); font-size:1rem; display:flex; align-items:center; justify-content:center;">−</button>
+            <span style="width:32px; text-align:center; font-size:0.875rem; font-weight:600; color:var(--sf-text);">{item.quantity}</span>
+            <button
+              onclick={() => cart.updateQuantity(item.productId, item.quantity + 1, item.variantSelections)}
+              style="width:30px; height:30px; border:none; background:var(--sf-surface); cursor:pointer; color:var(--sf-text); font-size:1rem; display:flex; align-items:center; justify-content:center;">+</button>
           </div>
-        {/each}
-        <div style="margin-top:24px;">
-          <a href="/products" style="color:#6b7280; font-size:0.875rem; text-decoration:none;">← Continue Shopping</a>
+          <!-- ✕ remove -->
+          <button
+            onclick={() => cart.removeItem(item.productId, item.variantSelections)}
+            style="font-size:0.75rem; color:var(--sf-muted); background:none; border:none; cursor:pointer; padding:0; line-height:1;">✕ Remove</button>
         </div>
       </div>
+    {/each}
 
-      <!-- Order summary -->
-      <div style="background:#f9fafb; border-radius:12px; padding:24px; height:fit-content; position:sticky; top:24px;">
-        <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 20px;">Order Summary</h2>
+    <!-- Continue shopping -->
+    <div style="padding:16px 0; border-top:1px solid var(--sf-border);">
+      <a href="/products" style="color:var(--sf-muted); font-size:0.875rem; text-decoration:none;">← Continue Shopping</a>
+    </div>
 
-        {#if $cartDiscount}
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; background:#dcfce7; border-radius:8px; padding:10px 14px;">
-            <span style="font-size:0.8rem; color:#16a34a; font-weight:600;">🎫 {$cartDiscount.code}</span>
-            <button onclick={removeDiscount} style="background:none; border:none; color:#dc2626; cursor:pointer; font-size:0.75rem;">Remove</button>
+    <!-- Order summary box -->
+    <div style="background:var(--sf-surface); border-radius:var(--sf-radius-lg); padding:20px; margin-top:8px; border:1px solid var(--sf-border);">
+      <h2 style="font-size:1rem; font-weight:700; margin:0 0 16px; color:var(--sf-text);">Order Summary</h2>
+
+      <!-- Discount code input (shown when no discount applied) -->
+      {#if $cartDiscount}
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; background:var(--sf-success-tint); border:1px solid var(--sf-success); border-radius:var(--sf-radius); padding:10px 14px;">
+          <span style="font-size:0.8rem; color:var(--sf-success); font-weight:600;">🎫 {$cartDiscount.code}</span>
+          <button onclick={removeDiscount} style="background:none; border:none; color:var(--sf-error); cursor:pointer; font-size:0.75rem;">Remove</button>
+        </div>
+      {:else}
+        <div style="margin-bottom:16px;">
+          <div style="display:flex; gap:8px;">
+            <input
+              bind:value={discountCode}
+              placeholder="Discount code"
+              style="flex:1; border:1px solid var(--sf-border); border-radius:var(--sf-radius); padding:8px 12px; font-size:0.8rem; background:var(--sf-bg); color:var(--sf-text);"
+            />
+            <button
+              onclick={applyDiscount}
+              disabled={discountLoading}
+              style="padding:8px 14px; background:var(--sf-surface); color:var(--sf-primary); border:1px solid var(--sf-primary); border-radius:var(--sf-radius); font-size:0.8rem; cursor:pointer; white-space:nowrap; font-weight:600;">
+              {discountLoading ? '…' : 'Apply'}
+            </button>
           </div>
-        {:else}
-          <div style="margin-bottom:16px;">
-            <div style="display:flex; gap:8px;">
-              <input bind:value={discountCode} placeholder="Discount code"
-                style="flex:1; border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:0.8rem; background:#fff;" />
-              <button onclick={applyDiscount} disabled={discountLoading}
-                style="padding:8px 14px; background:var(--store-primary,#111827); color:#fff; border:none; border-radius:8px; font-size:0.8rem; cursor:pointer; white-space:nowrap;">
-                {discountLoading ? '…' : 'Apply'}
-              </button>
-            </div>
-            {#if discountMsg}
-              <p style="font-size:0.75rem; color:{discountMsg.includes('applied') ? '#16a34a' : '#dc2626'}; margin:6px 0 0;">{discountMsg}</p>
-            {/if}
+          {#if discountMsg}
+            <p style="font-size:0.75rem; color:{discountMsg.includes('applied') ? 'var(--sf-success)' : 'var(--sf-error)'}; margin:6px 0 0;">{discountMsg}</p>
+          {/if}
+        </div>
+      {/if}
+
+      <!-- Line items -->
+      <div style="display:flex; flex-direction:column; gap:10px; font-size:0.875rem;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--sf-muted);">Subtotal</span>
+          <span style="color:var(--sf-text);">Rs. {subtotal.toLocaleString()}</span>
+        </div>
+
+        {#if discountAmount > 0}
+          <div style="display:flex; justify-content:space-between; color:var(--sf-success);">
+            <span>Discount</span>
+            <span>–Rs. {discountAmount.toLocaleString()}</span>
           </div>
         {/if}
 
-        <div style="display:flex; flex-direction:column; gap:10px; font-size:0.875rem;">
-          <div style="display:flex; justify-content:space-between;">
-            <span style="color:#6b7280;">Subtotal</span>
-            <span>Rs. {subtotal.toLocaleString()}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between;">
-            <span style="color:#6b7280;">Shipping
-              {#if freeShippingThreshold && subtotal < freeShippingThreshold}
-                <span style="font-size:0.7rem; display:block; color:#9ca3af;">(Free over Rs. {freeShippingThreshold.toLocaleString()})</span>
-              {/if}
-            </span>
-            <span>{effectiveShipping === 0 ? 'Free' : `Rs. ${effectiveShipping.toLocaleString()}`}</span>
-          </div>
-          {#if taxAmount > 0}
-            <div style="display:flex; justify-content:space-between;">
-              <span style="color:#6b7280;">Tax ({(taxRate * 100).toFixed(1)}%)</span>
-              <span>Rs. {taxAmount.toLocaleString()}</span>
-            </div>
-          {/if}
-          {#if discountAmount > 0}
-            <div style="display:flex; justify-content:space-between; color:#16a34a;">
-              <span>Discount</span>
-              <span>–Rs. {discountAmount.toLocaleString()}</span>
-            </div>
-          {/if}
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--sf-muted);">
+            Shipping
+            {#if freeShippingThreshold !== null && subtotal < freeShippingThreshold}
+              <span style="font-size:0.7rem; display:block; color:var(--sf-muted);">Free over Rs. {freeShippingThreshold.toLocaleString()}</span>
+            {/if}
+          </span>
+          <span style="color:var(--sf-text);">{effectiveShipping === 0 ? 'Free' : `Rs. ${effectiveShipping.toLocaleString()}`}</span>
         </div>
 
-        <div style="border-top:1px solid #e5e7eb; margin:16px 0; padding-top:16px; display:flex; justify-content:space-between; font-weight:700; font-size:1rem;">
-          <span>Total</span>
-          <span>Rs. {Math.max(0, total).toLocaleString()}</span>
-        </div>
-
-        <a href="/checkout"
-          style="display:block; width:100%; padding:14px; background:var(--store-primary,#111827); color:#fff; border-radius:10px; text-decoration:none; text-align:center; font-weight:700; font-size:1rem; box-sizing:border-box;">
-          Proceed to Checkout →
-        </a>
+        {#if taxAmount > 0}
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:var(--sf-muted);">Tax ({(taxRate * 100).toFixed(1)}%)</span>
+            <span style="color:var(--sf-text);">Rs. {taxAmount.toLocaleString()}</span>
+          </div>
+        {/if}
       </div>
+
+      <!-- Total -->
+      <div style="border-top:1px solid var(--sf-border); margin:16px 0 0; padding-top:16px; display:flex; justify-content:space-between; font-weight:700; font-size:1rem; color:var(--sf-text);">
+        <span>Total</span>
+        <span>Rs. {Math.max(0, total).toLocaleString()}</span>
+      </div>
+
+      <!-- CTA: pill primary button -->
+      <a href="/checkout"
+        style="display:block; width:100%; padding:14px; background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-pill); text-decoration:none; text-align:center; font-weight:var(--sf-btn-weight); font-size:1rem; box-sizing:border-box; margin-top:16px; text-transform:var(--sf-btn-transform); letter-spacing:var(--sf-letter-spacing);">
+        Proceed to Checkout →
+      </a>
     </div>
   {/if}
 </div>
-
-<style>
-  @media (max-width: 768px) {
-    :global(.cart-grid) { grid-template-columns: 1fr !important; }
-  }
-</style>

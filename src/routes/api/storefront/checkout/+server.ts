@@ -7,11 +7,11 @@ import { nanoid } from 'nanoid';
 import { checkoutSchema } from '$lib/schemas/storefront';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.storefront) {
+  if (!locals.isStorefront || !locals.store) {
     throw error(404, 'Store not found');
   }
 
-  const storeId = locals.storefront.id;
+  const storeId = locals.store.id;
 
   // Parse and validate body
   let body: unknown;
@@ -30,11 +30,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     parsed.data;
 
   // Load shipping config from the store row (no separate shippingConfig table)
-  const flatRate = Number(locals.storefront.shippingFee ?? 0);
-  const freeThreshold = locals.storefront.freeShippingThreshold
-    ? Number(locals.storefront.freeShippingThreshold)
+  const flatRate = Number(locals.store.shippingFee ?? 0);
+  const freeThreshold = locals.store.freeShippingThreshold
+    ? Number(locals.store.freeShippingThreshold)
     : null;
-  const taxRate = Number(locals.storefront.taxRate ?? 0);
+  const taxRate = Number(locals.store.taxRate ?? 0);
 
   // ── Server-side price enforcement ─────────────────────────────────────────
   // Fetch authoritative prices from the DB.  The query is scoped to the current
@@ -170,8 +170,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   // Build WhatsApp URL if store has whatsapp
   let whatsappUrl: string | undefined;
-  if (locals.storefront.whatsapp) {
-    const waPhone = locals.storefront.whatsapp.replace(/\D/g, '');
+  if (locals.store.whatsapp) {
+    const waPhone = locals.store.whatsapp.replace(/\D/g, '');
     const msg = encodeURIComponent(
       `New order #${orderNumber} from ${customerName} (${customerPhone}). Total: Rs. ${total.toFixed(0)}`
     );

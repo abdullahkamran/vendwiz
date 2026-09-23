@@ -2,7 +2,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { THEME_HEX } from '$lib/theme/tokens';
 
 export const GET: RequestHandler = async ({ locals }) => {
-  const store = locals.storefront ?? locals.store;
+  const store = locals.store;
 
   const name = store?.name ?? 'VendWiz Store';
   const theme = store?.theme ?? 'basic';

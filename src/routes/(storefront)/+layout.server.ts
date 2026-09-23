@@ -5,12 +5,12 @@ import { categories, discountCodes } from '$lib/server/db/schema';
 import { eq, asc, and } from 'drizzle-orm';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
-  if (!locals.storefront) {
+  if (!locals.isStorefront || !locals.store) {
     // Not on a storefront subdomain — redirect to the auth flow
     throw redirect(302, `/login`);
   }
 
-  const store = locals.storefront;
+  const store = locals.store;
 
   // Load categories for the nav drawer
   const storeCategories = await db

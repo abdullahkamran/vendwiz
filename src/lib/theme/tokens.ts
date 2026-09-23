@@ -27,6 +27,11 @@ export interface ThemeTokens {
   '--sf-btn-weight': string;
   '--sf-announce-bg': string;
   '--sf-announce-text': string;
+  '--sf-error': string;
+  '--sf-success': string;
+  '--sf-error-tint': string;
+  '--sf-success-tint': string;
+  '--sf-overlay': string;
 }
 
 export interface DarkTokens {
@@ -58,7 +63,12 @@ const basic: ThemeTokens = {
   '--sf-btn-transform': 'none',
   '--sf-btn-weight': '600',
   '--sf-announce-bg': '#0d6efd',
-  '--sf-announce-text': '#ffffff'
+  '--sf-announce-text': '#ffffff',
+  '--sf-error': '#dc2626',
+  '--sf-success': '#16a34a',
+  '--sf-error-tint': '#dc26261a',
+  '--sf-success-tint': '#16a34a1f',
+  '--sf-overlay': 'rgba(0,0,0,0.45)'
 };
 
 const basicDark: DarkTokens = {
@@ -90,7 +100,12 @@ const minimal: ThemeTokens = {
   '--sf-btn-transform': 'none',
   '--sf-btn-weight': '500',
   '--sf-announce-bg': '#111827',
-  '--sf-announce-text': '#ffffff'
+  '--sf-announce-text': '#ffffff',
+  '--sf-error': '#dc2626',
+  '--sf-success': '#16a34a',
+  '--sf-error-tint': '#dc26261a',
+  '--sf-success-tint': '#16a34a1f',
+  '--sf-overlay': 'rgba(0,0,0,0.45)'
 };
 
 const minimalDark: DarkTokens = {
@@ -122,7 +137,12 @@ const bold: ThemeTokens = {
   '--sf-btn-transform': 'uppercase',
   '--sf-btn-weight': '900',
   '--sf-announce-bg': '#f97316',
-  '--sf-announce-text': '#0f172a'
+  '--sf-announce-text': '#0f172a',
+  '--sf-error': '#fca5a5',
+  '--sf-success': '#86efac',
+  '--sf-error-tint': '#fca5a51a',
+  '--sf-success-tint': '#86efac1f',
+  '--sf-overlay': 'rgba(0,0,0,0.6)'
 };
 
 const boldDark: DarkTokens = {
@@ -154,7 +174,12 @@ const playful: ThemeTokens = {
   '--sf-btn-transform': 'none',
   '--sf-btn-weight': '700',
   '--sf-announce-bg': '#7c3aed',
-  '--sf-announce-text': '#ffffff'
+  '--sf-announce-text': '#ffffff',
+  '--sf-error': '#dc2626',
+  '--sf-success': '#16a34a',
+  '--sf-error-tint': '#dc26261a',
+  '--sf-success-tint': '#16a34a1f',
+  '--sf-overlay': 'rgba(0,0,0,0.45)'
 };
 
 const playfulDark: DarkTokens = {

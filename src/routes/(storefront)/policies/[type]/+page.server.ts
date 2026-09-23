@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { storePolicies } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { renderMarkdown } from '$lib/server/markdown';
 
 const VALID_TYPES = ['return', 'shipping', 'terms', 'faq'] as const;
 type PolicyType = (typeof VALID_TYPES)[number];
@@ -31,5 +32,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     faq: 'FAQ'
   };
 
-  return { policy, title: titles[type] };
+  // Render markdown to HTML so **bold** → <strong> and pipe tables → <table>
+  const html = renderMarkdown(policy.content);
+
+  return { policy, html, title: titles[type] };
 };
