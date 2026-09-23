@@ -44,7 +44,6 @@ const subdomainHook: Handle = async ({ event, resolve }) => {
 				with: { owner: true }
 			});
 
-			event.locals.storefront = storeRow ?? null;
 			event.locals.subdomain = subdomain;
 			// Convenience aliases used by storefront routes
 			event.locals.store = storeRow ?? null;
