@@ -35,5 +35,30 @@ export const load: PageServerLoad = async ({ locals, params }) => {
   // Render markdown to HTML so **bold** → <strong> and pipe tables → <table>
   const html = renderMarkdown(policy.content);
 
+  if (type === 'faq') {
+    const faqItems: { question: string; answer: string }[] = [];
+    const lines = policy.content.split('\n');
+    let currentQuestion: string | null = null;
+    const answerLines: string[] = [];
+
+    for (const line of lines) {
+      const headingMatch = line.match(/^##\s+(.+)/);
+      if (headingMatch) {
+        if (currentQuestion !== null) {
+          faqItems.push({ question: currentQuestion, answer: answerLines.join('\n').trim() });
+          answerLines.length = 0;
+        }
+        currentQuestion = headingMatch[1].trim();
+      } else if (currentQuestion !== null) {
+        answerLines.push(line);
+      }
+    }
+    if (currentQuestion !== null) {
+      faqItems.push({ question: currentQuestion, answer: answerLines.join('\n').trim() });
+    }
+
+    return { policy, html, title: titles[type], faqItems };
+  }
+
   return { policy, html, title: titles[type] };
 };
