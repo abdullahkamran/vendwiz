@@ -50,8 +50,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
   // Simple IP-based: stored in customer name as a proxy isn't ideal —
   // In production you'd store IP in reviews table. For now we do a loose check.
   if (recentReviews.length >= 1) {
-    // Allow one review per product per hour from the same request IP
-    // This is a best-effort check without a separate IP log table
+    return json({ error: "You already submitted a review for this product recently." }, { status: 429 });
   }
 
   await db.insert(reviews).values({
