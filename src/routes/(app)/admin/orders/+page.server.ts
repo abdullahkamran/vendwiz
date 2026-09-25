@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { orders } from '$lib/server/db/schema';
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, or, ilike } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -29,6 +29,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	}
 	if (from) conditions.push(gte(orders.createdAt, new Date(from)));
 	if (to) conditions.push(lte(orders.createdAt, new Date(to)));
+	if (search) {
+		conditions.push(
+			or(ilike(orders.orderNumber, `%${search}%`), ilike(orders.customerName, `%${search}%`))!
+		);
+	}
 
 	const results = await db
 		.select()
@@ -38,16 +43,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		.limit(limit + 1)
 		.offset(offset);
 
-	const filtered = search
-		? results.filter(
-				(o) =>
-					o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-					o.customerName.toLowerCase().includes(search.toLowerCase())
-			)
-		: results;
-
-	const hasNext = filtered.length > limit;
-	const ordersData = hasNext ? filtered.slice(0, limit) : filtered;
+	const hasNext = results.length > limit;
+	const ordersData = hasNext ? results.slice(0, limit) : results;
 
 	return {
 		orders: ordersData,
