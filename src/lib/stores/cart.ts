@@ -1,6 +1,12 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
+const storeSlug = typeof window !== 'undefined'
+  ? window.location.hostname.split('.')[0]
+  : 'default';
+const CART_KEY = `vendwiz_cart_${storeSlug}`;
+const DISCOUNT_KEY = `vendwiz_discount_${storeSlug}`;
+
 export interface CartItem {
   productId: string;
   title: string;
@@ -12,7 +18,7 @@ export interface CartItem {
 }
 
 function createCart() {
-  const stored = browser ? localStorage.getItem('vendwiz_cart') : null;
+  const stored = browser ? localStorage.getItem(CART_KEY) : null;
   const initial: CartItem[] = stored ? JSON.parse(stored) : [];
   const { subscribe, set, update } = writable<CartItem[]>(initial);
 
@@ -32,7 +38,7 @@ function createCart() {
         } else {
           next = [...items, item];
         }
-        if (browser) localStorage.setItem('vendwiz_cart', JSON.stringify(next));
+        if (browser) localStorage.setItem(CART_KEY, JSON.stringify(next));
         return next;
       });
     },
@@ -45,7 +51,7 @@ function createCart() {
               JSON.stringify(i.variantSelections ?? {}) === JSON.stringify(variantSelections ?? {})
             )
         );
-        if (browser) localStorage.setItem('vendwiz_cart', JSON.stringify(next));
+        if (browser) localStorage.setItem(CART_KEY, JSON.stringify(next));
         return next;
       });
     },
@@ -64,13 +70,13 @@ function createCart() {
                   ? { ...i, quantity }
                   : i
               );
-        if (browser) localStorage.setItem('vendwiz_cart', JSON.stringify(next));
+        if (browser) localStorage.setItem(CART_KEY, JSON.stringify(next));
         return next;
       });
     },
     clear() {
       set([]);
-      if (browser) localStorage.removeItem('vendwiz_cart');
+      if (browser) localStorage.removeItem(CART_KEY);
     }
   };
 }
@@ -86,7 +92,7 @@ export interface CartDiscount {
 }
 
 function createCartDiscount() {
-  const stored = browser ? localStorage.getItem('vendwiz_discount') : null;
+  const stored = browser ? localStorage.getItem(DISCOUNT_KEY) : null;
   const initial: CartDiscount | null = stored ? JSON.parse(stored) : null;
   const { subscribe, set } = writable<CartDiscount | null>(initial);
 
@@ -94,11 +100,11 @@ function createCartDiscount() {
     subscribe,
     apply(discount: CartDiscount) {
       set(discount);
-      if (browser) localStorage.setItem('vendwiz_discount', JSON.stringify(discount));
+      if (browser) localStorage.setItem(DISCOUNT_KEY, JSON.stringify(discount));
     },
     clear() {
       set(null);
-      if (browser) localStorage.removeItem('vendwiz_discount');
+      if (browser) localStorage.removeItem(DISCOUNT_KEY);
     }
   };
 }
