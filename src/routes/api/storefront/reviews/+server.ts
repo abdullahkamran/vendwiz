@@ -36,21 +36,24 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
     return json({ error: 'Product not found' }, { status: 404 });
   }
 
-  // Basic rate limit: same IP + productId within 1 hour
+  // Rate limit: same IP + productId within 1 hour
   const ip = getClientAddress();
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const recentReviews = await db
     .select({ id: reviews.id })
     .from(reviews)
     .where(
-      and(eq(reviews.productId, productId), eq(reviews.storeId, locals.store.id), gte(reviews.createdAt, oneHourAgo))
+      and(
+        eq(reviews.productId, productId),
+        eq(reviews.storeId, locals.store.id),
+        eq(reviews.ip, ip),
+        gte(reviews.createdAt, oneHourAgo)
+      )
     )
     .limit(1);
 
-  // Simple IP-based: stored in customer name as a proxy isn't ideal —
-  // In production you'd store IP in reviews table. For now we do a loose check.
   if (recentReviews.length >= 1) {
-    return json({ error: "You already submitted a review for this product recently." }, { status: 429 });
+    return json({ error: 'You already submitted a review for this product recently.' }, { status: 429 });
   }
 
   await db.insert(reviews).values({
@@ -60,7 +63,8 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
     reviewerName,
     rating,
     body: reviewBody ?? null,
-    status: 'pending' // requires admin approval
+    ip,
+    status: 'pending'
   });
 
   return json({ success: true, message: 'Review submitted, pending approval.' });
