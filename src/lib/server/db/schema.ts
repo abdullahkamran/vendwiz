@@ -301,6 +301,7 @@ export const reviews = pgTable('reviews', {
 	reviewerEmail: text('reviewer_email'),
 	rating: integer('rating').notNull(), // 1-5
 	body: text('body'),
+	ip: text('ip'),
 	status: reviewStatusEnum('status').notNull().default('pending'),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });

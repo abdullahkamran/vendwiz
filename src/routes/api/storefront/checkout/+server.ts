@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { orders, orderItems, discountCodes, products } from '$lib/server/db/schema';
+import { orders, orderItems, discountCodes, products, productVariants } from '$lib/server/db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { checkoutSchema } from '$lib/schemas/storefront';
@@ -37,27 +37,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const taxRate = Number(locals.store.taxRate ?? 0);
 
   // ── Server-side price enforcement ─────────────────────────────────────────
-  // Fetch authoritative prices from the DB.  The query is scoped to the current
-  // store so a productId from a different store returns no row.
   const productIds = items.map((i) => i.productId);
   const dbProducts = await db
     .select({
       id: products.id,
       basePrice: products.basePrice,
       salePrice: products.salePrice,
+      stockQty: products.stockQty,
       isPublished: products.isPublished
     })
     .from(products)
     .where(and(eq(products.storeId, storeId), inArray(products.id, productIds)));
 
-  // Build a map for O(1) lookup
   const priceMap = new Map(
-    dbProducts.map((p) => [
-      p.id,
-      // Use sale price when set, otherwise base price
-      Number(p.salePrice ?? p.basePrice)
-    ])
+    dbProducts.map((p) => [p.id, Number(p.salePrice ?? p.basePrice)])
   );
+  const stockMap = new Map(dbProducts.map((p) => [p.id, p.stockQty]));
 
   // Reject if any item is not found in this store's catalog
   for (const item of items) {
@@ -69,11 +64,79 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     }
   }
 
-  // Calculate subtotal exclusively from server-sourced prices — never item.price
-  const subtotal = items.reduce(
-    (sum, item) => sum + (priceMap.get(item.productId) as number) * item.quantity,
-    0
-  );
+  // ── Variant resolution ────────────────────────────────────────────────────
+  type VariantResolution = { id: string; price: number; label: string; stockQty: number };
+  const variantResolutionMap = new Map<string, VariantResolution>();
+  const productIdsWithVariants = [
+    ...new Set(
+      items
+        .filter((i) => i.variantSelections && Object.keys(i.variantSelections).length > 0)
+        .map((i) => i.productId)
+    )
+  ];
+
+  if (productIdsWithVariants.length > 0) {
+    const allVariants = await db
+      .select({
+        id: productVariants.id,
+        productId: productVariants.productId,
+        price: productVariants.price,
+        label: productVariants.label,
+        stockQty: productVariants.stockQty
+      })
+      .from(productVariants)
+      .where(inArray(productVariants.productId, productIdsWithVariants));
+
+    for (const item of items) {
+      if (!item.variantSelections || Object.keys(item.variantSelections).length === 0) continue;
+      const key = `${item.productId}_${JSON.stringify(item.variantSelections)}`;
+      const selectionValues = Object.values(item.variantSelections);
+      const match = allVariants
+        .filter((v) => v.productId === item.productId)
+        .find((v) => {
+          const labelParts = v.label.split(' / ').map((s) => s.trim());
+          return selectionValues.every((sv) => labelParts.includes(sv.trim()));
+        });
+      if (match) {
+        variantResolutionMap.set(key, {
+          id: match.id,
+          price: match.price !== null ? Number(match.price) : (priceMap.get(item.productId) as number),
+          label: match.label,
+          stockQty: match.stockQty
+        });
+      }
+    }
+  }
+
+  // Helper: effective price for an item (variant overrides base/sale price)
+  function getItemPrice(item: (typeof items)[0]): number {
+    if (item.variantSelections && Object.keys(item.variantSelections).length > 0) {
+      const key = `${item.productId}_${JSON.stringify(item.variantSelections)}`;
+      const v = variantResolutionMap.get(key);
+      if (v) return v.price;
+    }
+    return priceMap.get(item.productId) as number;
+  }
+
+  // ── Stock check before order insert ──────────────────────────────────────
+  for (const item of items) {
+    const hasVariant = item.variantSelections && Object.keys(item.variantSelections).length > 0;
+    if (hasVariant) {
+      const key = `${item.productId}_${JSON.stringify(item.variantSelections)}`;
+      const v = variantResolutionMap.get(key);
+      if (v && v.stockQty < item.quantity) {
+        return json({ error: `${item.title} is out of stock` }, { status: 400 });
+      }
+    } else {
+      const stock = stockMap.get(item.productId);
+      if (stock !== undefined && stock < item.quantity) {
+        return json({ error: `${item.title} is out of stock` }, { status: 400 });
+      }
+    }
+  }
+
+  // Calculate subtotal from server-sourced prices — never item.price
+  const subtotal = items.reduce((sum, item) => sum + getItemPrice(item) * item.quantity, 0);
 
   // Shipping fee
   const shippingFee = freeThreshold !== null && subtotal >= freeThreshold ? 0 : flatRate;
@@ -83,7 +146,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   // Discount
   let discountAmount = 0;
-  let appliedDiscountCode: string | undefined;
   let discountCodeId: string | undefined;
 
   if (discountCode) {
@@ -100,9 +162,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       .limit(1);
 
     if (dc) {
-      // Check usage limit
       const withinLimit = dc.usageLimit === null || dc.usageCount < dc.usageLimit;
-      // Check expiry
       const notExpired = !dc.expiresAt || dc.expiresAt > new Date();
 
       if (withinLimit && notExpired) {
@@ -110,7 +170,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
           dc.type === 'percentage'
             ? (subtotal * Number(dc.value)) / 100
             : Math.min(Number(dc.value), subtotal);
-        appliedDiscountCode = dc.code;
         discountCodeId = dc.id;
       }
     }
@@ -123,7 +182,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const orderNumber = `ORD-${nanoid(8).toUpperCase()}`;
   const orderId = nanoid();
 
-  // Insert order (items are stored in a separate orderItems table)
+  // Insert order
   await db.insert(orders).values({
     id: orderId,
     storeId,
@@ -142,22 +201,49 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     status: 'pending'
   });
 
-  // Insert order items — unit price comes from the DB-sourced priceMap
+  // Insert order items — unit price comes from DB-sourced prices; variantId stored
   if (items.length > 0) {
     await db.insert(orderItems).values(
       items.map((item) => {
-        const unitPrice = priceMap.get(item.productId) as number;
+        const hasVariant = item.variantSelections && Object.keys(item.variantSelections).length > 0;
+        const variantKey = hasVariant
+          ? `${item.productId}_${JSON.stringify(item.variantSelections)}`
+          : null;
+        const variant = variantKey ? variantResolutionMap.get(variantKey) : null;
+        const unitPrice = variant ? variant.price : (priceMap.get(item.productId) as number);
         return {
           id: nanoid(),
           orderId,
           productId: item.productId,
+          variantId: variant?.id ?? null,
           productTitle: item.title,
+          variantLabel: variant?.label ?? null,
           unitPrice: unitPrice.toFixed(2),
           quantity: item.quantity,
           subtotal: (unitPrice * item.quantity).toFixed(2)
         };
       })
     );
+  }
+
+  // ── Inventory decrement after order insert ────────────────────────────────
+  for (const item of items) {
+    await db
+      .update(products)
+      .set({ stockQty: sql`${products.stockQty} - ${item.quantity}` })
+      .where(eq(products.id, item.productId));
+
+    const hasVariant = item.variantSelections && Object.keys(item.variantSelections).length > 0;
+    if (hasVariant) {
+      const key = `${item.productId}_${JSON.stringify(item.variantSelections)}`;
+      const v = variantResolutionMap.get(key);
+      if (v) {
+        await db
+          .update(productVariants)
+          .set({ stockQty: sql`${productVariants.stockQty} - ${item.quantity}` })
+          .where(eq(productVariants.id, v.id));
+      }
+    }
   }
 
   // Increment discount usage

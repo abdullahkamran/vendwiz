@@ -70,7 +70,10 @@
 				</div>
 
 				<div class="flex flex-col gap-1.5">
-					<label for="password" class="text-sm font-medium text-[var(--color-text)]">Password</label>
+					<div class="flex items-center justify-between">
+						<label for="password" class="text-sm font-medium text-[var(--color-text)]">Password</label>
+						<a href="/forgot-password" class="text-xs text-[var(--color-accent)] hover:underline">Forgot password?</a>
+					</div>
 					<input
 						id="password"
 						type="password"

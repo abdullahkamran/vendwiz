@@ -4,6 +4,16 @@
   import { themeRootCSS, themeDarkCSS } from '$lib/theme/tokens';
   import { onMount } from 'svelte';
 
+  function customThemeCSS(theme: string, customTheme: unknown): string {
+    if (theme !== 'custom' || !customTheme || typeof customTheme !== 'object') return '';
+    const ct = customTheme as Record<string, string>;
+    const overrides: string[] = [];
+    if (ct.primaryColor) overrides.push(`  --sf-primary: ${ct.primaryColor};`);
+    if (ct.accentColor) overrides.push(`  --sf-announce-bg: ${ct.accentColor};`);
+    if (ct.secondaryColor) overrides.push(`  --sf-surface: ${ct.secondaryColor};`);
+    return overrides.length ? `:root {\n${overrides.join('\n')}\n}` : '';
+  }
+
   let { data, children }: {
     data: import('./$types').LayoutData;
     children: import('svelte').Snippet;
@@ -58,7 +68,7 @@
      output are identical — avoiding a head hydration mismatch that would
      prevent onclick handlers from binding on first load. -->
 <svelte:head>
-  {@html `<style>${themeRootCSS(store.theme)}${themeDarkCSS(store.theme)}</style>`}
+  {@html `<style>${themeRootCSS(store.theme)}${themeDarkCSS(store.theme)}${customThemeCSS(store.theme, store.customTheme)}</style>`}
 </svelte:head>
 
 <!-- Announcement bar -->
