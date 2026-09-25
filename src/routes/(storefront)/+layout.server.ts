@@ -1,5 +1,5 @@
 import type { LayoutServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
+import { redirect, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { categories, discountCodes } from '$lib/server/db/schema';
 import { eq, asc, and } from 'drizzle-orm';
@@ -11,6 +11,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   }
 
   const store = locals.store;
+
+  if (store.isActive === false) throw error(404, 'Store not found');
 
   // Load categories for the nav drawer
   const storeCategories = await db
