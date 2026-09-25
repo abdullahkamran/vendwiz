@@ -137,10 +137,10 @@
   <title>Checkout | {store.name}</title>
 </svelte:head>
 
-<div style="max-width:1000px; margin:0 auto; padding:32px 24px;">
+<div style="max-width:540px; margin:0 auto; padding:32px 24px;">
   <h1 style="font-size:1.75rem; font-weight:800; margin:0 0 32px; color:var(--sf-text);">Checkout</h1>
 
-  <div class="checkout-grid" style="display:grid; grid-template-columns:1fr 360px; gap:40px;">
+  <div>
     <!-- Customer form — novalidate so we handle validation ourselves -->
     <form novalidate onsubmit={(e) => { e.preventDefault(); placeOrder(); }}>
       <div style="border:1px solid var(--sf-border); border-radius:var(--sf-radius-lg); padding:24px; margin-bottom:24px; background:var(--sf-bg);">
@@ -239,7 +239,7 @@
     </form>
 
     <!-- Order summary -->
-    <div style="background:var(--sf-surface); border-radius:var(--sf-radius-lg); padding:24px; height:fit-content; position:sticky; top:24px; border:1px solid var(--sf-border);">
+    <div style="background:var(--sf-surface); border-radius:var(--sf-radius-lg); padding:24px; border:1px solid var(--sf-border); margin-top:24px;">
       <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 16px; color:var(--sf-text);">Order Summary</h2>
       {#each $cart as item}
         <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center;">
@@ -274,8 +274,3 @@
   </div>
 </div>
 
-<style>
-  @media (max-width: 768px) {
-    :global(.checkout-grid) { grid-template-columns: 1fr !important; }
-  }
-</style>

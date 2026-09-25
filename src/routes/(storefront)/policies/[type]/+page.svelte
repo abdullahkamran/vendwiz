@@ -2,6 +2,11 @@
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
   let title = $derived(data.title);
+
+  let openIndex = $state<number | null>(null);
+  function toggleAccordion(i: number) {
+    openIndex = openIndex === i ? null : i;
+  }
 </script>
 
 <svelte:head>
@@ -12,9 +17,30 @@
 <div style="max-width:800px; margin:48px auto; padding:0 24px;">
   <h1 style="font-size:2rem; font-weight:800; color:var(--sf-text); margin:0 0 32px;">{title}</h1>
 
-  <div class="policy-content prose" style="color:var(--sf-text); line-height:1.8; font-size:0.95rem;">
-    {@html data.html}
-  </div>
+  {#if data.policy.type === 'faq' && data.faqItems?.length}
+    <div style="border-bottom:1px solid var(--sf-border);">
+      {#each data.faqItems as item, i}
+        <div style="border-top:1px solid var(--sf-border);">
+          <button
+            onclick={() => toggleAccordion(i)}
+            style="width:100%; display:flex; justify-content:space-between; align-items:center; padding:16px 0; background:none; border:none; cursor:pointer; text-align:left; color:var(--sf-text); font-size:0.95rem; font-weight:600;"
+          >
+            <span>{item.question}</span>
+            <span style="font-size:1.25rem; font-weight:400; flex-shrink:0; margin-left:16px;">{openIndex === i ? '−' : '+'}</span>
+          </button>
+          {#if openIndex === i}
+            <div style="border-top:1px solid var(--sf-border); background:var(--sf-bg); padding:12px 16px 16px; color:var(--sf-text); font-size:0.9rem; line-height:1.7;">
+              {item.answer}
+            </div>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <div class="policy-content prose" style="color:var(--sf-text); line-height:1.8; font-size:0.95rem;">
+      {@html data.html}
+    </div>
+  {/if}
 
   <div style="margin-top:48px; padding-top:24px; border-top:1px solid var(--sf-border);">
     <a href="/" style="color:var(--sf-muted); text-decoration:none; font-size:0.875rem;">← Back to store</a>
