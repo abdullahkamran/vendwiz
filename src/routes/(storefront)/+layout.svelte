@@ -100,6 +100,12 @@
      output are identical — avoiding a head hydration mismatch. -->
 <svelte:head>
   {@html `<style>${themeRootCSS(store.theme)}${themeDarkCSS(store.theme)}${customThemeCSS(store.theme, store.customTheme)}</style>`}
+  <link rel="manifest" href="/manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+  </script>
 </svelte:head>
 
 <!-- Announcement bar -->
