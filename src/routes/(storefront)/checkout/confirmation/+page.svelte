@@ -22,7 +22,7 @@
   <title>Order Confirmed | {store.name}</title>
 </svelte:head>
 
-<div style="max-width:560px; margin:80px auto; padding:0 24px; text-align:center;">
+<div class="confirm-wrap">
   <div style="width:80px; height:80px; background:#dcfce7; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.5rem; margin:0 auto 24px;">
     ✓
   </div>
@@ -62,3 +62,12 @@
     </a>
   </div>
 </div>
+
+<style>
+  .confirm-wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 72px 24px 48px;
+    text-align: center;
+  }
+</style>

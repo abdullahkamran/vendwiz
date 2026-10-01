@@ -196,6 +196,9 @@
   <span>{product.title}</span>
 </p>
 
+<!-- Desktop: gallery + info side-by-side; mobile: stacked -->
+<div class="pdp-cols">
+
 <!-- Image gallery (AC-8) -->
 <section class="pdp-gallery">
   <div class="pdp-main-img-wrap" role="button" tabindex="0"
@@ -373,6 +376,8 @@
     {/if}
   </div>
 </section>
+
+</div><!-- .pdp-cols -->
 
 <!-- Tabs: Description / Material / Dimensions (AC-8) -->
 <section class="pdp-tabs">
@@ -571,6 +576,25 @@
   }
   .size-table th { background: var(--sf-bg, #f8f9fa); font-weight: 600; }
   .size-note { margin-top: 12px; font-size: 0.8125rem; color: var(--sf-muted, #6c757d); }
+
+  /* ── Desktop two-column layout: gallery (sticky) / info ── */
+  .pdp-cols {
+    display: block; /* stacked on mobile */
+  }
+  @media (min-width: 1024px) {
+    .pdp-cols {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 56px;
+      margin-top: 16px;
+      align-items: start;
+    }
+    .pdp-gallery {
+      position: sticky;
+      top: 96px;
+      margin-bottom: 0;
+    }
+  }
 
   /* ── Breadcrumb ── */
   .pdp-breadcrumb {

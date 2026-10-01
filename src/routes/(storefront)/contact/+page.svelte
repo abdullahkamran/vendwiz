@@ -72,6 +72,12 @@
     max-width: 480px;
     margin: 0 auto;
   }
+  @media (min-width: 1024px) {
+    .contact-page {
+      max-width: 720px;
+      padding: 48px 32px;
+    }
+  }
   .contact-title {
     font-family: var(--sf-heading-font, system-ui);
     font-weight: var(--sf-heading-weight, 700);

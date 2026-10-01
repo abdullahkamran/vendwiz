@@ -55,7 +55,7 @@
   <title>Track Order | {store.name}</title>
 </svelte:head>
 
-<div style="max-width:600px; margin:64px auto; padding:0 24px;">
+<div class="track-wrap">
   <h1 style="font-size:1.75rem; font-weight:800; margin:0 0 8px;">Track Your Order</h1>
   <p style="color:#6b7280; margin:0 0 32px;">Enter your order reference and email to see the current status.</p>
 
@@ -126,3 +126,11 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .track-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 32px;
+  }
+</style>

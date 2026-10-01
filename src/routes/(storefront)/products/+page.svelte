@@ -155,114 +155,177 @@
   </div>
 </div>
 
-<!-- Search + filter trigger bar -->
-<div class="products-topbar">
-  <input
-    type="search"
-    bind:value={q}
-    oninput={onSearchInput}
-    placeholder="Search products…"
-    class="products-search"
-  />
-  <button class="products-filter-btn" onclick={openFilters} style="background:var(--sf-primary); color:var(--sf-on-primary);">
-    ⚙ Filters
+<!-- Desktop: sidebar + content col. Mobile: content only (sidebar hidden via CSS). -->
+<div class="products-layout">
+
+  <!-- Permanent filter sidebar (desktop only via CSS) -->
+  <aside class="products-sidebar">
+    <!-- Category -->
+    <div class="filter-group">
+      <p class="filter-label">Category</p>
+      <div class="filter-chips">
+        <button
+          class="filter-chip"
+          class:filter-chip--active={!categoryId}
+          onclick={() => { categoryId = ''; applyFilters(); }}
+        >All</button>
+        {#each allCategories as cat}
+          <button
+            class="filter-chip"
+            class:filter-chip--active={categoryId === cat.id}
+            onclick={() => { categoryId = cat.id; applyFilters(); }}
+          >{cat.name}</button>
+        {/each}
+      </div>
+    </div>
+
+    <!-- Max price -->
+    <div class="filter-group">
+      <p class="filter-label">Max Price: Rs. {maxPrice || '∞'}</p>
+      <input
+        type="range"
+        min="0"
+        max="50000"
+        step="500"
+        value={maxPrice || 50000}
+        oninput={(e) => { maxPrice = (e.target as HTMLInputElement).value === '50000' ? '' : (e.target as HTMLInputElement).value; onSearchInput(); }}
+        class="filter-range"
+      />
+      <div class="filter-range-labels">
+        <span>Rs. 0</span>
+        <span>Rs. 50,000</span>
+      </div>
+    </div>
+
+    <!-- Checkboxes -->
+    <div class="filter-group">
+      <label class="filter-check">
+        <input type="checkbox" bind:checked={inStockOnly} onchange={() => applyFilters()} />
+        <span>In Stock Only</span>
+      </label>
+      <label class="filter-check">
+        <input type="checkbox" bind:checked={onSaleOnly} onchange={() => applyFilters()} />
+        <span>On Sale Only</span>
+      </label>
+    </div>
+
     {#if activeFiltersCount > 0}
-      <span class="filter-count-badge">{activeFiltersCount}</span>
+      <button class="filter-btn-clear" onclick={clearFilters}>Clear All</button>
     {/if}
-  </button>
-  <select bind:value={sort} onchange={() => applyFilters()} class="products-sort">
-    <option value="newest">Newest</option>
-    <option value="price_asc">Price: Low→High</option>
-    <option value="price_desc">Price: High→Low</option>
-    <option value="az">A–Z</option>
-    <option value="za">Z–A</option>
-  </select>
-</div>
+  </aside>
 
-<!-- Result count -->
-<p class="products-count">
-  {data.total} product{data.total !== 1 ? 's' : ''}
-  {#if activeFiltersCount > 0}<button class="clear-link" onclick={clearFilters}>Clear filters</button>{/if}
-</p>
-
-<!-- Product grid -->
-{#if items.length === 0}
-  <div class="products-empty">
-    <div class="products-empty-icon">🔍</div>
-    <p>No products match your filters.</p>
-    <button onclick={clearFilters} class="btn-primary" style="background:var(--sf-primary); color:var(--sf-on-primary);">Clear Filters</button>
-  </div>
-{:else}
-  <div class="products-grid">
-    {#each items as product}
-      <div class="product-card-wrap">
-        <!-- Out of stock overlay -->
-        {#if product.stockQty === 0}
-          <div class="oos-overlay">
-            <span class="oos-badge">Out of Stock</span>
-          </div>
+  <!-- Main content column -->
+  <div class="products-content">
+    <!-- Search + filter trigger bar (filter btn hidden on desktop) -->
+    <div class="products-topbar">
+      <input
+        type="search"
+        bind:value={q}
+        oninput={onSearchInput}
+        placeholder="Search products…"
+        class="products-search"
+      />
+      <button class="products-filter-btn" onclick={openFilters} style="background:var(--sf-primary); color:var(--sf-on-primary);">
+        ⚙ Filters
+        {#if activeFiltersCount > 0}
+          <span class="filter-count-badge">{activeFiltersCount}</span>
         {/if}
+      </button>
+      <select bind:value={sort} onchange={() => applyFilters()} class="products-sort">
+        <option value="newest">Newest</option>
+        <option value="price_asc">Price: Low→High</option>
+        <option value="price_desc">Price: High→Low</option>
+        <option value="az">A–Z</option>
+        <option value="za">Z–A</option>
+      </select>
+    </div>
 
-        <a href="/products/{product.slug}" class="product-card product-card--{cardLayout}" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
-          <div class="product-card-img-wrap">
-            {#if product.imageUrl}
-              <img src={product.imageUrl} alt={product.title} class="product-card-img" />
-            {:else}
-              <div class="product-card-img-ph">📦</div>
+    <!-- Result count -->
+    <p class="products-count">
+      {data.total} product{data.total !== 1 ? 's' : ''}
+      {#if activeFiltersCount > 0}<button class="clear-link" onclick={clearFilters}>Clear filters</button>{/if}
+    </p>
+
+    <!-- Product grid -->
+    {#if items.length === 0}
+      <div class="products-empty">
+        <div class="products-empty-icon">🔍</div>
+        <p>No products match your filters.</p>
+        <button onclick={clearFilters} class="btn-primary" style="background:var(--sf-primary); color:var(--sf-on-primary);">Clear Filters</button>
+      </div>
+    {:else}
+      <div class="products-grid products-grid--{cardLayout}">
+        {#each items as product}
+          <div class="product-card-wrap">
+            <!-- Out of stock overlay -->
+            {#if product.stockQty === 0}
+              <div class="oos-overlay">
+                <span class="oos-badge">Out of Stock</span>
+              </div>
             {/if}
-          </div>
-          <div class="product-card-info">
-            <h3 class="product-card-title">{product.title}</h3>
-            <div class="product-card-pricing">
-              {#if product.salePrice}
-                <span class="price-sale" style="color:var(--sf-primary);">Rs. {Number(product.salePrice).toLocaleString()}</span>
-                <span class="price-orig">Rs. {Number(product.basePrice).toLocaleString()}</span>
-              {:else}
-                <span class="price-base" style="color:var(--sf-primary);">Rs. {Number(product.basePrice).toLocaleString()}</span>
-              {/if}
-              {#if product.stockQty > 0 && product.stockQty <= product.lowStockThreshold}
-                <span class="badge-low-stock">Low Stock</span>
-              {/if}
+
+            <a href="/products/{product.slug}" class="product-card product-card--{cardLayout}" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
+              <div class="product-card-img-wrap">
+                {#if product.imageUrl}
+                  <img src={product.imageUrl} alt={product.title} class="product-card-img" />
+                {:else}
+                  <div class="product-card-img-ph">📦</div>
+                {/if}
+              </div>
+              <div class="product-card-info">
+                <h3 class="product-card-title">{product.title}</h3>
+                <div class="product-card-pricing">
+                  {#if product.salePrice}
+                    <span class="price-sale" style="color:var(--sf-primary);">Rs. {Number(product.salePrice).toLocaleString()}</span>
+                    <span class="price-orig">Rs. {Number(product.basePrice).toLocaleString()}</span>
+                  {:else}
+                    <span class="price-base" style="color:var(--sf-primary);">Rs. {Number(product.basePrice).toLocaleString()}</span>
+                  {/if}
+                  {#if product.stockQty > 0 && product.stockQty <= product.lowStockThreshold}
+                    <span class="badge-low-stock">Low Stock</span>
+                  {/if}
+                </div>
+              </div>
+            </a>
+
+            <!-- Quick add -->
+            <div class="product-card-action">
+              <button
+                onclick={() => addToCart(product)}
+                disabled={product.stockQty === 0}
+                class="btn-add-cart"
+                style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-radius);"
+              >
+                Add to Cart
+              </button>
             </div>
           </div>
-        </a>
-
-        <!-- Quick add -->
-        <div class="product-card-action">
-          <button
-            onclick={() => addToCart(product)}
-            disabled={product.stockQty === 0}
-            class="btn-add-cart"
-            style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-radius);"
-          >
-            Add to Cart
-          </button>
-        </div>
+        {/each}
       </div>
-    {/each}
-  </div>
 
-  <!-- Pagination -->
-  {#if totalPages > 1}
-    <div class="pagination">
-      {#if currentPage > 1}
-        <button onclick={() => applyFilters(currentPage - 1)} class="page-btn">← Prev</button>
+      <!-- Pagination -->
+      {#if totalPages > 1}
+        <div class="pagination">
+          {#if currentPage > 1}
+            <button onclick={() => applyFilters(currentPage - 1)} class="page-btn">← Prev</button>
+          {/if}
+          {#each Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1) as p}
+            <button onclick={() => applyFilters(p)}
+              class="page-btn"
+              class:page-btn--active={p === currentPage}
+              style={p === currentPage ? `background:var(--sf-primary); color:var(--sf-on-primary); border-color:var(--sf-primary);` : ''}
+            >
+              {p}
+            </button>
+          {/each}
+          {#if currentPage < totalPages}
+            <button onclick={() => applyFilters(currentPage + 1)} class="page-btn">Next →</button>
+          {/if}
+        </div>
       {/if}
-      {#each Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1) as p}
-        <button onclick={() => applyFilters(p)}
-          class="page-btn"
-          class:page-btn--active={p === currentPage}
-          style={p === currentPage ? `background:var(--sf-primary); color:var(--sf-on-primary); border-color:var(--sf-primary);` : ''}
-        >
-          {p}
-        </button>
-      {/each}
-      {#if currentPage < totalPages}
-        <button onclick={() => applyFilters(currentPage + 1)} class="page-btn">Next →</button>
-      {/if}
-    </div>
-  {/if}
-{/if}
+    {/if}
+  </div><!-- .products-content -->
+</div><!-- .products-layout -->
 
 <style>
   /* ── Filter bottom sheet ── */
@@ -481,12 +544,54 @@
     padding: 0;
   }
 
-  /* ── Product grid ── */
+  /* ── Desktop: sidebar layout ── */
+  /* Mobile: no layout (sidebar hidden, content full-width) */
+  .products-layout {
+    display: block;
+  }
+  .products-sidebar {
+    display: none; /* hidden on mobile */
+  }
+  @media (min-width: 1024px) {
+    .products-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 40px;
+      padding: 0;
+      align-items: start;
+    }
+    .products-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: sticky;
+      top: 96px;
+      background: var(--sf-surface, #fff);
+      border: 1px solid var(--sf-border, #dee2e6);
+      border-radius: var(--sf-radius-lg, 12px);
+      padding: 20px;
+    }
+    /* Hide mobile filter button and sheet on desktop */
+    .products-filter-btn { display: none !important; }
+    .filter-sheet { display: none !important; }
+    .filter-backdrop { display: none !important; }
+  }
+
+  /* ── Product grid: 2-col mobile, 3-col desktop (2-col for horizontal/playful) ── */
   .products-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
     margin-bottom: 24px;
+  }
+  @media (min-width: 1024px) {
+    .products-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .products-grid--horizontal {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
   .product-card-wrap {
     position: relative;

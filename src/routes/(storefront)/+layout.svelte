@@ -3,14 +3,31 @@
   import { darkMode } from '$lib/stores/darkMode';
   import { themeRootCSS, themeDarkCSS } from '$lib/theme/tokens';
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+
+  // Strict allow-list guard for CSS color values injected via the html style tag
+  // in svelte:head.  Any value that does not match a recognised color syntax is
+  // silently dropped, preventing a stored-XSS escape where a rogue theme value
+  // could break out of the style block.
+  // Accepted forms: #rgb/#rrggbb/#rgba/#rrggbbaa, rgb()/rgba(),
+  // hsl()/hsla(), or a plain alphabetic named color (e.g. "red").
+  function isSafeCSSColor(value: string): boolean {
+    if (!value || typeof value !== 'string') return false;
+    return (
+      /^#[0-9a-fA-F]{3,8}$/.test(value) ||
+      /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/.test(value) ||
+      /^hsla?\(\s*\d+(?:\.\d+)?\s*,\s*\d+(?:\.\d+)?%\s*,\s*\d+(?:\.\d+)?%(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/.test(value) ||
+      /^[a-zA-Z]{2,30}$/.test(value)
+    );
+  }
 
   function customThemeCSS(theme: string, customTheme: unknown): string {
     if (theme !== 'custom' || !customTheme || typeof customTheme !== 'object') return '';
     const ct = customTheme as Record<string, string>;
     const overrides: string[] = [];
-    if (ct.primaryColor) overrides.push(`  --sf-primary: ${ct.primaryColor};`);
-    if (ct.accentColor) overrides.push(`  --sf-announce-bg: ${ct.accentColor};`);
-    if (ct.secondaryColor) overrides.push(`  --sf-surface: ${ct.secondaryColor};`);
+    if (ct.primaryColor && isSafeCSSColor(ct.primaryColor)) overrides.push(`  --sf-primary: ${ct.primaryColor};`);
+    if (ct.accentColor && isSafeCSSColor(ct.accentColor)) overrides.push(`  --sf-announce-bg: ${ct.accentColor};`);
+    if (ct.secondaryColor && isSafeCSSColor(ct.secondaryColor)) overrides.push(`  --sf-surface: ${ct.secondaryColor};`);
     return overrides.length ? `:root {\n${overrides.join('\n')}\n}` : '';
   }
 
@@ -35,15 +52,30 @@
   let isDark = $derived($darkMode);
   function toggleDark() { darkMode.toggle(); }
 
+  // Desktop breakpoint state — SSR-safe: false on server, set in onMount, kept in sync via resize
+  let isDesktop = $state(false);
+
+  // Active nav helpers (reactive to SvelteKit navigation)
+  let pathname = $derived($page.url.pathname);
+  let catParam = $derived($page.url.searchParams.get('category') ?? '');
+
   // Install banner (AC-11)
   let showInstall = $state(false);
   let installDismissed = $state(false);
   onMount(() => {
+    // Desktop detection
+    isDesktop = window.innerWidth >= 1024;
+    function onResize() { isDesktop = window.innerWidth >= 1024; }
+    window.addEventListener('resize', onResize);
+
+    // Install banner
     try {
       const dismissed = localStorage.getItem('vendwiz-install-dismissed') === 'true';
       showInstall = window.matchMedia('(display-mode: browser)').matches && !dismissed;
       installDismissed = dismissed;
     } catch (_) {}
+
+    return () => window.removeEventListener('resize', onResize);
   });
   function dismissInstall() {
     installDismissed = true;
@@ -65,8 +97,7 @@
 
 <!-- Inject all --sf-* theme CSS variables + dark override into :root.
      Both light and dark rules are emitted as static CSS so SSR and client
-     output are identical — avoiding a head hydration mismatch that would
-     prevent onclick handlers from binding on first load. -->
+     output are identical — avoiding a head hydration mismatch. -->
 <svelte:head>
   {@html `<style>${themeRootCSS(store.theme)}${themeDarkCSS(store.theme)}${customThemeCSS(store.theme, store.customTheme)}</style>`}
 </svelte:head>
@@ -89,7 +120,7 @@
   </div>
 {/if}
 
-<!-- Nav drawer overlay -->
+<!-- Nav drawer overlay (mobile) -->
 {#if drawerOpen}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -118,50 +149,124 @@
   </div>
 </nav>
 
-<!-- Header (mobile-first — hamburger only, no horizontal nav bar) -->
+<!-- Header: mobile (hamburger) or desktop (3-column grid) -->
 <header class="sf-header">
-  <div class="sf-container sf-header-inner">
-    <!-- Hamburger button (AC-3) -->
-    <button class="sf-hamburger" onclick={openDrawer} aria-label="Open menu" aria-expanded={drawerOpen}>
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <line x1="2" y1="5" x2="20" y2="5"/>
-        <line x1="2" y1="11" x2="20" y2="11"/>
-        <line x1="2" y1="17" x2="20" y2="17"/>
-      </svg>
-    </button>
-
-    <!-- Logo / wordmark -->
-    <a href="/" class="sf-logo">
-      {#if store.logoUrl}
-        <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+  {#if isDesktop}
+    <!-- Desktop: 3-col grid — logo+nav left / brand centre / search+actions right.
+         When theme===minimal the dhCentered variant puts search in the left column. -->
+    <div class="sf-container sf-header-inner sf-header-desktop"
+      class:sf-header-centered={store.theme === 'minimal'}>
+      {#if store.theme === 'minimal'}
+        <!-- dhCentered: search left / brand centre / actions right -->
+        <div class="sf-dh-col sf-dh-left">
+          <form method="GET" action="/products" class="sf-dh-search-wrap">
+            <input type="search" name="q" placeholder="Search products…"
+              class="sf-dh-search" aria-label="Search products" />
+          </form>
+        </div>
+        <div class="sf-dh-col sf-dh-center">
+          <a href="/" class="sf-logo">
+            {#if store.logoUrl}
+              <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+            {:else}
+              <span class="sf-logo-text">{store.name}</span>
+            {/if}
+          </a>
+        </div>
+        <div class="sf-dh-col sf-dh-right">
+          <button class="sf-icon-btn" onclick={toggleDark}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
+            {isDark ? '☀️' : '🌙'}
+          </button>
+          <a href="/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
+            🛒
+            {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
+          </a>
+        </div>
       {:else}
-        <span class="sf-logo-text">{store.name}</span>
+        <!-- Standard: logo+nav left / brand name centre / search+actions right -->
+        <div class="sf-dh-col sf-dh-left">
+          <a href="/" class="sf-logo sf-dh-logo">
+            {#if store.logoUrl}
+              <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+            {:else}
+              <span class="sf-logo-text">{store.name}</span>
+            {/if}
+          </a>
+          <nav class="sf-dh-nav" aria-label="Main navigation">
+            <a href="/"
+              class="sf-dh-navlink"
+              class:sf-dh-navlink--active={pathname === '/'}
+            >Home</a>
+            <a href="/products"
+              class="sf-dh-navlink"
+              class:sf-dh-navlink--active={pathname === '/products' && !catParam}
+            >All Products</a>
+            {#each categories as cat}
+              <a href="/products?category={cat.id}"
+                class="sf-dh-navlink"
+                class:sf-dh-navlink--active={pathname === '/products' && catParam === cat.id}
+              >{cat.name}</a>
+            {/each}
+          </nav>
+        </div>
+        <div class="sf-dh-col sf-dh-center">
+          <a href="/" class="sf-dh-brand-link">
+            {#if store.logoUrl}
+              <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+            {:else}
+              <span class="sf-logo-text">{store.name}</span>
+            {/if}
+          </a>
+        </div>
+        <div class="sf-dh-col sf-dh-right">
+          <form method="GET" action="/products" class="sf-dh-search-wrap">
+            <input type="search" name="q" placeholder="Search products…"
+              class="sf-dh-search" aria-label="Search products" />
+          </form>
+          <button class="sf-icon-btn" onclick={toggleDark}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
+            {isDark ? '☀️' : '🌙'}
+          </button>
+          <a href="/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
+            🛒
+            {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
+          </a>
+        </div>
       {/if}
-    </a>
-
-    <!-- Right controls -->
-    <div class="sf-header-actions">
-      <!-- Dark mode toggle (AC-2) -->
-      <button
-        class="sf-icon-btn"
-        onclick={toggleDark}
-        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      >
-        {isDark ? '☀️' : '🌙'}
+    </div>
+  {:else}
+    <!-- Mobile: hamburger / logo / actions -->
+    <div class="sf-container sf-header-inner">
+      <button class="sf-hamburger" onclick={openDrawer} aria-label="Open menu" aria-expanded={drawerOpen}>
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="2" y1="5" x2="20" y2="5"/>
+          <line x1="2" y1="11" x2="20" y2="11"/>
+          <line x1="2" y1="17" x2="20" y2="17"/>
+        </svg>
       </button>
-
-      <!-- Cart -->
-      <a href="/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
-        🛒
-        {#if itemCount > 0}
-          <span class="sf-cart-badge">{itemCount}</span>
+      <a href="/" class="sf-logo">
+        {#if store.logoUrl}
+          <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+        {:else}
+          <span class="sf-logo-text">{store.name}</span>
         {/if}
       </a>
+      <div class="sf-header-actions">
+        <button class="sf-icon-btn" onclick={toggleDark}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {isDark ? '☀️' : '🌙'}
+        </button>
+        <a href="/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
+          🛒
+          {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
+        </a>
+      </div>
     </div>
-  </div>
+  {/if}
 </header>
 
-<!-- Main content (max-width 560px, horizontally centred — AC-4) -->
+<!-- Main content -->
 <main class="sf-main">
   <div class="sf-container">
     {@render children()}
@@ -171,6 +276,17 @@
 <!-- Footer -->
 <footer class="sf-footer">
   <div class="sf-container sf-footer-inner">
+    <!-- Brand column: hidden on mobile, first of 4 cols on desktop -->
+    <div class="sf-footer-col sf-footer-brand-col">
+      <a href="/" class="sf-footer-brand-link">
+        {#if store.logoUrl}
+          <img src={store.logoUrl} alt={store.name} class="sf-footer-brand-logo" />
+        {:else}
+          <span class="sf-footer-brand-name">{store.name}</span>
+        {/if}
+      </a>
+    </div>
+
     <div class="sf-footer-col">
       <p class="sf-footer-heading">Follow Us</p>
       <div class="sf-footer-social">
@@ -206,17 +322,32 @@
   <p class="sf-footer-credit">Powered by <a href="https://vendwiz.com" class="sf-footer-credit-link">VendWiz</a></p>
 </footer>
 
+<!-- Theme switcher: fixed bottom-right on desktop only. -->
+<button
+  class="sf-theme-switcher"
+  onclick={toggleDark}
+  aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+>
+  {isDark ? '☀️' : '🌙'}
+</button>
+
 <style>
   /* ── Global reset for storefront ── */
   :global(*, *::before, *::after) { box-sizing: border-box; }
 
-  /* ── Container (AC-4): max-width 560 px, centred ── */
+  /* ── Container: 560 px mobile → 1240 px desktop ── */
   :global(.sf-container) {
     width: 100%;
     max-width: 560px;
     margin-inline: auto;
     padding-inline: 16px;
     box-sizing: border-box;
+  }
+  @media (min-width: 1024px) {
+    :global(.sf-container) {
+      max-width: 1240px;
+      padding-inline: 32px;
+    }
   }
 
   /* ── Announcement bar ── */
@@ -328,17 +459,108 @@
   .sf-header {
     position: sticky;
     top: 0;
-    z-index: 30;
+    z-index: 20;
     background: var(--sf-surface, #fff);
     border-bottom: 1px solid var(--sf-border, #dee2e6);
   }
+
+  /* Mobile header inner.
+     max-width is intentionally absent here: .sf-container already carries
+     560 px on mobile and 1240 px on desktop.  A scoped rule here would win
+     the specificity race against :global(.sf-container) and cap the desktop
+     header at 560 px, violating AC-2. */
   .sf-header-inner {
     display: flex;
     align-items: center;
     gap: 12px;
     height: 56px;
-    max-width: 560px;
   }
+
+  /* Desktop header inner: 3-col grid */
+  .sf-header-desktop {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 24px;
+    height: 72px;
+    align-items: center;
+    /* max-width and padding-inline come from .sf-container at ≥1024 px */
+  }
+
+  /* Desktop header column base */
+  .sf-dh-col {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+  .sf-dh-left {
+    gap: 16px;
+    overflow: hidden;
+  }
+  .sf-dh-center {
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sf-dh-right {
+    gap: 8px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  /* Desktop logo (left column — no flex:1 stretch) */
+  .sf-dh-logo {
+    flex: 0 0 auto;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Desktop nav links */
+  .sf-dh-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    overflow: hidden;
+    flex-wrap: nowrap;
+  }
+  .sf-dh-navlink {
+    text-decoration: none;
+    color: var(--sf-text, #212529);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+    line-height: 1.2;
+  }
+  .sf-dh-navlink:hover { color: var(--sf-primary, #0d6efd); }
+  .sf-dh-navlink--active {
+    color: var(--sf-primary, #0d6efd);
+    border-bottom-color: var(--sf-primary, #0d6efd);
+  }
+
+  /* Desktop header search */
+  .sf-dh-search-wrap { display: flex; }
+  .sf-dh-search {
+    width: 180px;
+    border: 1px solid var(--sf-border, #dee2e6);
+    border-radius: var(--sf-radius, 6px);
+    padding: 7px 12px;
+    font-size: 0.8125rem;
+    background: var(--sf-bg, #fff);
+    color: var(--sf-text, #212529);
+    outline: none;
+  }
+  .sf-dh-search:focus { border-color: var(--sf-primary, #0d6efd); }
+
+  /* Desktop centre column brand link */
+  .sf-dh-brand-link {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ── Mobile header elements ── */
   .sf-hamburger {
     background: none;
     border: none;
@@ -414,11 +636,15 @@
     line-height: 1;
   }
 
-  /* ── Main ── */
+  /* ── Main: 84 px bottom padding on mobile (nav-bar gap), 0 on desktop ── */
   .sf-main {
     background: var(--sf-bg, #fff);
     min-height: 60vh;
     color: var(--sf-text, #212529);
+    padding-bottom: 84px;
+  }
+  @media (min-width: 1024px) {
+    .sf-main { padding-bottom: 0; }
   }
 
   /* ── Footer ── */
@@ -428,6 +654,8 @@
     padding: 32px 0 16px;
     color: var(--sf-text, #212529);
   }
+
+  /* Mobile: 3-col flex (brand col hidden) */
   .sf-footer-inner {
     display: flex;
     flex-wrap: wrap;
@@ -435,6 +663,37 @@
     justify-content: space-between;
     margin-bottom: 24px;
   }
+
+  /* Desktop: 4-col grid — brand + 3 link cols */
+  @media (min-width: 1024px) {
+    .sf-footer-inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+      gap: 40px;
+    }
+    .sf-footer-brand-col {
+      display: flex !important; /* override the mobile display:none */
+    }
+  }
+
+  /* Brand col: hidden on mobile, shown on desktop via media query above */
+  .sf-footer-brand-col {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sf-footer-brand-link { text-decoration: none; }
+  .sf-footer-brand-logo {
+    height: 36px;
+    object-fit: contain;
+  }
+  .sf-footer-brand-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: var(--sf-heading-font, system-ui);
+    color: var(--sf-primary, #0d6efd);
+  }
+
   .sf-footer-col {
     display: flex;
     flex-direction: column;
@@ -453,28 +712,47 @@
     font-size: 0.8125rem;
     transition: color 0.15s;
   }
-  .sf-footer-link:hover {
-    color: var(--sf-primary, #0d6efd);
-  }
+  .sf-footer-link:hover { color: var(--sf-primary, #0d6efd); }
   .sf-footer-social {
     display: flex;
     gap: 12px;
   }
-  .sf-social-link {
-    font-size: 1.5rem;
-    text-decoration: none;
-  }
+  .sf-social-link { font-size: 1.5rem; text-decoration: none; }
   .sf-footer-credit {
     text-align: center;
     font-size: 0.75rem;
     color: var(--sf-muted, #6c757d);
     margin: 0;
   }
-  .sf-footer-credit-link {
-    color: var(--sf-muted, #6c757d);
-    text-decoration: none;
+  .sf-footer-credit-link { color: var(--sf-muted, #6c757d); text-decoration: none; }
+  .sf-footer-credit-link:hover { color: var(--sf-primary, #0d6efd); }
+
+  /* ── Theme switcher: fixed bottom-right on desktop only ── */
+  .sf-theme-switcher {
+    display: none; /* hidden on mobile — header already has the toggle */
   }
-  .sf-footer-credit-link:hover {
-    color: var(--sf-primary, #0d6efd);
+  @media (min-width: 1024px) {
+    .sf-theme-switcher {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--sf-border, #dee2e6);
+      background: var(--sf-surface, #fff);
+      color: var(--sf-text, #212529);
+      font-size: 1.25rem;
+      cursor: pointer;
+      z-index: 40;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      transition: box-shadow 0.15s;
+    }
+    .sf-theme-switcher:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    }
   }
 </style>
