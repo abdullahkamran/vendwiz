@@ -14,7 +14,7 @@
   <meta name="description" content="{title} for {store.name}" />
 </svelte:head>
 
-<div style="max-width:800px; margin:48px auto; padding:0 24px;">
+<div class="policy-wrap">
   <h1 style="font-size:2rem; font-weight:800; color:var(--sf-text); margin:0 0 32px;">{title}</h1>
 
   {#if data.policy.type === 'faq' && data.faqItems?.length}
@@ -48,6 +48,12 @@
 </div>
 
 <style>
+  .policy-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 32px;
+  }
+
   :global(.policy-content h1),
   :global(.policy-content h2),
   :global(.policy-content h3) {

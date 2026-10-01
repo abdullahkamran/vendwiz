@@ -358,7 +358,7 @@
     text-align: center;
   }
 
-  /* ── New arrivals: horizontal scroll row ── */
+  /* ── New arrivals: horizontal scroll on mobile, 4-col grid on desktop ── */
   .sf-arrivals-row {
     display: flex;
     gap: 12px;
@@ -368,6 +368,15 @@
     padding-bottom: 8px;
   }
   .sf-arrivals-row::-webkit-scrollbar { display: none; }
+  @media (min-width: 1024px) {
+    .sf-arrivals-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 24px;
+      overflow-x: visible;
+      padding-bottom: 0;
+    }
+  }
 
   /* ── Product card variants (AC-7) ── */
   .sf-product-card {
@@ -379,6 +388,22 @@
     transition: box-shadow 0.2s;
   }
   .sf-product-card:hover { opacity: 0.9; }
+  /* On desktop the arrivals row is a grid — cards fill columns */
+  @media (min-width: 1024px) {
+    .sf-product-card {
+      width: 100% !important;
+      flex-shrink: unset;
+    }
+    .sf-product-card--horizontal {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .sf-product-card--horizontal .sf-card-img-wrap {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1;
+    }
+  }
 
   /* vertical (basic) */
   .sf-product-card--vertical {

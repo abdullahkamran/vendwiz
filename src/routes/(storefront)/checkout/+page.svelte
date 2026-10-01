@@ -137,10 +137,12 @@
   <title>Checkout | {store.name}</title>
 </svelte:head>
 
-<div style="max-width:540px; margin:0 auto; padding:32px 24px;">
-  <h1 style="font-size:1.75rem; font-weight:800; margin:0 0 32px; color:var(--sf-text);">Checkout</h1>
+<div class="checkout-page">
+  <h1 class="checkout-title">Checkout</h1>
 
-  <div>
+  <div class="checkout-cols">
+    <!-- Left: customer form -->
+    <div class="checkout-form-col">
     <!-- Customer form — novalidate so we handle validation ourselves -->
     <form novalidate onsubmit={(e) => { e.preventDefault(); placeOrder(); }}>
       <div style="border:1px solid var(--sf-border); border-radius:var(--sf-radius-lg); padding:24px; margin-bottom:24px; background:var(--sf-bg);">
@@ -237,9 +239,12 @@
         {submitting ? 'Placing Order…' : 'Place Order'}
       </button>
     </form>
+    </div><!-- .checkout-form-col -->
 
+    <!-- Right: order summary (sticky on desktop) -->
+    <div class="checkout-summary-col">
     <!-- Order summary -->
-    <div style="background:var(--sf-surface); border-radius:var(--sf-radius-lg); padding:24px; border:1px solid var(--sf-border); margin-top:24px;">
+    <div style="background:var(--sf-surface); border-radius:var(--sf-radius-lg); padding:24px; border:1px solid var(--sf-border); margin-top:0;">
       <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 16px; color:var(--sf-text);">Order Summary</h2>
       {#each $cart as item}
         <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center;">
@@ -271,6 +276,38 @@
         <p style="font-size:0.7rem; color:var(--sf-muted); margin:4px 0 0;">Shipping &amp; tax calculated server-side</p>
       </div>
     </div>
-  </div>
+    </div><!-- .checkout-summary-col -->
+  </div><!-- .checkout-cols -->
 </div>
+
+<style>
+  .checkout-page {
+    padding: 32px 0 48px;
+  }
+  .checkout-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0 0 32px;
+    color: var(--sf-text);
+  }
+
+  /* Mobile: stacked. Desktop: form left / summary right (380 px sticky). */
+  .checkout-cols {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  @media (min-width: 1024px) {
+    .checkout-cols {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 48px;
+      align-items: start;
+    }
+    .checkout-summary-col {
+      position: sticky;
+      top: 96px;
+    }
+  }
+</style>
 

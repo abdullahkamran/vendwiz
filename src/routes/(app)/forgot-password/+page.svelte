@@ -11,7 +11,7 @@
 		error = '';
 		if (!email) { error = 'Email is required'; return; }
 		loading = true;
-		const result = await authClient.forgetPassword({ email, redirectTo: '/reset-password' });
+		const result = await authClient.requestPasswordReset({ email, redirectTo: '/reset-password' });
 		loading = false;
 		if (result?.error) {
 			error = result.error.message ?? 'Something went wrong';
