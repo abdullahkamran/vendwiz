@@ -20,6 +20,7 @@
 
 <svelte:head>
   <title>Order Confirmed | {store.name}</title>
+  <meta name="robots" content="noindex" />
 </svelte:head>
 
 <div class="confirm-wrap">

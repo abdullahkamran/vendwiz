@@ -1,6 +1,9 @@
 <script lang="ts">
   import { cart } from '$lib/stores/cart';
   import { untrack } from 'svelte';
+  import { page } from '$app/stores';
+  import Seo from '$lib/components/storefront/Seo.svelte';
+  import { productJsonLd, stripHtml } from '$lib/seo';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
@@ -144,14 +147,45 @@
   // Find material & dimensions from attributes
   let materialAttr = $derived(attributes.find((a) => /material/i.test(a.name))?.value ?? null);
   let dimAttr = $derived(attributes.find((a) => /dimension|size|weight|measurement/i.test(a.name))?.value ?? null);
+
+  // SEO: effective price for JSON-LD (sale price takes precedence)
+  let ldPrice = $derived(product.salePrice ? Number(product.salePrice) : finalPrice);
+  // SEO: plain-text product description for meta / JSON-LD
+  let ldDesc = $derived(
+    product.seoDescription ||
+    (product.description ? stripHtml(product.description) : null) ||
+    store.seoDescription ||
+    store.description ||
+    `Shop at ${store.name}`
+  );
+  // SEO: Product JSON-LD block
+  let productLd = $derived(
+    productJsonLd({
+      origin: $page.url.origin,
+      slug: product.slug,
+      title: product.seoTitle || product.title,
+      description: ldDesc,
+      image: images[0]?.url || store.logoUrl || store.faviconUrl || '/favicon.svg',
+      price: ldPrice,
+      currency: 'PKR',
+      inStock: stockStatus !== 'out'
+    })
+  );
 </script>
 
 <svelte:head>
   <title>{product.seoTitle || product.title} | {store.name}</title>
-  <meta name="description" content={product.seoDescription || ''} />
-  <meta property="og:title" content={product.seoTitle || product.title} />
-  <meta property="og:image" content={images[0]?.url || ''} />
 </svelte:head>
+
+<Seo
+  {store}
+  title={product.seoTitle || product.title}
+  description={ldDesc}
+  image={images[0]?.url}
+  type="product"
+  card="summary_large_image"
+  jsonLd={productLd}
+/>
 
 <!-- Toast -->
 {#if toastMsg}

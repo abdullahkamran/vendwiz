@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  import Seo from '$lib/components/storefront/Seo.svelte';
+  import { websiteJsonLd } from '$lib/seo';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
@@ -47,12 +50,15 @@
     : store.theme === 'playful' ? 'horizontal'
     : 'vertical'
   );
+
+  let websiteLd = $derived(websiteJsonLd($page.url.origin, store.name));
 </script>
 
 <svelte:head>
-  <title>{store.name}</title>
-  <meta name="description" content={store.description ?? `Shop at ${store.name}`} />
+  <title>{store.seoTitle || store.name}</title>
 </svelte:head>
+
+<Seo {store} type="website" jsonLd={websiteLd} />
 
 <!-- ── Slideshow Hero ──────────────────────────────────────────────────────── -->
 <section class="sf-hero" style="background:var(--sf-primary); color:var(--sf-on-primary);">

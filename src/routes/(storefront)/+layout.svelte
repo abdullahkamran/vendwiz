@@ -2,6 +2,7 @@
   import { cart } from '$lib/stores/cart';
   import { darkMode } from '$lib/stores/darkMode';
   import { themeRootCSS, themeDarkCSS } from '$lib/theme/tokens';
+  import { themeColorFor } from '$lib/seo';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
 
@@ -100,6 +101,7 @@
      output are identical — avoiding a head hydration mismatch. -->
 <svelte:head>
   {@html `<style>${themeRootCSS(store.theme)}${themeDarkCSS(store.theme)}${customThemeCSS(store.theme, store.customTheme)}</style>`}
+  <meta name="theme-color" content={themeColorFor(store)} />
   <link rel="manifest" href="/manifest.json">
   <script>
     if ('serviceWorker' in navigator) {

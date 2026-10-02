@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { cart } from '$lib/stores/cart';
+  import Seo from '$lib/components/storefront/Seo.svelte';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
@@ -80,6 +81,12 @@
 <svelte:head>
   <title>Products | {store.name}</title>
 </svelte:head>
+
+<Seo
+  {store}
+  title="Products | {store.name}"
+  description="Browse all products at {store.name}"
+/>
 
 <!-- Filter bottom sheet backdrop -->
 {#if filterOpen}
