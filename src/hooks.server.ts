@@ -20,8 +20,17 @@ const authHook: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
+/** Returns the store-slug segment when a pathname starts with /store/<slug>
+ *  (path-based LAN access fallback), or null otherwise.
+ *  Exported so the behaviour can be unit-tested without a live DB.
+ */
+export function extractPathSlug(pathname: string): string | null {
+	const m = pathname.match(/^\/store\/([^/]+)/);
+	return m ? m[1] : null;
+}
+
 // ── Multi-tenant subdomain hook ────────────────────────────────────────────────
-const subdomainHook: Handle = async ({ event, resolve }) => {
+export const subdomainHook: Handle = async ({ event, resolve }) => {
 	const host = event.request.headers.get('host') ?? '';
 	const rootDomain = import.meta.env.VITE_ROOT_DOMAIN ?? 'vendwiz.com';
 
@@ -45,6 +54,20 @@ const subdomainHook: Handle = async ({ event, resolve }) => {
 
 			event.locals.subdomain = subdomain;
 			// Convenience aliases used by storefront routes
+			event.locals.store = storeRow ?? null;
+			event.locals.isStorefront = !!storeRow;
+		}
+	}
+
+	// Path-based fallback for /store/[slug] (e.g. LAN IP access)
+	if (!event.locals.isStorefront) {
+		const slug = extractPathSlug(event.url.pathname);
+		if (slug) {
+			const storeRow = await db.query.stores.findFirst({
+				where: eq(stores.subdomain, slug),
+				with: { owner: true }
+			});
+			event.locals.subdomain = slug;
 			event.locals.store = storeRow ?? null;
 			event.locals.isStorefront = !!storeRow;
 		}
