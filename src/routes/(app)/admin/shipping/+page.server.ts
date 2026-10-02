@@ -12,30 +12,34 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	update: async ({ request, locals }) => {
-		const data = await request.formData();
+		try {
+			const data = await request.formData();
 
-		const shippingFeeStr = data.get('shippingFee') as string;
-		const freeShippingThresholdStr = data.get('freeShippingThreshold') as string;
-		const taxRateStr = data.get('taxRate') as string;
-		const taxLabel = (data.get('taxLabel') as string)?.trim() || 'Tax';
+			const shippingFeeStr = data.get('shippingFee') as string;
+			const freeShippingThresholdStr = data.get('freeShippingThreshold') as string;
+			const taxRateStr = data.get('taxRate') as string;
+			const taxLabel = (data.get('taxLabel') as string)?.trim() || 'Tax';
 
-		const shippingFee = shippingFeeStr ? parseFloat(shippingFeeStr) : 0;
-		const freeShippingThreshold = freeShippingThresholdStr ? parseFloat(freeShippingThresholdStr) : null;
-		// Tax rate stored as decimal (e.g. 17% → 0.17)
-		const taxRatePercent = taxRateStr ? parseFloat(taxRateStr) : 0;
-		const taxRate = taxRatePercent / 100;
+			const shippingFee = shippingFeeStr ? parseFloat(shippingFeeStr) : 0;
+			const freeShippingThreshold = freeShippingThresholdStr ? parseFloat(freeShippingThresholdStr) : null;
+			// Tax rate stored as decimal (e.g. 17% → 0.17)
+			const taxRatePercent = taxRateStr ? parseFloat(taxRateStr) : 0;
+			const taxRate = taxRatePercent / 100;
 
-		await db
-			.update(stores)
-			.set({
-				shippingFee: shippingFee.toFixed(2),
-				freeShippingThreshold: freeShippingThreshold !== null ? freeShippingThreshold.toFixed(2) : null,
-				taxRate: taxRate.toFixed(4),
-				taxLabel,
-				updatedAt: new Date()
-			})
-			.where(eq(stores.ownerId, locals.user!.id));
+			await db
+				.update(stores)
+				.set({
+					shippingFee: shippingFee.toFixed(2),
+					freeShippingThreshold: freeShippingThreshold !== null ? freeShippingThreshold.toFixed(2) : null,
+					taxRate: taxRate.toFixed(4),
+					taxLabel,
+					updatedAt: new Date()
+				})
+				.where(eq(stores.ownerId, locals.user!.id));
 
-		return { success: true };
+			return { success: true, error: null };
+		} catch (e) {
+			return { success: false, error: e instanceof Error ? e.message : 'Failed to save settings' };
+		}
 	}
 };

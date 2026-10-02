@@ -103,6 +103,7 @@ export const stores = pgTable('stores', {
 	freeShippingThreshold: numeric('free_shipping_threshold', { precision: 10, scale: 2 }),
 	taxRate: numeric('tax_rate', { precision: 5, scale: 4 }).notNull().default('0'), // 0.18 = 18%
 	taxLabel: text('tax_label').default('Tax'), // GST / VAT / Sales Tax
+	currencySymbol: text('currency_symbol').notNull().default('Rs.'),
 	// SEO
 	seoTitle: text('seo_title'),
 	seoDescription: text('seo_description'),

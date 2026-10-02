@@ -56,6 +56,20 @@ describe('products schema — SEO columns', () => {
 	});
 });
 
+// ─── currencySymbol column ────────────────────────────────────────────────────
+
+describe('stores schema — currencySymbol column', () => {
+	it('exposes currencySymbol', () => {
+		const cols = getTableColumns(stores);
+		expect(cols).toHaveProperty('currencySymbol');
+	});
+
+	it('currencySymbol column name maps to currency_symbol', () => {
+		const cols = getTableColumns(stores);
+		expect((cols.currencySymbol as { name: string }).name).toBe('currency_symbol');
+	});
+});
+
 // ─── buildSeo integration with schema-shaped store objects ───────────────────
 
 describe('buildSeo — uses schema-aligned store fields', () => {
