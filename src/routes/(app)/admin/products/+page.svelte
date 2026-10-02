@@ -32,7 +32,7 @@
   let lowStockCount = $state(0);
   let outOfStockCount = $state(0);
 
-  async function loadProducts() {
+  async function loadProducts(signal?: AbortSignal) {
     loading = true;
     const params = new URLSearchParams({
       page: String(page),
@@ -42,15 +42,17 @@
       ...(filterStatus && { status: filterStatus })
     });
     try {
-      const res = await fetch(`/api/admin/products?${params}`);
+      const res = await fetch(`/api/admin/products?${params}`, { signal });
       if (res.ok) {
         const json = await res.json();
         products = json.data;
         total = json.total;
         pages = json.pages;
       }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') throw e;
     } finally {
-      loading = false;
+      if (!signal?.aborted) loading = false;
     }
   }
 
@@ -63,35 +65,35 @@
     }
   }
 
-  // Initial load
+  // $effect is the sole fetch trigger — handlers only update state
+  let searchDebounce: ReturnType<typeof setTimeout>;
+
   $effect(() => {
-    loadProducts();
+    const controller = new AbortController();
+    loadProducts(controller.signal);
     loadStockCounts();
+    return () => controller.abort();
   });
 
   function handleSearch(e: Event) {
-    search = (e.target as HTMLInputElement).value;
-    page = 1;
-    loadProducts();
+    const val = (e.target as HTMLInputElement).value;
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      search = val;
+      page = 1;
+    }, 300);
   }
 
   function handleFilter() {
     page = 1;
-    loadProducts();
   }
 
   function prevPage() {
-    if (page > 1) {
-      page--;
-      loadProducts();
-    }
+    if (page > 1) page--;
   }
 
   function nextPage() {
-    if (page < pages) {
-      page++;
-      loadProducts();
-    }
+    if (page < pages) page++;
   }
 
   async function confirmDelete() {

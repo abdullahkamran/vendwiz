@@ -32,10 +32,6 @@
   let saving = $state(false);
   let slugManuallyEdited = $state(false);
 
-  // Drag reorder state
-  let dragIndex = $state<number | null>(null);
-  let dropIndex = $state<number | null>(null);
-
   // Root categories (no parent) for the parent selector
   let rootCategories = $derived(categories.filter((c) => !c.parentId));
 
@@ -154,45 +150,6 @@
     }
   }
 
-  // Drag-to-reorder
-  function onDragStart(e: DragEvent, index: number) {
-    dragIndex = index;
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-  }
-
-  function onDragOver(e: DragEvent, index: number) {
-    e.preventDefault();
-    dropIndex = index;
-  }
-
-  async function onDrop(e: DragEvent, index: number) {
-    e.preventDefault();
-    if (dragIndex === null || dragIndex === index) {
-      dragIndex = null;
-      dropIndex = null;
-      return;
-    }
-    const newList = [...categories];
-    const [moved] = newList.splice(dragIndex, 1);
-    newList.splice(index, 0, moved);
-    const reordered = newList.map((c, i) => ({ ...c, sortOrder: i }));
-    categories = reordered;
-    dragIndex = null;
-    dropIndex = null;
-
-    // Persist
-    await fetch('/api/admin/categories/reorder', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reordered.map((c) => ({ id: c.id, sortOrder: c.sortOrder })))
-    });
-  }
-
-  function onDragEnd() {
-    dragIndex = null;
-    dropIndex = null;
-  }
-
   function getParentName(parentId: string | null): string {
     if (!parentId) return '—';
     return categories.find((c) => c.id === parentId)?.name ?? '—';
@@ -214,7 +171,6 @@
       <table>
         <thead>
           <tr>
-            <th style="width:32px"></th>
             <th>Name</th>
             <th>Slug</th>
             <th>Parent</th>
@@ -223,17 +179,8 @@
           </tr>
         </thead>
         <tbody>
-          {#each categories as cat, i}
-            <tr
-              class:dragging={dragIndex === i}
-              class:drop-target={dropIndex === i && dragIndex !== i}
-              draggable="true"
-              ondragstart={(e) => onDragStart(e, i)}
-              ondragover={(e) => onDragOver(e, i)}
-              ondrop={(e) => onDrop(e, i)}
-              ondragend={onDragEnd}
-            >
-              <td class="drag-cell">⠿</td>
+          {#each categories as cat}
+            <tr>
               <td class:child-indent={!!cat.parentId}>
                 {cat.name}
               </td>
@@ -405,24 +352,8 @@
     border-bottom: none;
   }
 
-  tr.dragging {
-    opacity: 0.4;
-  }
-
-  tr.drop-target {
-    background: #e8f0fd;
-  }
-
   tr:hover td {
     background: #fafafa;
-  }
-
-  .drag-cell {
-    color: #bbb;
-    cursor: grab;
-    user-select: none;
-    font-size: 1rem;
-    padding: 0.75rem 0.5rem;
   }
 
   .child-indent {
