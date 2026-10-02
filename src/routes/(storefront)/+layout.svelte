@@ -40,6 +40,7 @@
   let store = $derived(data.store);
   let categories = $derived(data.categories ?? []);
   let promoCode = $derived(data.promoCode ?? null);
+  let basePath = $derived(data.basePath ?? '');
 
   // Cart item count
   let itemCount = $derived($cart.reduce((sum, item) => sum + item.quantity, 0));
@@ -59,6 +60,10 @@
   // Active nav helpers (reactive to SvelteKit navigation)
   let pathname = $derived($page.url.pathname);
   let catParam = $derived($page.url.searchParams.get('category') ?? '');
+  // Strip basePath prefix so active-link checks work for both subdomain and path-based access
+  let localPathname = $derived(
+    basePath && pathname.startsWith(basePath) ? pathname.slice(basePath.length) || '/' : pathname
+  );
 
   // Install banner (AC-11)
   let showInstall = $state(false);
@@ -142,18 +147,18 @@
     <button class="sf-drawer-close" onclick={closeDrawer} aria-label="Close menu">✕</button>
   </div>
   <div class="sf-drawer-body">
-    <a href="/products" onclick={closeDrawer} class="sf-drawer-link">All Products</a>
+    <a href="{basePath}/products" onclick={closeDrawer} class="sf-drawer-link">All Products</a>
     {#each categories as cat}
-      <a href="/products?category={cat.id}" onclick={closeDrawer} class="sf-drawer-link">{cat.name}</a>
+      <a href="{basePath}/products?category={cat.id}" onclick={closeDrawer} class="sf-drawer-link">{cat.name}</a>
     {/each}
     <hr class="sf-drawer-sep" />
-    <a href="/policies/return" onclick={closeDrawer} class="sf-drawer-link">Return Policy</a>
-    <a href="/policies/shipping" onclick={closeDrawer} class="sf-drawer-link">Shipping Info</a>
-    <a href="/policies/terms" onclick={closeDrawer} class="sf-drawer-link">Terms &amp; Conditions</a>
-    <a href="/policies/faq" onclick={closeDrawer} class="sf-drawer-link">FAQ</a>
+    <a href="{basePath}/policies/return" onclick={closeDrawer} class="sf-drawer-link">Return Policy</a>
+    <a href="{basePath}/policies/shipping" onclick={closeDrawer} class="sf-drawer-link">Shipping Info</a>
+    <a href="{basePath}/policies/terms" onclick={closeDrawer} class="sf-drawer-link">Terms &amp; Conditions</a>
+    <a href="{basePath}/policies/faq" onclick={closeDrawer} class="sf-drawer-link">FAQ</a>
     <hr class="sf-drawer-sep" />
-    <a href="/track" onclick={closeDrawer} class="sf-drawer-link">Track Order</a>
-    <a href="/contact" onclick={closeDrawer} class="sf-drawer-link">Contact Us</a>
+    <a href="{basePath}/track" onclick={closeDrawer} class="sf-drawer-link">Track Order</a>
+    <a href="{basePath}/contact" onclick={closeDrawer} class="sf-drawer-link">Contact Us</a>
   </div>
 </nav>
 
@@ -167,13 +172,13 @@
       {#if store.theme === 'minimal'}
         <!-- dhCentered: search left / brand centre / actions right -->
         <div class="sf-dh-col sf-dh-left">
-          <form method="GET" action="/products" class="sf-dh-search-wrap">
+          <form method="GET" action="{basePath}/products" class="sf-dh-search-wrap">
             <input type="search" name="q" placeholder="Search products…"
               class="sf-dh-search" aria-label="Search products" />
           </form>
         </div>
         <div class="sf-dh-col sf-dh-center">
-          <a href="/" class="sf-logo">
+          <a href="{basePath || '/'}" class="sf-logo">
             {#if store.logoUrl}
               <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
             {:else}
@@ -186,7 +191,7 @@
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
             {isDark ? '☀️' : '🌙'}
           </button>
-          <a href="/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
+          <a href="{basePath}/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
             🛒
             {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
           </a>
@@ -194,7 +199,7 @@
       {:else}
         <!-- Standard: logo+nav left / brand name centre / search+actions right -->
         <div class="sf-dh-col sf-dh-left">
-          <a href="/" class="sf-logo sf-dh-logo">
+          <a href="{basePath || '/'}" class="sf-logo sf-dh-logo">
             {#if store.logoUrl}
               <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
             {:else}
@@ -202,24 +207,24 @@
             {/if}
           </a>
           <nav class="sf-dh-nav" aria-label="Main navigation">
-            <a href="/"
+            <a href="{basePath || '/'}"
               class="sf-dh-navlink"
-              class:sf-dh-navlink--active={pathname === '/'}
+              class:sf-dh-navlink--active={localPathname === '/'}
             >Home</a>
-            <a href="/products"
+            <a href="{basePath}/products"
               class="sf-dh-navlink"
-              class:sf-dh-navlink--active={pathname === '/products' && !catParam}
+              class:sf-dh-navlink--active={localPathname === '/products' && !catParam}
             >All Products</a>
             {#each categories as cat}
-              <a href="/products?category={cat.id}"
+              <a href="{basePath}/products?category={cat.id}"
                 class="sf-dh-navlink"
-                class:sf-dh-navlink--active={pathname === '/products' && catParam === cat.id}
+                class:sf-dh-navlink--active={localPathname === '/products' && catParam === cat.id}
               >{cat.name}</a>
             {/each}
           </nav>
         </div>
         <div class="sf-dh-col sf-dh-center">
-          <a href="/" class="sf-dh-brand-link">
+          <a href="{basePath || '/'}" class="sf-dh-brand-link">
             {#if store.logoUrl}
               <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
             {:else}
@@ -228,7 +233,7 @@
           </a>
         </div>
         <div class="sf-dh-col sf-dh-right">
-          <form method="GET" action="/products" class="sf-dh-search-wrap">
+          <form method="GET" action="{basePath}/products" class="sf-dh-search-wrap">
             <input type="search" name="q" placeholder="Search products…"
               class="sf-dh-search" aria-label="Search products" />
           </form>
@@ -236,7 +241,7 @@
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
             {isDark ? '☀️' : '🌙'}
           </button>
-          <a href="/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
+          <a href="{basePath}/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
             🛒
             {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
           </a>
@@ -253,7 +258,7 @@
           <line x1="2" y1="17" x2="20" y2="17"/>
         </svg>
       </button>
-      <a href="/" class="sf-logo">
+      <a href="{basePath || '/'}" class="sf-logo">
         {#if store.logoUrl}
           <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
         {:else}
@@ -265,7 +270,7 @@
           aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
           {isDark ? '☀️' : '🌙'}
         </button>
-        <a href="/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
+        <a href="{basePath}/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
           🛒
           {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
         </a>
@@ -286,7 +291,7 @@
   <div class="sf-container sf-footer-inner">
     <!-- Brand column: hidden on mobile, first of 4 cols on desktop -->
     <div class="sf-footer-col sf-footer-brand-col">
-      <a href="/" class="sf-footer-brand-link">
+      <a href="{basePath || '/'}" class="sf-footer-brand-link">
         {#if store.logoUrl}
           <img src={store.logoUrl} alt={store.name} class="sf-footer-brand-logo" />
         {:else}
@@ -312,16 +317,16 @@
 
     <div class="sf-footer-col">
       <p class="sf-footer-heading">Policies</p>
-      <a href="/policies/return" class="sf-footer-link">Return Policy</a>
-      <a href="/policies/shipping" class="sf-footer-link">Shipping Info</a>
-      <a href="/policies/terms" class="sf-footer-link">Terms &amp; Conditions</a>
-      <a href="/policies/faq" class="sf-footer-link">FAQ</a>
+      <a href="{basePath}/policies/return" class="sf-footer-link">Return Policy</a>
+      <a href="{basePath}/policies/shipping" class="sf-footer-link">Shipping Info</a>
+      <a href="{basePath}/policies/terms" class="sf-footer-link">Terms &amp; Conditions</a>
+      <a href="{basePath}/policies/faq" class="sf-footer-link">FAQ</a>
     </div>
 
     <div class="sf-footer-col">
       <p class="sf-footer-heading">Help</p>
-      <a href="/track" class="sf-footer-link">Track Your Order</a>
-      <a href="/contact" class="sf-footer-link">Contact Us</a>
+      <a href="{basePath}/track" class="sf-footer-link">Track Your Order</a>
+      <a href="{basePath}/contact" class="sf-footer-link">Contact Us</a>
       {#if store.contactEmail}
         <a href="mailto:{store.contactEmail}" class="sf-footer-link">{store.contactEmail}</a>
       {/if}

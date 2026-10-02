@@ -10,6 +10,7 @@
   let featured = $derived(data.featured);
   let categories = $derived(data.categories ?? []);
   let promoCode = $derived(data.promoCode ?? null);
+  let basePath = $derived(data.basePath ?? '');
 
   // ── Slideshow hero (AC-5): auto-advances every 4s ──────────────────────────
   const heroSlides = $derived(
@@ -81,9 +82,9 @@
             <h2 class="sf-hero-title">{slide.title}</h2>
           {/if}
           {#if slide.slug}
-            <a href="/products/{slide.slug}" class="sf-hero-cta">Shop Now</a>
+            <a href="{basePath}/products/{slide.slug}" class="sf-hero-cta">Shop Now</a>
           {:else}
-            <a href="/products" class="sf-hero-cta">Shop Now</a>
+            <a href="{basePath}/products" class="sf-hero-cta">Shop Now</a>
           {/if}
         </div>
       </div>
@@ -123,7 +124,7 @@
   <div class="sf-cat-grid">
     {#if categories.length > 0}
       {#each categories as cat}
-        <a href="/products?category={cat.id}" class="sf-cat-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
+        <a href="{basePath}/products?category={cat.id}" class="sf-cat-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
           {#if cat.imageUrl}
             <img src={cat.imageUrl} alt={cat.name} class="sf-cat-img" />
           {:else}
@@ -135,7 +136,7 @@
     {:else}
       <!-- Placeholder grid when no categories have been created yet -->
       {#each ['All Products', 'New Arrivals', 'Sale'] as label}
-        <a href="/products" class="sf-cat-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
+        <a href="{basePath}/products" class="sf-cat-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
           <div class="sf-cat-placeholder">🏷️</div>
           <span class="sf-cat-name">{label}</span>
         </a>
@@ -149,13 +150,13 @@
   <section class="sf-section">
     <div class="sf-section-header">
       <h2 class="sf-section-title">New Arrivals</h2>
-      <a href="/products" class="sf-section-link">View All →</a>
+      <a href="{basePath}/products" class="sf-section-link">View All →</a>
     </div>
 
     <div class="sf-arrivals-row">
       {#each featured as product}
         <a
-          href="/products/{product.slug}"
+          href="{basePath}/products/{product.slug}"
           class="sf-product-card sf-product-card--{cardLayout}"
           style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);"
         >
