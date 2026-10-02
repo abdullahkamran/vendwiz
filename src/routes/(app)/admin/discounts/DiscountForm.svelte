@@ -64,7 +64,7 @@
 						minlength="3"
 						maxlength="20"
 						pattern="[A-Z0-9-]+"
-						class="flex-1 border border-[--color-border] rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[--color-accent] uppercase"
+						class="flex-1 border border-[--color-border] rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] uppercase"
 						placeholder="SUMMER25"
 					/>
 					<button
@@ -108,7 +108,7 @@
 						max={type === 'percentage' ? 100 : undefined}
 						step={type === 'percentage' ? 1 : 0.01}
 						bind:value
-						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent] pr-12"
+						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] pr-12"
 					/>
 					<span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[--color-text-muted]">
 						{type === 'percentage' ? '%' : 'Rs.'}
@@ -128,7 +128,7 @@
 					min="0"
 					step="0.01"
 					bind:value={minOrderAmount}
-					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
+					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
 					placeholder="Leave blank for no minimum"
 				/>
 			</div>
@@ -145,7 +145,7 @@
 					min="1"
 					step="1"
 					bind:value={usageLimit}
-					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
+					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
 					placeholder="Leave blank for unlimited uses"
 				/>
 			</div>
@@ -161,7 +161,7 @@
 					type="date"
 					bind:value={expiresAt}
 					min={new Date().toISOString().slice(0, 10)}
-					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
+					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
 				/>
 			</div>
 
@@ -169,12 +169,12 @@
 			<div class="flex items-center justify-between py-2">
 				<div>
 					<p class="text-sm font-medium text-[--color-text]">Active</p>
-					<p class="text-xs text-[--color-text-muted]">Discount can be applied at checkout</p>
+					<p class="text-xs text-[--color-text-muted]">When enabled, this code can be applied at checkout</p>
 				</div>
 				<label class="relative inline-flex items-center cursor-pointer">
 					<input type="checkbox" name="isActive" bind:checked={isActive} class="sr-only peer" />
 					<div
-						class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[--color-accent] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[--color-accent]"
+						class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-accent)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]"
 					></div>
 				</label>
 			</div>
@@ -191,7 +191,7 @@
 		<button
 			type="submit"
 			disabled={saving}
-			class="px-5 py-2 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+			class="px-5 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
 		>
 			{saving ? 'Saving…' : discount ? 'Update Discount' : 'Create Discount'}
 		</button>
