@@ -23,7 +23,7 @@
 		<h1 class="text-2xl font-bold text-[--color-text]">Discount Codes</h1>
 		<a
 			href="/admin/discounts/new"
-			class="px-4 py-2 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+			class="px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
 		>
 			+ New Discount
 		</a>
@@ -40,7 +40,7 @@
 			<p class="text-[--color-text-muted] mb-3">No discount codes yet</p>
 			<a
 				href="/admin/discounts/new"
-				class="inline-flex px-4 py-2 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+				class="inline-flex px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
 			>
 				Create your first discount
 			</a>
