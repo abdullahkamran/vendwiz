@@ -45,7 +45,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
       const headingMatch = line.match(/^##\s+(.+)/);
       if (headingMatch) {
         if (currentQuestion !== null) {
-          faqItems.push({ question: currentQuestion, answer: answerLines.join('\n').trim() });
+          faqItems.push({ question: currentQuestion, answer: renderMarkdown(answerLines.join('\n').trim()) });
           answerLines.length = 0;
         }
         currentQuestion = headingMatch[1].trim();
@@ -54,7 +54,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
       }
     }
     if (currentQuestion !== null) {
-      faqItems.push({ question: currentQuestion, answer: answerLines.join('\n').trim() });
+      faqItems.push({ question: currentQuestion, answer: renderMarkdown(answerLines.join('\n').trim()) });
     }
 
     return { policy, html, title: titles[type], faqItems };
