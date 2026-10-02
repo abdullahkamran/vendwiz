@@ -3,27 +3,16 @@
 	import { signOut } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
 	import type { LayoutData } from './$types';
+	import { navItems, isActive as isNavActive, makeNavOnClick } from './admin-nav';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
 	let sidebarOpen = $state(false);
 
-	const navItems = [
-		{ href: '/admin', label: 'Dashboard', icon: '⊞' },
-		{ href: '/admin/products', label: 'Products', icon: '📦' },
-		{ href: '/admin/categories', label: 'Categories', icon: '🗂️' },
-		{ href: '/admin/orders', label: 'Orders', icon: '🛒' },
-		{ href: '/admin/discounts', label: 'Discounts', icon: '🏷️' },
-		{ href: '/admin/reviews', label: 'Reviews', icon: '⭐' },
-		{ href: '/admin/shipping', label: 'Shipping & Tax', icon: '🚚' },
-		{ href: '/admin/settings', label: 'Settings', icon: '⚙️' },
-		{ href: '/admin/account', label: 'Account', icon: '👤' }
-	] as const;
+	const navOnClick = makeNavOnClick((v) => (sidebarOpen = v));
 
 	function isActive(href: string) {
-		const path = $page.url.pathname;
-		if (href === '/admin') return path === '/admin';
-		return path.startsWith(href);
+		return isNavActive(href, $page.url.pathname);
 	}
 
 	async function handleSignOut() {
@@ -74,6 +63,7 @@
 					<li>
 						<a
 							href={item.href}
+							onclick={navOnClick}
 							class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors
 								{isActive(item.href)
 								? 'bg-white/15 text-white font-medium'
