@@ -125,7 +125,7 @@
 
     <!-- Max price range slider -->
     <div class="filter-group">
-      <p class="filter-label">Max Price: Rs. {maxPrice || '∞'}</p>
+      <p class="filter-label">Max Price: {store.currencySymbol} {maxPrice || '∞'}</p>
       <input
         type="range"
         min="0"
@@ -136,8 +136,8 @@
         class="filter-range"
       />
       <div class="filter-range-labels">
-        <span>Rs. 0</span>
-        <span>Rs. 50,000</span>
+        <span>{store.currencySymbol} 0</span>
+        <span>{store.currencySymbol} 50,000</span>
       </div>
     </div>
 
@@ -188,7 +188,7 @@
 
     <!-- Max price -->
     <div class="filter-group">
-      <p class="filter-label">Max Price: Rs. {maxPrice || '∞'}</p>
+      <p class="filter-label">Max Price: {store.currencySymbol} {maxPrice || '∞'}</p>
       <input
         type="range"
         min="0"
@@ -199,8 +199,8 @@
         class="filter-range"
       />
       <div class="filter-range-labels">
-        <span>Rs. 0</span>
-        <span>Rs. 50,000</span>
+        <span>{store.currencySymbol} 0</span>
+        <span>{store.currencySymbol} 50,000</span>
       </div>
     </div>
 
@@ -283,10 +283,10 @@
                 <h3 class="product-card-title">{product.title}</h3>
                 <div class="product-card-pricing">
                   {#if product.salePrice}
-                    <span class="price-sale" style="color:var(--sf-primary);">Rs. {Number(product.salePrice).toLocaleString()}</span>
-                    <span class="price-orig">Rs. {Number(product.basePrice).toLocaleString()}</span>
+                    <span class="price-sale" style="color:var(--sf-primary);">{store.currencySymbol} {Number(product.salePrice).toLocaleString()}</span>
+                    <span class="price-orig">{store.currencySymbol} {Number(product.basePrice).toLocaleString()}</span>
                   {:else}
-                    <span class="price-base" style="color:var(--sf-primary);">Rs. {Number(product.basePrice).toLocaleString()}</span>
+                    <span class="price-base" style="color:var(--sf-primary);">{store.currencySymbol} {Number(product.basePrice).toLocaleString()}</span>
                   {/if}
                   {#if product.stockQty > 0 && product.stockQty <= product.lowStockThreshold}
                     <span class="badge-low-stock">Low Stock</span>

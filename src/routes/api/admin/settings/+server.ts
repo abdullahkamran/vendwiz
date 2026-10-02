@@ -27,6 +27,7 @@ type StoreUpdate = Partial<
 		| 'freeShippingThreshold'
 		| 'taxRate'
 		| 'taxLabel'
+		| 'currencySymbol'
 		| 'seoTitle'
 		| 'seoDescription'
 	>
@@ -75,6 +76,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 	if ('freeShippingThreshold' in body) updates.freeShippingThreshold = body.freeShippingThreshold as string | null;
 	if (typeof body.taxRate === 'string') updates.taxRate = body.taxRate;
 	if ('taxLabel' in body) updates.taxLabel = body.taxLabel as string | null;
+	if (typeof body.currencySymbol === 'string') updates.currencySymbol = body.currencySymbol;
 	if ('seoTitle' in body) updates.seoTitle = body.seoTitle as string | null;
 	if ('seoDescription' in body) updates.seoDescription = body.seoDescription as string | null;
 

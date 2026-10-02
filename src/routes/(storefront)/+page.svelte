@@ -110,7 +110,7 @@
   {#if promoCode}
     <span class="sf-promo-text">
       🎉 Use code <strong class="sf-promo-code">{promoCode.code}</strong>
-      for {promoCode.type === 'percentage' ? `${promoCode.value}% off` : `Rs. ${promoCode.value} off`}
+      for {promoCode.type === 'percentage' ? `${promoCode.value}% off` : `${store.currencySymbol} ${promoCode.value} off`}
     </span>
   {:else}
     <span class="sf-promo-text">🛍️ Welcome to {store.name} — browse our latest arrivals!</span>
@@ -168,7 +168,7 @@
           </div>
           <div class="sf-card-info">
             <p class="sf-card-title">{product.title}</p>
-            <p class="sf-card-price" style="color:var(--sf-primary);">Rs. {Number(product.basePrice).toLocaleString()}</p>
+            <p class="sf-card-price" style="color:var(--sf-primary);">{store.currencySymbol} {Number(product.basePrice).toLocaleString()}</p>
             {#if product.stockQty === 0}
               <span class="sf-badge-oos">Out of Stock</span>
             {/if}

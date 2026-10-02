@@ -69,10 +69,10 @@
 							<td class="px-4 py-3">
 								{d.type === 'percentage'
 									? `${parseFloat(d.value)}%`
-									: `Rs. ${parseFloat(d.value).toLocaleString()}`}
+									: `${data.store.currencySymbol} ${parseFloat(d.value).toLocaleString()}`}
 							</td>
 							<td class="px-4 py-3 text-[--color-text-muted]">
-								{d.minOrderAmount ? `Rs. ${parseFloat(d.minOrderAmount).toLocaleString()}` : '—'}
+								{d.minOrderAmount ? `${data.store.currencySymbol} ${parseFloat(d.minOrderAmount).toLocaleString()}` : '—'}
 							</td>
 							<td class="px-4 py-3 text-[--color-text-muted]">
 								{d.usageCount}{d.usageLimit ? `/${d.usageLimit}` : ''}
