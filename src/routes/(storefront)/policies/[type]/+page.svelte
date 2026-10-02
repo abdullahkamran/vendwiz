@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Seo from '$lib/components/storefront/Seo.svelte';
+
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
   let title = $derived(data.title);
@@ -11,8 +13,13 @@
 
 <svelte:head>
   <title>{title} | {store.name}</title>
-  <meta name="description" content="{title} for {store.name}" />
 </svelte:head>
+
+<Seo
+  {store}
+  title="{title} | {store.name}"
+  description="{title} for {store.name}"
+/>
 
 <div class="policy-wrap">
   <h1 style="font-size:2rem; font-weight:800; color:var(--sf-text); margin:0 0 32px;">{title}</h1>

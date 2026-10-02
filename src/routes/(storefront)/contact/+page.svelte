@@ -1,5 +1,6 @@
 <script lang="ts">
   import { buildWhatsAppUrl } from '$lib/utils/whatsapp';
+  import Seo from '$lib/components/storefront/Seo.svelte';
 
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
@@ -23,6 +24,12 @@
 <svelte:head>
   <title>Contact | {store.name}</title>
 </svelte:head>
+
+<Seo
+  {store}
+  title="Contact | {store.name}"
+  description="Get in touch with {store.name}. Send us a message and we'll respond promptly."
+/>
 
 <div class="contact-page">
   <h1 class="contact-title">Contact Us</h1>

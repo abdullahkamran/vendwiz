@@ -73,6 +73,7 @@
 
 <svelte:head>
   <title>Cart | {store.name}</title>
+  <meta name="robots" content="noindex" />
 </svelte:head>
 
 <div class="cart-page">
