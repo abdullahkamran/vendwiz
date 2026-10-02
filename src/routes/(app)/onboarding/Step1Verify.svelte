@@ -63,7 +63,6 @@
 				id="code"
 				type="text"
 				bind:value={code}
-				placeholder="XXXX-XXXX-XXXX"
 				autocomplete="off"
 				spellcheck="false"
 				class="w-full border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-sm font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40 focus:border-[var(--color-accent)]"
