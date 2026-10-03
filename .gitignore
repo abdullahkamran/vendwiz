@@ -21,3 +21,7 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# runtime data of a locally running instance (uploads, local sqlite) — never source
+static/uploads/
+local.db
