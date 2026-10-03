@@ -4,6 +4,7 @@
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
   let title = $derived(data.title);
+  let basePath = $derived(data.basePath ?? '');
 
   let openIndex = $state<number | null>(null);
   function toggleAccordion(i: number) {
@@ -50,7 +51,7 @@
   {/if}
 
   <div style="margin-top:48px; padding-top:24px; border-top:1px solid var(--sf-border);">
-    <a href="/" style="color:var(--sf-muted); text-decoration:none; font-size:0.875rem;">← Back to store</a>
+    <a href="{basePath || '/'}" style="color:var(--sf-muted); text-decoration:none; font-size:0.875rem;">← Back to store</a>
   </div>
 </div>
 

@@ -4,6 +4,7 @@
 
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
+  let basePath = $derived(data.basePath ?? '');
 
   let discountCode = $state('');
   let discountMsg = $state('');
@@ -84,7 +85,7 @@
     <div class="cart-empty">
       <div class="cart-empty-icon">🛒</div>
       <p class="cart-empty-text">Your cart is empty.</p>
-      <a href="/products" class="cart-empty-cta"
+      <a href="{basePath}/products" class="cart-empty-cta"
         style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-pill); font-weight:var(--sf-btn-weight); text-transform:var(--sf-btn-transform); letter-spacing:var(--sf-letter-spacing);">
         Continue Shopping
       </a>
@@ -107,7 +108,7 @@
 
             <!-- Details -->
             <div class="cart-item-details">
-              <a href="/products/{item.slug}" class="cart-item-title">{item.title}</a>
+              <a href="{basePath}/products/{item.slug}" class="cart-item-title">{item.title}</a>
               {#if item.variantSelections && Object.keys(item.variantSelections).length > 0}
                 <p class="cart-item-variant">
                   {Object.entries(item.variantSelections).map(([k, v]) => `${k}: ${v}`).join(' · ')}
@@ -141,7 +142,7 @@
 
         <!-- Continue shopping -->
         <div class="cart-continue">
-          <a href="/products" class="cart-continue-link">← Continue Shopping</a>
+          <a href="{basePath}/products" class="cart-continue-link">← Continue Shopping</a>
         </div>
       </div><!-- .cart-items-col -->
 
@@ -218,7 +219,7 @@
           </div>
 
           <!-- CTA -->
-          <a href="/checkout" class="cart-checkout-btn"
+          <a href="{basePath}/checkout" class="cart-checkout-btn"
             style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-pill); font-weight:var(--sf-btn-weight); text-transform:var(--sf-btn-transform); letter-spacing:var(--sf-letter-spacing);">
             Proceed to Checkout →
           </a>

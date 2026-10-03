@@ -3,6 +3,7 @@
 
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
+  let basePath = $derived(data.basePath ?? '');
 
   let orderRef = $derived($page.url.searchParams.get('ref') ?? '');
 
@@ -52,12 +53,12 @@
       </a>
     {/if}
 
-    <a href="/track"
+    <a href="{basePath}/track"
       style="padding:12px 28px; background:#f3f4f6; color:#374151; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
       Track Your Order
     </a>
 
-    <a href="/products"
+    <a href="{basePath}/products"
       style="padding:12px 28px; background:var(--store-primary,#111827); color:#fff; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
       Continue Shopping
     </a>

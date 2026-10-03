@@ -2,6 +2,7 @@
   import { cart } from '$lib/stores/cart';
   import { untrack } from 'svelte';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import Seo from '$lib/components/storefront/Seo.svelte';
   import { productJsonLd, stripHtml } from '$lib/seo';
 
@@ -15,6 +16,7 @@
   let approvedReviews = $derived(data.reviews);
   let related = $derived(data.related);
   let store = $derived(data.store);
+  let basePath = $derived(data.basePath ?? '');
 
   // Image gallery state (AC-8)
   let activeImageIdx = $state(0);
@@ -83,7 +85,7 @@
 
   function buyNow() {
     addToCart();
-    window.location.href = '/cart';
+    goto(`${basePath}/cart`);
   }
 
   // Active tab for details (AC-8)
@@ -223,9 +225,9 @@
 
 <!-- Breadcrumb -->
 <p class="pdp-breadcrumb">
-  <a href="/">Home</a>
+  <a href="{basePath || '/'}">Home</a>
   <span> / </span>
-  <a href="/products">Products</a>
+  <a href="{basePath}/products">Products</a>
   <span> / </span>
   <span>{product.title}</span>
 </p>
@@ -540,7 +542,7 @@
     <h2 class="pdp-related-title">You Might Also Like</h2>
     <div class="related-row">
       {#each related as rp}
-        <a href="/products/{rp.slug}" class="related-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg);">
+        <a href="{basePath}/products/{rp.slug}" class="related-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg);">
           <div class="related-img-wrap">
             {#if rp.imageUrl}
               <img src={rp.imageUrl} alt={rp.title} />

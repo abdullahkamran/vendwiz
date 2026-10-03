@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import Seo from '$lib/components/storefront/Seo.svelte';
   import { websiteJsonLd } from '$lib/seo';
+  import { buildCategoryTree } from '$lib/utils/category-tree';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
@@ -11,6 +12,9 @@
   let categories = $derived(data.categories ?? []);
   let promoCode = $derived(data.promoCode ?? null);
   let basePath = $derived(data.basePath ?? '');
+
+  // Build tree for the category grid; slice to 6 parent nodes
+  let categoryTree = $derived(buildCategoryTree(categories).slice(0, 6));
 
   // ── Slideshow hero (AC-5): auto-advances every 4s ──────────────────────────
   const heroSlides = $derived(
@@ -81,11 +85,7 @@
           {:else}
             <h2 class="sf-hero-title">{slide.title}</h2>
           {/if}
-          {#if slide.slug}
-            <a href="{basePath}/products/{slide.slug}" class="sf-hero-cta">Shop Now</a>
-          {:else}
-            <a href="{basePath}/products" class="sf-hero-cta">Shop Now</a>
-          {/if}
+          <a href="{basePath}/products" class="sf-hero-cta">Shop Now</a>
         </div>
       </div>
     {/each}
@@ -122,16 +122,25 @@
 <section class="sf-section">
   <h2 class="sf-section-title">Shop by Category</h2>
   <div class="sf-cat-grid">
-    {#if categories.length > 0}
-      {#each categories as cat}
-        <a href="{basePath}/products?category={cat.id}" class="sf-cat-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
-          {#if cat.imageUrl}
-            <img src={cat.imageUrl} alt={cat.name} class="sf-cat-img" />
-          {:else}
-            <div class="sf-cat-placeholder">🏷️</div>
+    {#if categoryTree.length > 0}
+      {#each categoryTree as cat}
+        <div class="sf-cat-card-group">
+          <a href="{basePath}/products?category={cat.id}" class="sf-cat-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
+            {#if cat.imageUrl}
+              <img src={cat.imageUrl} alt={cat.name} class="sf-cat-img" />
+            {:else}
+              <div class="sf-cat-placeholder">🏷️</div>
+            {/if}
+            <span class="sf-cat-name">{cat.name}</span>
+          </a>
+          {#if cat.children.length > 0}
+            <div class="sf-cat-subcats">
+              {#each cat.children as child}
+                <a href="{basePath}/products?category={child.id}" class="sf-cat-subcat-link">{child.name}</a>
+              {/each}
+            </div>
           {/if}
-          <span class="sf-cat-name">{cat.name}</span>
-        </a>
+        </div>
       {/each}
     {:else}
       <!-- Placeholder grid when no categories have been created yet -->
@@ -329,6 +338,32 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
+  }
+  /* Wrapper for parent card + optional children row */
+  .sf-cat-card-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  /* Row of child category chips beneath the parent card */
+  .sf-cat-subcats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .sf-cat-subcat-link {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border: 1px solid var(--sf-border, #dee2e6);
+    border-radius: var(--sf-pill, 9999px);
+    color: var(--sf-muted, #6c757d);
+    text-decoration: none;
+    background: var(--sf-bg, #f8f9fa);
+    transition: color 0.15s;
+  }
+  .sf-cat-subcat-link:hover {
+    color: var(--sf-primary, #0d6efd);
+    border-color: var(--sf-primary, #0d6efd);
   }
   .sf-cat-card {
     display: flex;

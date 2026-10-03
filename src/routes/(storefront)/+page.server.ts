@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { products, categories } from '$lib/server/db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, asc } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ locals }) => {
   // store is guaranteed by layout load
@@ -22,12 +22,12 @@ export const load: PageServerLoad = async ({ locals }) => {
     return { ...p, imageUrl: imgs[0]?.url ?? null };
   });
 
-  // All categories for 3-column grid
+  // All categories for 3-column grid (ordered; tree-slicing to 6 parents done in template)
   const allCategories = await db
     .select()
     .from(categories)
     .where(eq(categories.storeId, storeId))
-    .limit(6);
+    .orderBy(asc(categories.sortOrder), asc(categories.name));
 
   return { featured, categories: allCategories };
 };

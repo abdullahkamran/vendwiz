@@ -53,7 +53,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     .set({
       ...(parsed.data.name !== undefined && { name: parsed.data.name }),
       ...(parsed.data.slug !== undefined && { slug: parsed.data.slug }),
-      ...(parsed.data.sortOrder !== undefined && { sortOrder: parsed.data.sortOrder })
+      ...(parsed.data.sortOrder !== undefined && { sortOrder: parsed.data.sortOrder }),
+      ...(parsed.data.parentId !== undefined && { parentId: parsed.data.parentId })
     })
     .where(eq(categories.id, params.id))
     .returning();

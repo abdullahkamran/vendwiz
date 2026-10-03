@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, jsonb, numeric, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, timestamp, jsonb, numeric, pgEnum, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -151,6 +151,8 @@ export const categories = pgTable('categories', {
 	description: text('description'),
 	imageUrl: text('image_url'),
 	sortOrder: integer('sort_order').notNull().default(0),
+	// Nullable self-reference for subcategory support
+	parentId: text('parent_id').references((): AnyPgColumn => categories.id, { onDelete: 'set null' }),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
@@ -371,7 +373,13 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
 	store: one(stores, { fields: [categories.storeId], references: [stores.id] }),
-	products: many(products)
+	products: many(products),
+	parent: one(categories, {
+		fields: [categories.parentId],
+		references: [categories.id],
+		relationName: 'category_children'
+	}),
+	children: many(categories, { relationName: 'category_children' })
 }));
 
 // ─── Convenience type aliases ─────────────────────────────────────────────────
