@@ -4,7 +4,8 @@
  * Key behaviours tested:
  *   - basePath is derived from the URL when accessed via /store/[slug]/...
  *   - basePath is empty string for normal subdomain access
- *   - A redirect to /login is thrown when isStorefront is false
+ *   - A redirect to /login is thrown when isStorefront is false (non-storefront host)
+ *   - A 404 is thrown for path-based /store/<slug> access when the store row is missing
  *
  * These tests would fail against the pre-change code because basePath was not
  * returned and the load function did not accept a url parameter.
@@ -128,13 +129,13 @@ describe('load — redirect guard', () => {
 		).rejects.toMatchObject({ status: 302, location: '/login' });
 	});
 
-	it('throws a redirect to /login when store is null even if isStorefront is true', async () => {
+	it('throws a 404 when store is null but URL is path-based /store/ access', async () => {
 		await expect(
 			load({
 				locals: makeLocals(true, null),
 				url: new URL('http://localhost/store/mystore')
 			} as Parameters<typeof load>[0])
-		).rejects.toMatchObject({ status: 302, location: '/login' });
+		).rejects.toMatchObject({ status: 404, body: { message: 'Store not found' } });
 	});
 });
 
