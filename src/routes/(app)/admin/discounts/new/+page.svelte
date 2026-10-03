@@ -1,8 +1,8 @@
 <script lang="ts">
 	import DiscountForm from '../DiscountForm.svelte';
-	import type { ActionData } from './$types';
+	import type { PageData, ActionData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let saving = $state(false);
 </script>
@@ -21,5 +21,5 @@
 		</div>
 	{/if}
 
-	<DiscountForm actionUrl="?/create" bind:saving />
+	<DiscountForm actionUrl="?/default" bind:saving currencySymbol={data.store.currencySymbol} />
 </div>

@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 };
 
 export const actions: Actions = {
-	update: async ({ request, params, locals }) => {
+	default: async ({ request, params, locals }) => {
 		const data = await request.formData();
 
 		const code = (data.get('code') as string)?.trim().toUpperCase();
