@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
-import { stores, products } from './schema';
+import { stores, products, storePolicies, POLICY_TYPES } from './schema';
 import { buildSeo } from '../../seo';
 
 // ─── Schema structure ─────────────────────────────────────────────────────────
@@ -67,6 +67,57 @@ describe('stores schema — currencySymbol column', () => {
 	it('currencySymbol column name maps to currency_symbol', () => {
 		const cols = getTableColumns(stores);
 		expect((cols.currencySymbol as { name: string }).name).toBe('currency_symbol');
+	});
+});
+
+// ─── storePolicies schema ─────────────────────────────────────────────────────
+
+describe('storePolicies schema — structure', () => {
+	it('exposes all required columns', () => {
+		const cols = getTableColumns(storePolicies);
+		expect(cols).toHaveProperty('id');
+		expect(cols).toHaveProperty('storeId');
+		expect(cols).toHaveProperty('type');
+		expect(cols).toHaveProperty('title');
+		expect(cols).toHaveProperty('content');
+		expect(cols).toHaveProperty('updatedAt');
+	});
+
+	it('storeId column maps to store_id', () => {
+		const cols = getTableColumns(storePolicies);
+		expect((cols.storeId as { name: string }).name).toBe('store_id');
+	});
+
+	it('updatedAt column maps to updated_at', () => {
+		const cols = getTableColumns(storePolicies);
+		expect((cols.updatedAt as { name: string }).name).toBe('updated_at');
+	});
+});
+
+// ─── POLICY_TYPES canonical values ────────────────────────────────────────────
+
+describe('POLICY_TYPES', () => {
+	it('exports POLICY_TYPES as a readonly tuple', () => {
+		expect(Array.isArray(POLICY_TYPES)).toBe(true);
+	});
+
+	it('includes return_refund as the canonical return-policy type', () => {
+		// The storefront URL uses /policies/return but the DB stores return_refund.
+		// This test fails on code that does not export POLICY_TYPES, and confirms
+		// the canonical value is present so TYPE_ALIAS maps to it correctly.
+		expect(POLICY_TYPES).toContain('return_refund');
+	});
+
+	it('includes all four policy types', () => {
+		expect(POLICY_TYPES).toContain('shipping');
+		expect(POLICY_TYPES).toContain('terms');
+		expect(POLICY_TYPES).toContain('faq');
+		expect(POLICY_TYPES).toHaveLength(4);
+	});
+
+	it('does not include the URL slug "return" (that is the storefront alias)', () => {
+		// The DB value is return_refund; /policies/return is the URL slug.
+		expect(POLICY_TYPES).not.toContain('return');
 	});
 });
 
