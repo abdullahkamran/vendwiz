@@ -274,10 +274,10 @@
   <!-- Price -->
   <div class="pdp-pricing">
     {#if product.salePrice}
-      <span class="pdp-price-sale" style="color:var(--sf-primary);">Rs. {Number(product.salePrice).toLocaleString()}</span>
-      <span class="pdp-price-orig">Rs. {Number(product.basePrice).toLocaleString()}</span>
+      <span class="pdp-price-sale" style="color:var(--sf-primary);">{store.currencySymbol} {Number(product.salePrice).toLocaleString()}</span>
+      <span class="pdp-price-orig">{store.currencySymbol} {Number(product.basePrice).toLocaleString()}</span>
     {:else}
-      <span class="pdp-price" style="color:var(--sf-primary);">Rs. {finalPrice.toLocaleString()}</span>
+      <span class="pdp-price" style="color:var(--sf-primary);">{store.currencySymbol} {finalPrice.toLocaleString()}</span>
     {/if}
   </div>
 
@@ -341,7 +341,7 @@
           >
             {variant.label}
             {#if variant.price !== null}
-              <span class="variant-price"> — Rs. {Number(variant.price).toLocaleString()}</span>
+              <span class="variant-price"> — {store.currencySymbol} {Number(variant.price).toLocaleString()}</span>
             {/if}
           </button>
         </div>
@@ -550,7 +550,7 @@
           </div>
           <div class="related-info">
             <p class="related-title">{rp.title}</p>
-            <p class="related-price" style="color:var(--sf-primary);">Rs. {Number(rp.basePrice).toLocaleString()}</p>
+            <p class="related-price" style="color:var(--sf-primary);">{store.currencySymbol} {Number(rp.basePrice).toLocaleString()}</p>
           </div>
         </a>
       {/each}

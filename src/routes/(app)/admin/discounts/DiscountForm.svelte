@@ -6,9 +6,10 @@
 		discount?: DiscountCode;
 		actionUrl: string;
 		saving?: boolean;
+		currencySymbol: string;
 	}
 
-	let { discount, actionUrl, saving = $bindable(false) }: Props = $props();
+	let { discount, actionUrl, saving = $bindable(false), currencySymbol }: Props = $props();
 
 	let code = $state(discount?.code ?? '');
 	let type = $state<'percentage' | 'fixed'>(discount?.type ?? 'percentage');
@@ -88,7 +89,7 @@
 					</label>
 					<label class="flex items-center gap-2 cursor-pointer">
 						<input type="radio" name="type" value="fixed" bind:group={type} />
-						<span class="text-sm">Fixed Amount (Rs.)</span>
+						<span class="text-sm">Fixed Amount ({currencySymbol})</span>
 					</label>
 				</div>
 			</div>
@@ -111,7 +112,7 @@
 						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] pr-12"
 					/>
 					<span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[--color-text-muted]">
-						{type === 'percentage' ? '%' : 'Rs.'}
+						{type === 'percentage' ? '%' : currencySymbol}
 					</span>
 				</div>
 			</div>

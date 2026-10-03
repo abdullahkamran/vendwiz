@@ -260,18 +260,18 @@
             <p style="font-size:0.8rem; font-weight:600; color:var(--sf-text); margin:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">{item.title}</p>
             <p style="font-size:0.75rem; color:var(--sf-muted); margin:2px 0 0;">×{item.quantity}</p>
           </div>
-          <span style="font-size:0.875rem; font-weight:600; white-space:nowrap; color:var(--sf-text);">Rs. {(item.price * item.quantity).toLocaleString()}</span>
+          <span style="font-size:0.875rem; font-weight:600; white-space:nowrap; color:var(--sf-text);">{store.currencySymbol} {(item.price * item.quantity).toLocaleString()}</span>
         </div>
       {/each}
       <div style="border-top:1px solid var(--sf-border); margin-top:16px; padding-top:16px;">
         <div style="display:flex; justify-content:space-between; font-size:0.875rem; margin-bottom:6px;">
           <span style="color:var(--sf-muted);">Subtotal</span>
-          <span style="color:var(--sf-text);">Rs. {subtotal.toLocaleString()}</span>
+          <span style="color:var(--sf-text);">{store.currencySymbol} {subtotal.toLocaleString()}</span>
         </div>
         {#if $cartDiscount}
           <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:var(--sf-success); margin-bottom:6px;">
             <span>Discount ({$cartDiscount.code})</span>
-            <span>–Rs. {$cartDiscount.amount.toLocaleString()}</span>
+            <span>–{store.currencySymbol} {$cartDiscount.amount.toLocaleString()}</span>
           </div>
         {/if}
         <p style="font-size:0.7rem; color:var(--sf-muted); margin:4px 0 0;">Shipping &amp; tax calculated server-side</p>
