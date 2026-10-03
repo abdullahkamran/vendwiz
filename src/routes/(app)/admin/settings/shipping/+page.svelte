@@ -63,7 +63,7 @@
 		<div class="space-y-4">
 			<div>
 				<label class="block text-sm font-medium text-[--color-text] mb-1" for="shippingFee">
-					Flat Shipping Fee (Rs.)
+					Flat Shipping Fee ({data.store.currencySymbol})
 				</label>
 				<input
 					id="shippingFee"
@@ -80,7 +80,7 @@
 
 			<div>
 				<label class="block text-sm font-medium text-[--color-text] mb-1" for="freeShippingThreshold">
-					Free Shipping Threshold (Rs., optional)
+					Free Shipping Threshold ({data.store.currencySymbol}, optional)
 				</label>
 				<input
 					id="freeShippingThreshold"
@@ -142,22 +142,22 @@
 		<h2 class="text-lg font-semibold mb-4">Order Total Preview</h2>
 		<div class="text-sm space-y-2 max-w-xs">
 			<div class="flex justify-between text-[--color-text-muted]">
-				<span>Subtotal (example Rs. 1,500)</span>
-				<span>Rs. {exampleSubtotal.toLocaleString()}</span>
+				<span>Subtotal (example {data.store.currencySymbol} 1,500)</span>
+				<span>{data.store.currencySymbol} {exampleSubtotal.toLocaleString()}</span>
 			</div>
 			<div class="flex justify-between text-[--color-text-muted]">
 				<span>Shipping{isFreeShipping ? ' (free!)' : ''}</span>
-				<span>Rs. {appliedShipping.toLocaleString()}</span>
+				<span>{data.store.currencySymbol} {appliedShipping.toLocaleString()}</span>
 			</div>
 			{#if taxRatePercent > 0}
 				<div class="flex justify-between text-[--color-text-muted]">
 					<span>{taxLabel} ({taxRatePercent}%)</span>
-					<span>Rs. {taxAmount.toFixed(2)}</span>
+					<span>{data.store.currencySymbol} {taxAmount.toFixed(2)}</span>
 				</div>
 			{/if}
 			<div class="flex justify-between font-semibold border-t border-[--color-border] pt-2 mt-2">
 				<span>Total</span>
-				<span>Rs. {previewTotal.toFixed(2)}</span>
+				<span>{data.store.currencySymbol} {previewTotal.toFixed(2)}</span>
 			</div>
 		</div>
 	</section>

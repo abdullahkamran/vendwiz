@@ -39,6 +39,24 @@
 		)
 	);
 
+	// Saved values derived from server data — update after each save without resetting user input
+	const savedTitles: Record<string, string> = $derived(
+		Object.fromEntries(
+			policyTypes.map((t) => {
+				const p = data.policies.find((pp: StorePolicy) => pp.type === t.id);
+				return [t.id, p?.title ?? t.label];
+			})
+		)
+	);
+	const savedContents: Record<string, string> = $derived(
+		Object.fromEntries(
+			policyTypes.map((t) => {
+				const p = data.policies.find((pp: StorePolicy) => pp.type === t.id);
+				return [t.id, p?.content ?? ''];
+			})
+		)
+	);
+
 	// Per-tab write / preview mode
 	let viewMode: Record<string, 'write' | 'preview'> = $state(
 		Object.fromEntries(policyTypes.map((t) => [t.id, 'write']))
@@ -99,7 +117,16 @@
 		{#each policyTypes as pt}
 			<button
 				type="button"
-				onclick={() => (activeTab = pt.id)}
+				onclick={() => {
+					if (activeTab === pt.id) return;
+					if (
+						titles[activeTab].trim() !== savedTitles[activeTab].trim() ||
+						contents[activeTab].trim() !== savedContents[activeTab].trim()
+					) {
+						if (!confirm('You have unsaved changes. Leave this tab?')) return;
+					}
+					activeTab = pt.id;
+				}}
 				class="px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px {activeTab === pt.id
 					? 'border-[--color-accent] text-[--color-accent]'
 					: 'border-transparent text-[--color-text-muted] hover:text-[--color-text]'}"
@@ -118,7 +145,7 @@
 				use:enhance={() => {
 					saving = true;
 					return async ({ update }) => {
-						await update();
+						await update({ reset: false });
 						saving = false;
 					};
 				}}
@@ -241,7 +268,7 @@
 						disabled={saving}
 						class="px-5 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
 					>
-						{saving ? 'Saving…' : 'Save {pt.label}'}
+						{saving ? 'Saving…' : `Save ${pt.label}`}
 					</button>
 				</div>
 			</form>

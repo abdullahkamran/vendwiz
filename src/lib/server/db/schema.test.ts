@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
-import { stores, products, storePolicies, POLICY_TYPES, discountCodes } from './schema';
+import { stores, products, categories, storePolicies, POLICY_TYPES, discountCodes } from './schema';
 import { buildSeo } from '../../seo';
 
 // ─── Schema structure ─────────────────────────────────────────────────────────
@@ -158,6 +158,25 @@ describe('POLICY_TYPES', () => {
 	it('does not include the URL slug "return" (that is the storefront alias)', () => {
 		// The DB value is return_refund; /policies/return is the URL slug.
 		expect(POLICY_TYPES).not.toContain('return');
+	});
+});
+
+// ─── categories schema — parentId column ─────────────────────────────────────
+
+describe('categories schema — parentId column', () => {
+	it('exposes parentId', () => {
+		const cols = getTableColumns(categories);
+		expect(cols).toHaveProperty('parentId');
+	});
+
+	it('parentId maps to the parent_id DB column name', () => {
+		const cols = getTableColumns(categories);
+		expect((cols.parentId as { name: string }).name).toBe('parent_id');
+	});
+
+	it('parentId is nullable (no notNull constraint)', () => {
+		const cols = getTableColumns(categories);
+		expect((cols.parentId as { notNull: boolean }).notNull).toBe(false);
 	});
 });
 

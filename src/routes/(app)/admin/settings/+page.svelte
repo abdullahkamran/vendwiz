@@ -1,17 +1,24 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData, ActionData } from './$types';
 	import type { CustomTheme } from '$lib/types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
+	// Normalize legacy 'basic' DB default → 'minimal' so a card is always selected
+	function normalizeTheme(t: string | null | undefined): string {
+		return t === 'basic' || !t ? 'minimal' : t;
+	}
+
 	let storeName = $state(data.store.name);
 	let description = $state(data.store.description ?? '');
 	let logoUrl = $state(data.store.logoUrl ?? '');
 	let faviconUrl = $state(data.store.faviconUrl ?? '');
-	let theme = $state(data.store.theme ?? 'minimal');
+	let theme = $state(normalizeTheme(data.store.theme));
 	let seoTitle = $state(data.store.seoTitle ?? '');
 	let seoDescription = $state(data.store.seoDescription ?? '');
+	let currencySymbol = $state(data.store.currencySymbol ?? 'Rs.');
 
 	const customThemeData = data.store.customTheme as CustomTheme | null;
 	let primaryColor = $state(customThemeData?.primaryColor ?? '#1a1a2e');
@@ -21,8 +28,11 @@
 	let uploadingLogo = $state(false);
 	let uploadingFavicon = $state(false);
 	let saving = $state(false);
+	let saveError = $state('');
+	let saveSuccess = $state(false);
 
-	const themes = [
+	// $derived so the Custom swatch tracks color picker changes live
+	let themes = $derived([
 		{
 			id: 'minimal',
 			label: 'Minimal',
@@ -45,7 +55,7 @@
 			description: 'Fun and vibrant'
 		},
 		{ id: 'custom', label: 'Custom', primary: primaryColor, accent: accentColor, description: 'Your colors' }
-	];
+	]);
 
 	async function uploadImage(file: File, type: 'logo' | 'favicon') {
 		const fd = new FormData();
@@ -87,12 +97,12 @@
 	}
 </script>
 
-{#if form?.error}
+{#if form?.error || saveError}
 	<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-		{form.error}
+		{form?.error ?? saveError}
 	</div>
 {/if}
-{#if form?.success}
+{#if form?.success || saveSuccess}
 	<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
 		Settings saved successfully.
 	</div>
@@ -101,12 +111,67 @@
 <form
 	method="POST"
 	action="?/update"
-	use:enhance={() => {
+	use:enhance={(args) => {
+		// Cancel the SvelteKit form action; use PUT /api/admin/settings directly so
+		// currencySymbol is included and state can be refreshed after save.
+		args.cancel();
+		saveError = '';
+		saveSuccess = false;
 		saving = true;
-		return async ({ update }) => {
-			await update();
-			saving = false;
-		};
+
+		const customTheme =
+			theme === 'custom' && primaryColor
+				? { primaryColor, accentColor, secondaryColor }
+				: null;
+
+		(async () => {
+			try {
+				const res = await fetch('/api/admin/settings', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						name: storeName,
+						description: description || null,
+						logoUrl: logoUrl || null,
+						faviconUrl: faviconUrl || null,
+						theme,
+						customTheme,
+						currencySymbol,
+						seoTitle: seoTitle || null,
+						seoDescription: seoDescription || null
+					})
+				});
+
+				if (!res.ok) {
+					const err = await res.json().catch(() => ({}));
+					saveError = (err as { message?: string }).message ?? 'Failed to save settings';
+					return;
+				}
+
+				// Re-run the load function so data.store reflects the saved values
+				await invalidateAll();
+
+				// Explicitly re-assign all reactive vars from the refreshed load data
+				storeName = data.store.name;
+				description = data.store.description ?? '';
+				logoUrl = data.store.logoUrl ?? '';
+				faviconUrl = data.store.faviconUrl ?? '';
+				theme = normalizeTheme(data.store.theme);
+				seoTitle = data.store.seoTitle ?? '';
+				seoDescription = data.store.seoDescription ?? '';
+				currencySymbol = data.store.currencySymbol ?? 'Rs.';
+				const refreshedCustomTheme = data.store.customTheme as CustomTheme | null;
+				primaryColor = refreshedCustomTheme?.primaryColor ?? '#1a1a2e';
+				accentColor = refreshedCustomTheme?.accentColor ?? '#e94560';
+				secondaryColor = refreshedCustomTheme?.secondaryColor ?? '#f5f5f5';
+
+				saveSuccess = true;
+			} catch {
+				saveError = 'Failed to save settings';
+			} finally {
+				saving = false;
+			}
+		})();
 	}}
 >
 	<!-- Branding -->
@@ -141,6 +206,23 @@
 					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent] resize-none"
 					placeholder="Tell customers about your store..."
 				></textarea>
+			</div>
+
+			<!-- Currency symbol -->
+			<div>
+				<label class="block text-sm font-medium text-[--color-text] mb-1" for="currencySymbol">
+					Currency symbol
+				</label>
+				<input
+					id="currencySymbol"
+					name="currencySymbol"
+					type="text"
+					maxlength="8"
+					bind:value={currencySymbol}
+					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
+					placeholder="Rs."
+				/>
+				<p class="text-xs text-[--color-text-muted] mt-1">Displayed next to prices across your storefront (max 8 characters).</p>
 			</div>
 
 			<!-- Logo upload -->
@@ -207,7 +289,7 @@
 
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
 			{#each themes as t}
-				<label class="cursor-pointer">
+				<label class="relative cursor-pointer">
 					<input type="radio" name="theme" value={t.id} bind:group={theme} class="sr-only" />
 					<div
 						class="rounded-xl border-2 p-3 transition-all {theme === t.id
@@ -221,6 +303,17 @@
 						<div class="text-sm font-medium">{t.label}</div>
 						<div class="text-xs text-[--color-text-muted]">{t.description}</div>
 					</div>
+					<!-- Checkmark badge on the selected card -->
+					{#if theme === t.id}
+						<div
+							class="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+							style="background-color: var(--color-accent);"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<polyline points="20 6 9 17 4 12"/>
+							</svg>
+						</div>
+					{/if}
 				</label>
 			{/each}
 		</div>

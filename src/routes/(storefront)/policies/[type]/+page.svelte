@@ -4,6 +4,7 @@
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
   let title = $derived(data.title);
+  let basePath = $derived(data.basePath ?? '');
 
   let openIndex = $state<number | null>(null);
   function toggleAccordion(i: number) {
@@ -36,7 +37,7 @@
             <span style="font-size:1.25rem; font-weight:400; flex-shrink:0; margin-left:16px;">{openIndex === i ? '−' : '+'}</span>
           </button>
           {#if openIndex === i}
-            <div class="policy-content prose" style="border-top:1px solid var(--sf-border); background:var(--sf-bg); padding:12px 16px 16px; color:var(--sf-text); font-size:0.9rem; line-height:1.7;">
+            <div class="policy-content" style="border-top:1px solid var(--sf-border); background:var(--sf-bg); padding:12px 16px 16px; color:var(--sf-text); font-size:0.9rem; line-height:1.7;">
               {@html item.answer}
             </div>
           {/if}
@@ -44,13 +45,13 @@
       {/each}
     </div>
   {:else}
-    <div class="policy-content prose" style="color:var(--sf-text); line-height:1.8; font-size:0.95rem;">
+    <div class="policy-content" style="color:var(--sf-text); line-height:1.8; font-size:0.95rem;">
       {@html data.html}
     </div>
   {/if}
 
   <div style="margin-top:48px; padding-top:24px; border-top:1px solid var(--sf-border);">
-    <a href="/" style="color:var(--sf-muted); text-decoration:none; font-size:0.875rem;">← Back to store</a>
+    <a href="{basePath || '/'}" style="color:var(--sf-muted); text-decoration:none; font-size:0.875rem;">← Back to store</a>
   </div>
 </div>
 

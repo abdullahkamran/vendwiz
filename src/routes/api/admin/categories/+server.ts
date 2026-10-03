@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 400 });
   }
 
-  const { name, slug, sortOrder } = parsed.data;
+  const { name, slug, sortOrder, parentId } = parsed.data;
 
   const [created] = await db
     .insert(categories)
@@ -66,7 +66,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       storeId: store.id,
       name,
       slug,
-      sortOrder: sortOrder ?? 0
+      sortOrder: sortOrder ?? 0,
+      parentId: parentId ?? null
     })
     .returning();
 

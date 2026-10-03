@@ -66,7 +66,7 @@
 			<div class="space-y-4">
 				<div>
 					<label class="block text-sm font-medium text-[--color-text] mb-1" for="shippingFee">
-						Flat Shipping Fee (Rs.)
+						Flat Shipping Fee ({data.store.currencySymbol})
 					</label>
 					<input
 						id="shippingFee"
@@ -83,7 +83,7 @@
 
 				<div>
 					<label class="block text-sm font-medium text-[--color-text] mb-1" for="freeShippingThreshold">
-						Free Shipping Threshold (Rs., optional)
+						Free Shipping Threshold ({data.store.currencySymbol}, optional)
 					</label>
 					<input
 						id="freeShippingThreshold"

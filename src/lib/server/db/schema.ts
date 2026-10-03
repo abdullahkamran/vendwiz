@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, jsonb, numeric, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, timestamp, jsonb, numeric, pgEnum, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -123,6 +123,10 @@ export const licenseKeys = pgTable('license_keys', {
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
+/** Canonical DB values for the policy type column. */
+export const POLICY_TYPES = ['return_refund', 'shipping', 'terms', 'faq'] as const;
+export type StorePolicyType = (typeof POLICY_TYPES)[number];
+
 // Store policy pages (return policy, shipping info, TOS, FAQ)
 export const storePolicies = pgTable('store_policies', {
 	id: text('id').primaryKey(),
@@ -131,7 +135,7 @@ export const storePolicies = pgTable('store_policies', {
 		.references(() => stores.id, { onDelete: 'cascade' }),
 	type: text('type').notNull(), // 'return_refund' | 'shipping' | 'terms' | 'faq'
 	title: text('title').notNull(),
-	content: text('content').notNull(), // HTML from WYSIWYG
+	content: text('content').notNull(), // Markdown content (rendered to HTML at read time)
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
@@ -147,6 +151,8 @@ export const categories = pgTable('categories', {
 	description: text('description'),
 	imageUrl: text('image_url'),
 	sortOrder: integer('sort_order').notNull().default(0),
+	// Nullable self-reference for subcategory support
+	parentId: text('parent_id').references((): AnyPgColumn => categories.id, { onDelete: 'set null' }),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
@@ -367,7 +373,13 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
 	store: one(stores, { fields: [categories.storeId], references: [stores.id] }),
-	products: many(products)
+	products: many(products),
+	parent: one(categories, {
+		fields: [categories.parentId],
+		references: [categories.id],
+		relationName: 'category_children'
+	}),
+	children: many(categories, { relationName: 'category_children' })
 }));
 
 // ─── Convenience type aliases ─────────────────────────────────────────────────
