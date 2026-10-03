@@ -18,10 +18,15 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     throw error(404, 'Policy not found');
   }
 
+  // No store resolved for this host/path: a clean 404, not a TypeError 500.
+  if (!locals.store) {
+    throw error(404, 'Store not found');
+  }
+
   const [policy] = await db
     .select()
     .from(storePolicies)
-    .where(and(eq(storePolicies.storeId, locals.store!.id), eq(storePolicies.type, TYPE_ALIAS[type] ?? type)))
+    .where(and(eq(storePolicies.storeId, locals.store.id), eq(storePolicies.type, TYPE_ALIAS[type] ?? type)))
     .limit(1);
 
   if (!policy || !policy.content) {
