@@ -10,6 +10,7 @@
   let totalPages = $derived(data.totalPages);
   let currentPage = $derived(data.page);
   let store = $derived(data.store);
+  let basePath = $derived(data.basePath ?? '');
 
   // Local filter state (synced from server on each navigation)
   let q = $state(data.filters.q);
@@ -41,7 +42,7 @@
     if (onSaleOnly) params.set('onSale', '1');
     if (sort && sort !== 'newest') params.set('sort', sort);
     if (newPage > 1) params.set('page', String(newPage));
-    goto(`/products?${params.toString()}`, { keepFocus: true });
+    goto(`${basePath}/products?${params.toString()}`, { keepFocus: true });
   }
 
   function clearFilters() {
@@ -51,9 +52,13 @@
     inStockOnly = false;
     onSaleOnly = false;
     sort = 'newest';
-    goto('/products');
+    goto(`${basePath}/products`);
     filterOpen = false;
   }
+
+  // Per-product "just added" feedback state
+  let added = $state<Record<string, boolean>>({});
+  let addedTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
   function addToCart(item: (typeof items)[0]) {
     cart.addItem({
@@ -64,6 +69,10 @@
       price: Number(item.basePrice),
       quantity: 1
     });
+    // Show "Added ✓" for ~1 s, then revert
+    added[item.id] = true;
+    clearTimeout(addedTimers[item.id]);
+    addedTimers[item.id] = setTimeout(() => { added[item.id] = false; }, 1000);
   }
 
   let cardLayout = $derived(
@@ -271,7 +280,7 @@
               </div>
             {/if}
 
-            <a href="/products/{product.slug}" class="product-card product-card--{cardLayout}" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
+            <a href="{basePath}/products/{product.slug}" class="product-card product-card--{cardLayout}" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
               <div class="product-card-img-wrap">
                 {#if product.imageUrl}
                   <img src={product.imageUrl} alt={product.title} class="product-card-img" />
@@ -301,9 +310,10 @@
                 onclick={() => addToCart(product)}
                 disabled={product.stockQty === 0}
                 class="btn-add-cart"
+                class:btn-add-cart--added={added[product.id]}
                 style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-radius);"
               >
-                Add to Cart
+                {added[product.id] ? 'Added ✓' : 'Add to Cart'}
               </button>
             </div>
           </div>
@@ -726,6 +736,11 @@
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
+    transition: transform 0.15s, background-color 0.15s, opacity 0.15s;
+  }
+  .btn-add-cart--added {
+    transform: scale(1.06);
+    opacity: 0.88;
   }
   .btn-add-cart:disabled {
     opacity: 0.4;

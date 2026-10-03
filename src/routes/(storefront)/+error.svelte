@@ -1,5 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  // basePath may be absent when the error fires before the layout load completes
+  let basePath = $derived(($page.data as { basePath?: string }).basePath ?? '');
 </script>
 
 <svelte:head>
@@ -15,7 +17,7 @@
       {$page.error?.message ?? 'Something went wrong'}
     </p>
     <a
-      href="/"
+      href="{basePath || '/'}"
       style="display:inline-block; background:var(--sf-primary,#0d6efd); color:var(--sf-on-primary,#fff); padding:10px 24px; border-radius:var(--sf-radius,6px); text-decoration:none; font-weight:600; font-size:0.9375rem;"
     >
       Back to home

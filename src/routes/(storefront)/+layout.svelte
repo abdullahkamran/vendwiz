@@ -5,6 +5,7 @@
   import { themeColorFor } from '$lib/seo';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { buildCategoryTree } from '$lib/utils/category-tree';
 
   // Strict allow-list guard for CSS color values injected via the html style tag
   // in svelte:head.  Any value that does not match a recognised color syntax is
@@ -41,6 +42,9 @@
   let categories = $derived(data.categories ?? []);
   let promoCode = $derived(data.promoCode ?? null);
   let basePath = $derived(data.basePath ?? '');
+
+  // Build parent→children tree for hierarchical nav rendering
+  let categoryTree = $derived(buildCategoryTree(categories));
 
   // Cart item count
   let itemCount = $derived($cart.reduce((sum, item) => sum + item.quantity, 0));
@@ -148,8 +152,11 @@
   </div>
   <div class="sf-drawer-body">
     <a href="{basePath}/products" onclick={closeDrawer} class="sf-drawer-link">All Products</a>
-    {#each categories as cat}
+    {#each categoryTree as cat}
       <a href="{basePath}/products?category={cat.id}" onclick={closeDrawer} class="sf-drawer-link">{cat.name}</a>
+      {#each cat.children as child}
+        <a href="{basePath}/products?category={child.id}" onclick={closeDrawer} class="sf-drawer-link sf-drawer-sublink">{child.name}</a>
+      {/each}
     {/each}
     <hr class="sf-drawer-sep" />
     <a href="{basePath}/policies/return" onclick={closeDrawer} class="sf-drawer-link">Return Policy</a>
@@ -215,11 +222,17 @@
               class="sf-dh-navlink"
               class:sf-dh-navlink--active={localPathname === '/products' && !catParam}
             >All Products</a>
-            {#each categories as cat}
+            {#each categoryTree as cat}
               <a href="{basePath}/products?category={cat.id}"
                 class="sf-dh-navlink"
                 class:sf-dh-navlink--active={localPathname === '/products' && catParam === cat.id}
               >{cat.name}</a>
+              {#each cat.children as child}
+                <a href="{basePath}/products?category={child.id}"
+                  class="sf-dh-navlink sf-dh-navlink--sub"
+                  class:sf-dh-navlink--active={localPathname === '/products' && catParam === child.id}
+                >{child.name}</a>
+              {/each}
             {/each}
           </nav>
         </div>
@@ -462,6 +475,15 @@
     background: var(--sf-bg, #f8f9fa);
     color: var(--sf-primary, #0d6efd);
   }
+  /* Child categories: indented under their parent */
+  .sf-drawer-sublink {
+    padding-left: 36px;
+    font-size: 0.875rem;
+    color: var(--sf-muted, #6c757d);
+  }
+  .sf-drawer-sublink:hover {
+    color: var(--sf-primary, #0d6efd);
+  }
   .sf-drawer-sep {
     border: none;
     border-top: 1px solid var(--sf-border, #dee2e6);
@@ -551,6 +573,12 @@
     color: var(--sf-primary, #0d6efd);
     border-bottom-color: var(--sf-primary, #0d6efd);
   }
+  /* Child category links in the desktop nav: slightly smaller and muted */
+  .sf-dh-navlink--sub {
+    font-size: 0.8125rem;
+    color: var(--sf-muted, #6c757d);
+  }
+  .sf-dh-navlink--sub:hover { color: var(--sf-primary, #0d6efd); }
 
   /* Desktop header search */
   .sf-dh-search-wrap { display: flex; }

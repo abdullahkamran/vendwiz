@@ -6,9 +6,10 @@
 
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
+  let basePath = $derived(data.basePath ?? '');
 
   onMount(() => {
-    if ($cart.length === 0) goto('/');
+    if ($cart.length === 0) goto(basePath || '/');
   });
 
   let name = $state('');
@@ -119,7 +120,7 @@
       if (res.ok && (json as { orderRef?: string }).orderRef) {
         cart.clear();
         cartDiscount.clear();
-        goto(`/checkout/confirmation?ref=${(json as { orderRef: string }).orderRef}`);
+        goto(`${basePath}/checkout/confirmation?ref=${(json as { orderRef: string }).orderRef}`);
       } else {
         errorMsg = (json as { error?: string }).error ?? 'Order failed. Please try again.';
       }
