@@ -6,7 +6,13 @@ import { eq, asc, and } from 'drizzle-orm';
 import { deriveBasePath } from '$lib/utils/storefront-path';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
+  // Derive basePath early so we can distinguish path-based storefront access
+  // from subdomain access when the store row is missing.
+  const basePath = deriveBasePath(url.pathname);
+
   if (!locals.isStorefront || !locals.store) {
+    // Path-based /store/<slug> with no matching store row — show a 404 page
+    if (basePath) throw error(404, 'Store not found');
     // Not on a storefront subdomain — redirect to the auth flow
     throw redirect(302, `/login`);
   }
@@ -33,10 +39,6 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
       )
     )
     .limit(1);
-
-  // Derive basePath: non-empty only on path-based access (e.g. /store/mystore).
-  // On subdomain access the original pathname is / or /products etc., so no match.
-  const basePath = deriveBasePath(url.pathname);
 
   return {
     store,
