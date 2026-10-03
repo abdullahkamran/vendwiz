@@ -259,7 +259,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (locals.store.whatsapp) {
     const waPhone = locals.store.whatsapp.replace(/\D/g, '');
     const msg = encodeURIComponent(
-      `New order #${orderNumber} from ${customerName} (${customerPhone}). Total: Rs. ${total.toFixed(0)}`
+      `New order #${orderNumber} from ${customerName} (${customerPhone}). Total: ${locals.store.currencySymbol} ${total.toFixed(0)}`
     );
     whatsappUrl = `https://wa.me/${waPhone}?text=${msg}`;
   }

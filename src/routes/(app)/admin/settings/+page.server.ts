@@ -28,6 +28,7 @@ export const actions: Actions = {
 		const secondaryColor = (data.get('secondaryColor') as string)?.trim() || null;
 		const seoTitle = (data.get('seoTitle') as string)?.trim() || null;
 		const seoDescription = (data.get('seoDescription') as string)?.trim() || null;
+		const currencySymbol = (data.get('currencySymbol') as string)?.trim() || 'Rs.';
 
 		if (!name || name.length < 1) {
 			return fail(400, { error: 'Store name is required' });
@@ -47,6 +48,7 @@ export const actions: Actions = {
 				faviconUrl,
 				theme,
 				customTheme,
+				currencySymbol,
 				seoTitle,
 				seoDescription,
 				updatedAt: new Date()
