@@ -70,6 +70,48 @@ describe('stores schema — currencySymbol column', () => {
 	});
 });
 
+// ─── discountCodes schema ─────────────────────────────────────────────────────
+
+import { discountCodes } from './schema';
+
+describe('discountCodes schema — required columns for the create/update actions', () => {
+	it('exports discountCodes table', () => {
+		expect(discountCodes).toBeDefined();
+	});
+
+	it('has id column', () => {
+		const cols = getTableColumns(discountCodes);
+		expect(cols).toHaveProperty('id');
+	});
+
+	it('has storeId column mapping to store_id', () => {
+		const cols = getTableColumns(discountCodes);
+		expect(cols).toHaveProperty('storeId');
+		expect((cols.storeId as { name: string }).name).toBe('store_id');
+	});
+
+	it('has code column', () => {
+		const cols = getTableColumns(discountCodes);
+		expect(cols).toHaveProperty('code');
+	});
+
+	it('has type column (discount_type enum)', () => {
+		const cols = getTableColumns(discountCodes);
+		expect(cols).toHaveProperty('type');
+	});
+
+	it('has value column', () => {
+		const cols = getTableColumns(discountCodes);
+		expect(cols).toHaveProperty('value');
+	});
+
+	it('has isActive column mapping to is_active', () => {
+		const cols = getTableColumns(discountCodes);
+		expect(cols).toHaveProperty('isActive');
+		expect((cols.isActive as { name: string }).name).toBe('is_active');
+	});
+});
+
 // ─── buildSeo integration with schema-shaped store objects ───────────────────
 
 describe('buildSeo — uses schema-aligned store fields', () => {

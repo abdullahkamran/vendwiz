@@ -21,5 +21,5 @@
 		</div>
 	{/if}
 
-	<DiscountForm actionUrl="?/default" bind:saving />
+	<DiscountForm actionUrl="?/create" bind:saving />
 </div>

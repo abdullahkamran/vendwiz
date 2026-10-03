@@ -15,6 +15,17 @@
 	let taxLabel = $state(data.store.taxLabel ?? 'Tax');
 	let saving = $state(false);
 
+	// Re-sync inputs from the server-refreshed data after enhance calls update().
+	// Without this, the $state vars keep their pre-save values when data.store changes.
+	$effect(() => {
+		shippingFee = parseFloat(data.store.shippingFee) || 0;
+		freeShippingThreshold = data.store.freeShippingThreshold
+			? parseFloat(data.store.freeShippingThreshold)
+			: '';
+		taxRatePercent = data.store.taxRate ? parseFloat(data.store.taxRate) * 100 : 0;
+		taxLabel = data.store.taxLabel ?? 'Tax';
+	});
+
 	const exampleSubtotal = 1500;
 	let isFreeShipping = $derived(
 		freeShippingThreshold !== '' && exampleSubtotal >= Number(freeShippingThreshold)
@@ -44,7 +55,7 @@
 		use:enhance={() => {
 			saving = true;
 			return async ({ update }) => {
-				await update();
+				await update({ reset: false });
 				saving = false;
 			};
 		}}
@@ -64,7 +75,7 @@
 						min="0"
 						step="0.01"
 						bind:value={shippingFee}
-						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
+						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
 						placeholder="0"
 					/>
 					<p class="text-xs text-[--color-text-muted] mt-1">Applied to every order. Set to 0 for free shipping on all orders.</p>
@@ -81,7 +92,7 @@
 						min="0"
 						step="0.01"
 						bind:value={freeShippingThreshold}
-						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
+						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
 						placeholder="Leave blank to disable free shipping threshold"
 					/>
 					<p class="text-xs text-[--color-text-muted] mt-1">Orders above this amount get free shipping. Leave blank to disable.</p>
@@ -105,7 +116,7 @@
 						max="100"
 						step="0.01"
 						bind:value={taxRatePercent}
-						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
+						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
 						placeholder="e.g. 17 for 17% GST"
 					/>
 					<p class="text-xs text-[--color-text-muted] mt-1">Enter as percentage (e.g. 17 for 17%). Set to 0 to disable tax.</p>
@@ -120,7 +131,7 @@
 						name="taxLabel"
 						type="text"
 						bind:value={taxLabel}
-						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
+						class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
 						placeholder="GST / VAT / Sales Tax"
 						maxlength="30"
 					/>
@@ -158,7 +169,7 @@
 			<button
 				type="submit"
 				disabled={saving}
-				class="px-5 py-2 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+				class="px-5 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
 			>
 				{saving ? 'Saving…' : 'Save Shipping & Tax'}
 			</button>

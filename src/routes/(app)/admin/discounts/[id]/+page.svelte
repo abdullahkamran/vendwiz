@@ -21,5 +21,5 @@
 		</div>
 	{/if}
 
-	<DiscountForm discount={data.discount} actionUrl="?/default" bind:saving />
+	<DiscountForm discount={data.discount} actionUrl="?/update" bind:saving />
 </div>

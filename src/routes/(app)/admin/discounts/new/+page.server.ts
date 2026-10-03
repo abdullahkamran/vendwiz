@@ -10,7 +10,7 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	create: async ({ request, locals }) => {
 		const data = await request.formData();
 
 		const code = (data.get('code') as string)?.trim().toUpperCase();
