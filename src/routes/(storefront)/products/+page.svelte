@@ -61,6 +61,7 @@
   let addedTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
   function addToCart(item: (typeof items)[0]) {
+    if (item.stockQty === 0) return;
     cart.addItem({
       productId: item.id,
       title: item.title,

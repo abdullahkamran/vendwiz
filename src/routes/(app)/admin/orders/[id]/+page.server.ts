@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		: null;
 	const waUrl = store.whatsapp && waMessage ? buildWhatsAppUrl(store.whatsapp, decodeURIComponent(waMessage)) : null;
 
-	return { order, items, allowedNext, waUrl, storeWhatsapp: store.whatsapp };
+	return { order, items, allowedNext, waUrl, storeWhatsapp: store.whatsapp, store };
 };
 
 export const actions: Actions = {

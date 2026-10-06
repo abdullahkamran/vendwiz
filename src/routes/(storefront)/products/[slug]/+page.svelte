@@ -71,6 +71,7 @@
   }
 
   function addToCart() {
+    if (stockStatus === 'out') return;
     cart.addItem({
       productId: product.id,
       title: product.title,
