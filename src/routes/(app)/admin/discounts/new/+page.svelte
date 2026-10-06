@@ -21,5 +21,5 @@
 		</div>
 	{/if}
 
-	<DiscountForm actionUrl="?/default" bind:saving currencySymbol={data.store.currencySymbol} />
+	<DiscountForm actionUrl="?/create" bind:saving currencySymbol={data.store.currencySymbol} />
 </div>
