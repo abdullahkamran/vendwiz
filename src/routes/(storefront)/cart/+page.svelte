@@ -15,7 +15,7 @@
 
   onMount(async () => {
     try {
-      const res = await fetch('/api/storefront/shipping-config');
+      const res = await fetch(`${basePath}/api/storefront/shipping-config`);
       if (res.ok) {
         const cfg = await res.json();
         shippingFee = Number(cfg.flatRate) || 0;
@@ -32,7 +32,7 @@
     discountLoading = true;
     discountMsg = '';
     try {
-      const res = await fetch(`/api/storefront/discount?code=${encodeURIComponent(discountCode.trim())}`);
+      const res = await fetch(`${basePath}/api/storefront/discount?code=${encodeURIComponent(discountCode.trim())}`);
       if (res.ok) {
         const d = await res.json();
         const discAmt =
@@ -45,7 +45,7 @@
           value: Number(d.value),
           amount: discAmt
         });
-        discountMsg = `Discount applied: –Rs. ${discAmt.toLocaleString()}`;
+        discountMsg = `Discount applied: –${store.currencySymbol} ${discAmt.toLocaleString()}`;
       } else {
         discountMsg = 'Invalid or expired discount code.';
         cartDiscount.clear();
@@ -115,10 +115,10 @@
                 </p>
               {/if}
               <p class="cart-item-price" style="color:var(--sf-primary);">
-                Rs. {(item.price * item.quantity).toLocaleString()}
+                {store.currencySymbol} {(item.price * item.quantity).toLocaleString()}
               </p>
               {#if item.quantity > 1}
-                <p class="cart-item-unit">Rs. {item.price.toLocaleString()} each</p>
+                <p class="cart-item-unit">{store.currencySymbol} {item.price.toLocaleString()} each</p>
               {/if}
             </div>
 
@@ -187,27 +187,27 @@
           <div class="cart-summary-lines">
             <div class="cart-summary-line">
               <span class="cart-line-label">Subtotal</span>
-              <span class="cart-line-val">Rs. {subtotal.toLocaleString()}</span>
+              <span class="cart-line-val">{store.currencySymbol} {subtotal.toLocaleString()}</span>
             </div>
             {#if discountAmount > 0}
               <div class="cart-summary-line" style="color:var(--sf-success);">
                 <span>Discount</span>
-                <span>–Rs. {discountAmount.toLocaleString()}</span>
+                <span>–{store.currencySymbol} {discountAmount.toLocaleString()}</span>
               </div>
             {/if}
             <div class="cart-summary-line">
               <span class="cart-line-label">
                 Shipping
                 {#if freeShippingThreshold !== null && subtotal < freeShippingThreshold}
-                  <span class="cart-free-hint">Free over Rs. {freeShippingThreshold.toLocaleString()}</span>
+                  <span class="cart-free-hint">Free over {store.currencySymbol} {freeShippingThreshold.toLocaleString()}</span>
                 {/if}
               </span>
-              <span class="cart-line-val">{effectiveShipping === 0 ? 'Free' : `Rs. ${effectiveShipping.toLocaleString()}`}</span>
+              <span class="cart-line-val">{effectiveShipping === 0 ? 'Free' : `${store.currencySymbol} ${effectiveShipping.toLocaleString()}`}</span>
             </div>
             {#if taxAmount > 0}
               <div class="cart-summary-line">
                 <span class="cart-line-label">Tax ({(taxRate * 100).toFixed(1)}%)</span>
-                <span class="cart-line-val">Rs. {taxAmount.toLocaleString()}</span>
+                <span class="cart-line-val">{store.currencySymbol} {taxAmount.toLocaleString()}</span>
               </div>
             {/if}
           </div>
@@ -215,7 +215,7 @@
           <!-- Total -->
           <div class="cart-total">
             <span>Total</span>
-            <span>Rs. {Math.max(0, total).toLocaleString()}</span>
+            <span>{store.currencySymbol} {Math.max(0, total).toLocaleString()}</span>
           </div>
 
           <!-- CTA -->

@@ -102,7 +102,7 @@
     reviewSubmitting = true;
     reviewMsg = '';
     try {
-      const res = await fetch('/api/storefront/reviews', {
+      const res = await fetch(`${basePath}/api/storefront/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
