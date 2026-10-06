@@ -52,13 +52,26 @@ describe('reroute', () => {
 		expect(reroute(makeEvent('http://localhost/store/mystore/admin'))).toBeUndefined();
 	});
 
-	it('/store/mystore/api/admin/products → undefined (API paths blocked)', () => {
+	it('/store/mystore/api/admin/products → undefined (API admin paths blocked)', () => {
 		expect(reroute(makeEvent('http://localhost/store/mystore/api/admin/products'))).toBeUndefined();
 	});
 
-	it('/store/mystore/api/storefront/checkout → undefined (storefront API paths also blocked)', () => {
+	it('/store/mystore/api/admin → undefined (exact /api/admin blocked)', () => {
+		expect(reroute(makeEvent('http://localhost/store/mystore/api/admin'))).toBeUndefined();
+	});
+
+	// Storefront API paths must be rerouted so the server hook can resolve
+	// locals.store from the slug in the original URL (bug fix: was blocked by
+	// the bare '/api' entry that has been narrowed to '/api/admin').
+	it('/store/mystore/api/storefront/checkout → /api/storefront/checkout (storefront API rerouted)', () => {
 		expect(
 			reroute(makeEvent('http://localhost/store/mystore/api/storefront/checkout'))
-		).toBeUndefined();
+		).toBe('/api/storefront/checkout');
+	});
+
+	// Non-/store URLs bypass the regex entirely — basePath is '' on subdomain
+	// access and the reroute hook must not interfere.
+	it('/api/storefront/checkout → undefined (not a /store path, regex short-circuits)', () => {
+		expect(reroute(makeEvent('http://localhost/api/storefront/checkout'))).toBeUndefined();
 	});
 });

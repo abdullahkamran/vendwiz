@@ -3,9 +3,10 @@ import type { Reroute } from '@sveltejs/kit';
 // Sub-paths under /store/<slug>/ that must never be rerouted.
 // Rerouting /store/<victim>/admin/... would route the request to the real
 // admin handler while subdomainHook injects victim's store into locals —
-// a cross-tenant IDOR.  Return undefined so SvelteKit keeps the original
-// path and returns a 404 (no matching route exists).
-const STOREFRONT_BLOCKED_PREFIXES = ['/admin', '/api'];
+// a cross-tenant IDOR.  Only block admin surfaces; storefront API paths
+// (/api/storefront/*) are intentionally rerouted so the server hook can
+// resolve locals.store from the slug in the original URL.
+const STOREFRONT_BLOCKED_PREFIXES = ['/admin', '/api/admin'];
 
 export const reroute: Reroute = ({ url }) => {
 	const match = url.pathname.match(/^\/store\/([^/]+)(\/.*)?$/);

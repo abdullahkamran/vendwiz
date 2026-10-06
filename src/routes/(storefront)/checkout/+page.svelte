@@ -111,7 +111,7 @@
           variantSelections: i.variantSelections
         }))
       };
-      const res = await fetch('/api/storefront/checkout', {
+      const res = await fetch(`${basePath}/api/storefront/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
