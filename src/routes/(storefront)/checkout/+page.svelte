@@ -8,8 +8,23 @@
   let store = $derived(data.store);
   let basePath = $derived(data.basePath ?? '');
 
-  onMount(() => {
-    if ($cart.length === 0) goto(basePath || '/');
+  let shippingFee = $state(0);
+  let taxRate = $state(0);
+  let freeShippingThreshold = $state<number | null>(null);
+
+  onMount(async () => {
+    if ($cart.length === 0) { goto(basePath || '/'); return; }
+    try {
+      const res = await fetch(`${basePath}/api/storefront/shipping-config`);
+      if (res.ok) {
+        const cfg = await res.json();
+        shippingFee = Number(cfg.flatRate) || 0;
+        taxRate = Number(cfg.taxRate) || 0;
+        freeShippingThreshold = cfg.freeShippingThreshold ? Number(cfg.freeShippingThreshold) : null;
+      }
+    } catch {
+      // non-critical — totals default to zero
+    }
   });
 
   let name = $state('');
@@ -132,6 +147,12 @@
   }
 
   let subtotal = $derived($cart.reduce((s, i) => s + i.price * i.quantity, 0));
+  let discountAmount = $derived($cartDiscount?.amount ?? 0);
+  let effectiveShipping = $derived(
+    freeShippingThreshold !== null && subtotal >= freeShippingThreshold ? 0 : shippingFee
+  );
+  let taxAmount = $derived((subtotal - discountAmount) * taxRate);
+  let total = $derived((subtotal - discountAmount) + taxAmount + effectiveShipping);
 </script>
 
 <svelte:head>
@@ -271,11 +292,29 @@
         </div>
         {#if $cartDiscount}
           <div style="display:flex; justify-content:space-between; font-size:0.875rem; color:var(--sf-success); margin-bottom:6px;">
-            <span>Discount ({$cartDiscount.code})</span>
+            <span>{$cartDiscount.type === 'percent' ? `Discount (${$cartDiscount.value}%)` : 'Discount'} ({$cartDiscount.code})</span>
             <span>–{store.currencySymbol} {$cartDiscount.amount.toLocaleString()}</span>
           </div>
         {/if}
-        <p style="font-size:0.7rem; color:var(--sf-muted); margin:4px 0 0;">Shipping &amp; tax calculated server-side</p>
+        <div style="display:flex; justify-content:space-between; font-size:0.875rem; margin-bottom:6px;">
+          <span style="color:var(--sf-muted);">
+            Shipping
+            {#if freeShippingThreshold !== null && subtotal < freeShippingThreshold}
+              <span style="font-size:0.7rem; display:block; color:var(--sf-muted);">Free over {store.currencySymbol} {freeShippingThreshold.toLocaleString()}</span>
+            {/if}
+          </span>
+          <span style="color:var(--sf-text);">{effectiveShipping === 0 ? 'Free' : `${store.currencySymbol} ${effectiveShipping.toLocaleString()}`}</span>
+        </div>
+        {#if taxAmount > 0}
+          <div style="display:flex; justify-content:space-between; font-size:0.875rem; margin-bottom:6px;">
+            <span style="color:var(--sf-muted);">Tax ({(taxRate * 100).toFixed(1)}%)</span>
+            <span style="color:var(--sf-text);">{store.currencySymbol} {taxAmount.toLocaleString()}</span>
+          </div>
+        {/if}
+        <div style="border-top:1px solid var(--sf-border); margin-top:12px; padding-top:12px; display:flex; justify-content:space-between; font-size:1rem; font-weight:700; color:var(--sf-text);">
+          <span>Total</span>
+          <span>{store.currencySymbol} {Math.max(0, total).toLocaleString()}</span>
+        </div>
       </div>
     </div>
     </div><!-- .checkout-summary-col -->

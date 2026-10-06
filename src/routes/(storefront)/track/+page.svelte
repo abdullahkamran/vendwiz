@@ -95,22 +95,29 @@
         </div>
       </div>
 
-      <!-- Status timeline -->
+      <!-- Status timeline / cancelled card -->
       <div style="margin-bottom:24px;">
         <p style="font-size:0.8rem; font-weight:600; color:#374151; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:16px;">Status</p>
-        <div style="position:relative; display:flex; justify-content:space-between;">
-          <div style="position:absolute; top:12px; left:0; right:0; height:2px; background:#e5e7eb; z-index:0;"></div>
-          <div style="position:absolute; top:12px; left:0; height:2px; background:var(--store-primary,#111827); z-index:1; width:{Math.max(0, stepIndex(result.status)) / (statusSteps.length - 1) * 100}%;"></div>
-          {#each statusSteps as step, i}
-            {@const active = i <= stepIndex(result.status)}
-            <div style="display:flex; flex-direction:column; align-items:center; gap:8px; position:relative; z-index:2;">
-              <div style="width:24px; height:24px; border-radius:50%; background:{active ? 'var(--store-primary,#111827)' : '#e5e7eb'}; border:2px solid {active ? 'var(--store-primary,#111827)' : '#d1d5db'}; display:flex; align-items:center; justify-content:center;">
-                {#if active}<span style="color:#fff; font-size:0.7rem;">✓</span>{/if}
+        {#if result.status === 'cancelled'}
+          <div class="track-cancelled" data-testid="order-cancelled" style="background:#fee2e2; border:1px solid #fca5a5; border-radius:10px; padding:20px; text-align:center; color:#dc2626;">
+            <p style="font-size:1.25rem; font-weight:800; margin:0 0 8px;">Order Cancelled</p>
+            <p style="font-size:0.875rem; margin:0;">This order has been cancelled. If you have questions, please contact the store.</p>
+          </div>
+        {:else}
+          <div style="position:relative; display:flex; justify-content:space-between;">
+            <div style="position:absolute; top:12px; left:0; right:0; height:2px; background:#e5e7eb; z-index:0;"></div>
+            <div style="position:absolute; top:12px; left:0; height:2px; background:var(--store-primary,#111827); z-index:1; width:{Math.max(0, stepIndex(result.status)) / (statusSteps.length - 1) * 100}%;"></div>
+            {#each statusSteps as step, i}
+              {@const active = i <= stepIndex(result.status)}
+              <div style="display:flex; flex-direction:column; align-items:center; gap:8px; position:relative; z-index:2;">
+                <div style="width:24px; height:24px; border-radius:50%; background:{active ? 'var(--store-primary,#111827)' : '#e5e7eb'}; border:2px solid {active ? 'var(--store-primary,#111827)' : '#d1d5db'}; display:flex; align-items:center; justify-content:center;">
+                  {#if active}<span style="color:#fff; font-size:0.7rem;">✓</span>{/if}
+                </div>
+                <span style="font-size:0.7rem; color:{active ? '#111827' : '#9ca3af'}; font-weight:{active ? '600' : '400'}; white-space:nowrap;">{statusLabels[step]}</span>
               </div>
-              <span style="font-size:0.7rem; color:{active ? '#111827' : '#9ca3af'}; font-weight:{active ? '600' : '400'}; white-space:nowrap;">{statusLabels[step]}</span>
-            </div>
-          {/each}
-        </div>
+            {/each}
+          </div>
+        {/if}
       </div>
 
       <!-- Items summary -->

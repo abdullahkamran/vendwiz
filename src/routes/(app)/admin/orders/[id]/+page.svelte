@@ -102,11 +102,11 @@
 									<div class="text-xs text-gray-500">{item.variantLabel}</div>
 								{/if}
 								<div class="text-sm text-gray-600 mt-1">
-									Qty: {item.quantity} × PKR {item.unitPrice}
+									Qty: {item.quantity} × {data.store.currencySymbol} {item.unitPrice}
 								</div>
 							</div>
 							<div class="font-medium text-gray-900">
-								PKR {item.subtotal}
+								{data.store.currencySymbol} {item.subtotal}
 							</div>
 						</div>
 					{/each}
@@ -119,25 +119,25 @@
 				<dl class="space-y-2 text-sm">
 					<div class="flex justify-between">
 						<dt class="text-gray-500">Subtotal</dt>
-						<dd>PKR {data.order.subtotal}</dd>
+						<dd>{data.store.currencySymbol} {data.order.subtotal}</dd>
 					</div>
 					<div class="flex justify-between">
 						<dt class="text-gray-500">Shipping</dt>
-						<dd>PKR {data.order.shippingFee}</dd>
+						<dd>{data.store.currencySymbol} {data.order.shippingFee}</dd>
 					</div>
 					<div class="flex justify-between">
 						<dt class="text-gray-500">Tax</dt>
-						<dd>PKR {data.order.taxAmount}</dd>
+						<dd>{data.store.currencySymbol} {data.order.taxAmount}</dd>
 					</div>
 					{#if parseFloat(data.order.discountAmount) > 0}
 						<div class="flex justify-between text-green-600">
 							<dt>Discount {data.order.discountCodeId ? `(${data.order.discountCodeId})` : ''}</dt>
-							<dd>-PKR {data.order.discountAmount}</dd>
+							<dd>-{data.store.currencySymbol} {data.order.discountAmount}</dd>
 						</div>
 					{/if}
 					<div class="flex justify-between font-bold text-base border-t pt-2 mt-2">
 						<dt>Total</dt>
-						<dd>PKR {data.order.total}</dd>
+						<dd>{data.store.currencySymbol} {data.order.total}</dd>
 					</div>
 				</dl>
 			</div>

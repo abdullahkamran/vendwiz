@@ -9,9 +9,29 @@
 
   let copied = $state(false);
   async function copyRef() {
-    await navigator.clipboard.writeText(orderRef);
-    copied = true;
-    setTimeout(() => (copied = false), 2000);
+    if (!orderRef) return;
+    let success = false;
+    try {
+      await navigator.clipboard.writeText(orderRef);
+      success = true;
+    } catch {
+      // Fallback for non-secure contexts (e.g. HTTP on a LAN IP)
+      const ta = document.createElement('textarea');
+      ta.value = orderRef;
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.left = '-9999px';
+      ta.setAttribute('readonly', '');
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      success = document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    if (success) {
+      copied = true;
+      setTimeout(() => (copied = false), 2000);
+    }
   }
 
   let waPhone = $derived(store.whatsapp?.replace(/\D/g, '') ?? '');

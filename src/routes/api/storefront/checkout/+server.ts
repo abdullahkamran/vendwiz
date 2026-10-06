@@ -141,10 +141,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   // Shipping fee
   const shippingFee = freeThreshold !== null && subtotal >= freeThreshold ? 0 : flatRate;
 
-  // Tax
-  const taxAmount = subtotal * taxRate;
-
-  // Discount
+  // Discount (computed before tax so tax applies to the post-discount subtotal)
   let discountAmount = 0;
   let discountCodeId: string | undefined;
 
@@ -175,8 +172,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     }
   }
 
+  // Tax — applied to the post-discount subtotal
+  const taxAmount = (subtotal - discountAmount) * taxRate;
+
   // Total
-  const total = Math.max(0, subtotal + shippingFee + taxAmount - discountAmount);
+  const total = Math.max(0, (subtotal - discountAmount) + taxAmount + shippingFee);
 
   // Generate order reference
   const orderNumber = `ORD-${nanoid(8).toUpperCase()}`;

@@ -35,13 +35,15 @@
       const res = await fetch(`${basePath}/api/storefront/discount?code=${encodeURIComponent(discountCode.trim())}`);
       if (res.ok) {
         const d = await res.json();
+        // Normalise DB enum ('percentage') to CartDiscount type ('percent')
+        const type = d.type === 'percentage' ? 'percent' : ('fixed' as const);
         const discAmt =
-          d.type === 'percent'
-            ? (subtotal * d.value) / 100
+          type === 'percent'
+            ? (subtotal * Number(d.value)) / 100
             : Math.min(Number(d.value), subtotal);
         cartDiscount.apply({
           code: discountCode.trim(),
-          type: d.type,
+          type,
           value: Number(d.value),
           amount: discAmt
         });
@@ -67,9 +69,9 @@
   let effectiveShipping = $derived(
     freeShippingThreshold !== null && subtotal >= freeShippingThreshold ? 0 : shippingFee
   );
-  let taxAmount = $derived(subtotal * taxRate);
   let discountAmount = $derived($cartDiscount?.amount ?? 0);
-  let total = $derived(subtotal + effectiveShipping + taxAmount - discountAmount);
+  let taxAmount = $derived((subtotal - discountAmount) * taxRate);
+  let total = $derived((subtotal - discountAmount) + taxAmount + effectiveShipping);
 </script>
 
 <svelte:head>
@@ -191,7 +193,7 @@
             </div>
             {#if discountAmount > 0}
               <div class="cart-summary-line" style="color:var(--sf-success);">
-                <span>Discount</span>
+                <span>{$cartDiscount?.type === 'percent' ? `Discount (${$cartDiscount.value}%)` : 'Discount'}</span>
                 <span>–{store.currencySymbol} {discountAmount.toLocaleString()}</span>
               </div>
             {/if}
