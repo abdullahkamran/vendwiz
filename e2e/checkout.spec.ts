@@ -13,7 +13,11 @@ async function addProductToCart(page: Page) {
 test('checkout form renders after adding to cart', async ({ page }) => {
   await addProductToCart(page);
   await page.goto('/checkout');
-  await expect(page.locator('input[name="name"], input[placeholder*="name" i]').first()).toBeVisible({ timeout: 10000 });
+  // All four required contact/shipping fields (co-address is a <textarea>)
+  await expect(page.locator('#co-name')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('#co-phone')).toBeVisible();
+  await expect(page.locator('#co-email')).toBeVisible();
+  await expect(page.locator('#co-address')).toBeVisible();
 });
 
 test('checkout redirects to home when cart is empty', async ({ page }) => {

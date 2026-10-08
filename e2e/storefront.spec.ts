@@ -18,8 +18,8 @@ test('product detail page opens from listing', async ({ page }) => {
   const firstProduct = page.locator('a[href*="/products/"]').first();
   await firstProduct.waitFor({ state: 'visible', timeout: 10000 });
   const href = await firstProduct.getAttribute('href');
-  if (href) {
-    await page.goto(href);
-    await expect(page.locator('main')).toBeVisible();
-  }
+  // Fail fast if no products are seeded rather than silently passing
+  expect(href).toBeTruthy();
+  await page.goto(href!);
+  await expect(page.locator('main')).toBeVisible();
 });

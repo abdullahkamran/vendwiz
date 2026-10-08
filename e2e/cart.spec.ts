@@ -1,26 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { addFirstProductToCart } from './helpers';
 
 test('add product to cart', async ({ page }) => {
-  await page.goto('/products');
-  const firstLink = page.locator('a[href*="/products/"]').first();
-  await firstLink.waitFor({ state: 'visible', timeout: 10000 });
-  await firstLink.click();
-  await expect(page).toHaveURL(/\/products\/.+/);
+  await addFirstProductToCart(page);
 
-  // Add to cart button
-  const addBtn = page.getByRole('button', { name: /add to cart/i });
-  await addBtn.waitFor({ state: 'visible', timeout: 10000 });
-  await addBtn.click();
-
-  // Navigate to cart
+  // Navigate to cart and confirm at least one cart item row is rendered
   await page.goto('/cart');
-  await expect(page.locator('main')).toBeVisible();
-  // At least one cart item row
-  await expect(page.locator('main')).not.toBeEmpty();
+  await expect(page.locator('.cart-item').first()).toBeVisible({ timeout: 10000 });
 });
 
 test('cart page has discount code input', async ({ page }) => {
+  // Discount input lives inside {:else} of {#if $cart.length === 0}, so cart must be non-empty
+  await addFirstProductToCart(page);
   await page.goto('/cart');
-  // May redirect to home if empty cart — that's fine, just check it renders
-  await expect(page.locator('body')).toBeVisible();
+  await expect(page.getByPlaceholder('Discount code')).toBeVisible({ timeout: 10000 });
 });
