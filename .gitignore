@@ -25,3 +25,9 @@ vite.config.ts.timestamp-*
 # runtime data of a locally running instance (uploads, local sqlite) — never source
 static/uploads/
 local.db
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
