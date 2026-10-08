@@ -6,7 +6,8 @@
   import { slugify } from '$lib/utils/slug';
 
   type ImageRow = { id?: string; url: string; sortOrder: number };
-  type VariantRow = { id?: string; name: string; options: { label: string; price_modifier: number }[] };
+  type VariantOption = { label: string; price_modifier: number; stockQty?: number };
+  type VariantRow = { id?: string; name: string; options: VariantOption[]; sizeChartUrl?: string };
   type AttributeRow = { id?: string; name: string; value: string };
 
   type ProductData = {
@@ -63,7 +64,9 @@
     initialVariants.map((v) => ({
       id: v.id,
       name: v.name,
-      options: Array.isArray(v.options) ? (v.options as { label: string; price_modifier: number }[]).map((o) => ({ ...o })) : []
+      // Spread each option so stockQty is preserved alongside label/price_modifier
+      options: Array.isArray(v.options) ? (v.options as VariantOption[]).map((o) => ({ ...o })) : [],
+      sizeChartUrl: v.sizeChartUrl ?? ''
     }))
   );
   let attributes = $state<AttributeRow[]>(initialAttributes.map((a) => ({ ...a })));

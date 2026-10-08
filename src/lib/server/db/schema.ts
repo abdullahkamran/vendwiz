@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, jsonb, numeric, pgEnum, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, timestamp, jsonb, numeric, pgEnum, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -184,7 +184,10 @@ export const products = pgTable('products', {
 	sortOrder: integer('sort_order').notNull().default(0),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
-});
+}, (table) => ({
+	// Enforce per-store slug uniqueness at the DB level (eliminates TOCTOU race)
+	storeSlugUnique: uniqueIndex('products_store_slug_unique').on(table.storeId, table.slug)
+}));
 
 // Product variant option groups (e.g., "Size", "Color")
 export const productOptionGroups = pgTable('product_option_groups', {
@@ -217,7 +220,9 @@ export const productVariants = pgTable('product_variants', {
 	label: text('label').notNull(), // "S / Red" — computed display label
 	price: numeric('price', { precision: 10, scale: 2 }), // null = use basePrice
 	stockQty: integer('stock_qty').notNull().default(0),
-	sku: text('sku')
+	sku: text('sku'),
+	// URL of a size-chart image; only relevant for size-type variants
+	sizeChartUrl: text('size_chart_url')
 });
 
 // Product specification attributes (e.g., Material: Cotton, Weight: 200g)

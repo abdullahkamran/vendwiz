@@ -18,7 +18,11 @@ export const variantOptionSchema = z.object({
 export const variantSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1),
-  options: z.array(variantOptionSchema).min(1)
+  // min(1) was intentionally removed: the PUT handler must accept options:[] for
+  // existing variants (edit-page load reconstructs a synthetic option, but direct
+  // API calls and backwards-compat clients may omit options entirely).
+  options: z.array(variantOptionSchema),
+  sizeChartUrl: z.string().url().startsWith('https://', { message: 'Size chart URL must use HTTPS' }).optional().or(z.literal(''))
 });
 
 export const attributeSchema = z.object({

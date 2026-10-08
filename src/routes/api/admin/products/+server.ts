@@ -88,7 +88,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const parsed = productSchema.safeParse(body);
   if (!parsed.success) {
-    return json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 400 });
+    const messages = parsed.error.issues
+      .map((i) => `${i.path.map(String).join('.') || 'field'}: ${i.message}`)
+      .join('; ');
+    return json({ error: messages }, { status: 400 });
   }
 
   const {
@@ -107,6 +110,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     variants,
     attributes
   } = parsed.data;
+
+  // Enforce slug uniqueness within the store
+  const slugConflict = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(and(eq(products.storeId, store.id), eq(products.slug, slug)))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  if (slugConflict) {
+    return json({ error: 'A product with this slug already exists in your store.' }, { status: 400 });
+  }
 
   const id = nanoid();
 
@@ -146,7 +160,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
           label: v.name,
           // Use the stock from the first option; the schema comment explicitly
           // says stockQty is passed through so the handler can preserve it.
-          stockQty: v.options[0]?.stockQty ?? 0
+          stockQty: v.options[0]?.stockQty ?? 0,
+          sizeChartUrl: v.sizeChartUrl || null
         };
       })
     );

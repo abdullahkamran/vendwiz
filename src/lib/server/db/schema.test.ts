@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
-import { stores, products, categories, storePolicies, POLICY_TYPES, discountCodes } from './schema';
+import { stores, products, categories, storePolicies, POLICY_TYPES, discountCodes, productVariants } from './schema';
 import { buildSeo } from '../../seo';
 
 // ─── Schema structure ─────────────────────────────────────────────────────────
@@ -158,6 +158,25 @@ describe('POLICY_TYPES', () => {
 	it('does not include the URL slug "return" (that is the storefront alias)', () => {
 		// The DB value is return_refund; /policies/return is the URL slug.
 		expect(POLICY_TYPES).not.toContain('return');
+	});
+});
+
+// ─── productVariants schema — sizeChartUrl column ─────────────────────────────
+
+describe('productVariants schema — sizeChartUrl column', () => {
+	it('exposes sizeChartUrl', () => {
+		const cols = getTableColumns(productVariants);
+		expect(cols).toHaveProperty('sizeChartUrl');
+	});
+
+	it('sizeChartUrl maps to the size_chart_url DB column name', () => {
+		const cols = getTableColumns(productVariants);
+		expect((cols.sizeChartUrl as { name: string }).name).toBe('size_chart_url');
+	});
+
+	it('sizeChartUrl is nullable (no notNull constraint)', () => {
+		const cols = getTableColumns(productVariants);
+		expect((cols.sizeChartUrl as { notNull: boolean }).notNull).toBe(false);
 	});
 });
 
