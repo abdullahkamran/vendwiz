@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { products, productVariants, productAttributes, stores } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 import { productSchema } from '$lib/schemas/catalog';
 import { nanoid } from 'nanoid';
 
@@ -80,7 +80,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
   const parsed = productSchema.safeParse(body);
   if (!parsed.success) {
-    return json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 400 });
+    const messages = parsed.error.issues
+      .map((i) => `${i.path.map(String).join('.') || 'field'}: ${i.message}`)
+      .join('; ');
+    return json({ error: messages }, { status: 400 });
   }
 
   const {
@@ -99,6 +102,17 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     variants,
     attributes
   } = parsed.data;
+
+  // Enforce slug uniqueness within the store, excluding this product's own row
+  const slugConflict = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(and(eq(products.storeId, store.id), eq(products.slug, slug), ne(products.id, params.id)))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  if (slugConflict) {
+    return json({ error: 'A product with this slug already exists in your store.' }, { status: 400 });
+  }
 
   const [updated] = await db
     .update(products)
@@ -138,7 +152,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
           label: v.name,
           // Use the stock from the first option; the schema comment explicitly
           // says stockQty is passed through so the handler can preserve it.
-          stockQty: v.options[0]?.stockQty ?? 0
+          stockQty: v.options[0]?.stockQty ?? 0,
+          sizeChartUrl: v.sizeChartUrl || null
         };
       })
     );

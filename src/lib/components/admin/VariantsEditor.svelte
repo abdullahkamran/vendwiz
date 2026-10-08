@@ -1,6 +1,6 @@
 <script lang="ts">
-  type VariantOption = { label: string; price_modifier: number };
-  type VariantRow = { id?: string; name: string; options: VariantOption[] };
+  type VariantOption = { label: string; price_modifier: number; stockQty?: number };
+  type VariantRow = { id?: string; name: string; options: VariantOption[]; sizeChartUrl?: string };
 
   let {
     variants = [],
@@ -13,12 +13,13 @@
   let rows = $state<VariantRow[]>(
     variants.map((v) => ({
       ...v,
-      options: (v.options ?? []).map((o) => ({ ...o }))
+      options: (v.options ?? []).map((o) => ({ ...o })),
+      sizeChartUrl: v.sizeChartUrl ?? ''
     }))
   );
 
   function addVariant() {
-    rows = [...rows, { name: '', options: [{ label: '', price_modifier: 0 }] }];
+    rows = [...rows, { name: '', options: [{ label: '', price_modifier: 0, stockQty: 0 }], sizeChartUrl: '' }];
     onChange(rows);
   }
 
@@ -68,6 +69,11 @@
           }
         : r
     );
+    onChange(rows);
+  }
+
+  function updateSizeChartUrl(vi: number, url: string) {
+    rows = rows.map((r, i) => (i === vi ? { ...r, sizeChartUrl: url } : r));
     onChange(rows);
   }
 </script>
@@ -137,6 +143,27 @@
           + Add Option
         </button>
       </div>
+
+      {#if variant.name.toLowerCase() === 'size'}
+        <div class="size-chart-section">
+          <label class="size-chart-label" for="size-chart-{vi}">Size Chart Image URL</label>
+          <input
+            id="size-chart-{vi}"
+            type="text"
+            class="size-chart-input"
+            value={variant.sizeChartUrl ?? ''}
+            placeholder="https://example.com/size-chart.jpg"
+            oninput={(e) => updateSizeChartUrl(vi, (e.target as HTMLInputElement).value)}
+          />
+          {#if variant.sizeChartUrl}
+            <img
+              class="size-chart-preview"
+              src={variant.sizeChartUrl}
+              alt="Size chart preview"
+            />
+          {/if}
+        </div>
+      {/if}
     </div>
   {/each}
 
@@ -295,5 +322,42 @@
     color: var(--color-secondary);
     font-size: 0.875rem;
     font-style: italic;
+  }
+
+  .size-chart-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e5e5e5;
+  }
+
+  .size-chart-label {
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--color-text);
+  }
+
+  .size-chart-input {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    font-size: 0.875rem;
+    background: #fff;
+    width: 100%;
+  }
+
+  .size-chart-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .size-chart-preview {
+    max-width: 240px;
+    max-height: 160px;
+    object-fit: contain;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-top: 0.25rem;
   }
 </style>

@@ -12,7 +12,8 @@
   type VariantRow = {
     id?: string;
     name: string;
-    options: { label: string; price_modifier: number }[];
+    options: { label: string; price_modifier: number; stockQty?: number }[];
+    sizeChartUrl?: string;
   };
   type AttributeRow = { id?: string; name: string; value: string };
 
@@ -22,12 +23,14 @@
     sortOrder: img.sortOrder
   }));
 
-  // DB variants use `label` (not `name`) and `optionValueIds` (not `options`)
+  // DB variants use `label` (not `name`) and `optionValueIds` (not `options`).
+  // Reconstruct a synthetic option from the DB row so Zod's options.min(1) passes.
   type RawVariant = typeof data.variants[number];
   const variantRows: VariantRow[] = data.variants.map((v: RawVariant) => ({
     id: v.id,
     name: v.label ?? '',
-    options: []
+    options: [{ label: v.label ?? '', price_modifier: 0, stockQty: v.stockQty ?? 0 }],
+    sizeChartUrl: v.sizeChartUrl ?? ''
   }));
 
   type RawAttr = { id?: string; name: string; value: string };
