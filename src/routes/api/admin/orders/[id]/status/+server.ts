@@ -1,8 +1,8 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { orders } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { orders, orderItems, products, productVariants } from '$lib/server/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { orderStatusSchema } from '$lib/schemas/orders';
 
 type OrderStatus = 'pending' | 'processing' | 'dispatched' | 'completed' | 'cancelled';
@@ -51,6 +51,35 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		.set(updateData)
 		.where(and(eq(orders.id, params.id), eq(orders.storeId, store.id)))
 		.returning();
+
+	// ── Restore inventory when an order is cancelled ──────────────────────────
+	if (parsed.data.status === 'cancelled') {
+		const items = await db
+			.select({
+				productId: orderItems.productId,
+				variantId: orderItems.variantId,
+				quantity: orderItems.quantity
+			})
+			.from(orderItems)
+			.where(eq(orderItems.orderId, params.id));
+
+		for (const item of items) {
+			// Skip rows where the product has since been deleted
+			if (!item.productId) continue;
+
+			await db
+				.update(products)
+				.set({ stockQty: sql`${products.stockQty} + ${item.quantity}` })
+				.where(eq(products.id, item.productId));
+
+			if (item.variantId) {
+				await db
+					.update(productVariants)
+					.set({ stockQty: sql`${productVariants.stockQty} + ${item.quantity}` })
+					.where(eq(productVariants.id, item.variantId));
+			}
+		}
+	}
 
 	return json(updated);
 };
