@@ -161,6 +161,32 @@ describe('POLICY_TYPES', () => {
 	});
 });
 
+// ─── productVariants schema — stockQty column ────────────────────────────────
+// These tests fail on any schema revision that drops the stock_qty column from
+// productVariants; the stock quantity UI input depends on this column existing.
+
+describe('productVariants schema — stockQty column', () => {
+	it('exposes stockQty', () => {
+		const cols = getTableColumns(productVariants);
+		expect(cols).toHaveProperty('stockQty');
+	});
+
+	it('stockQty maps to the stock_qty DB column name', () => {
+		const cols = getTableColumns(productVariants);
+		expect((cols.stockQty as { name: string }).name).toBe('stock_qty');
+	});
+
+	it('stockQty is not nullable (notNull constraint)', () => {
+		const cols = getTableColumns(productVariants);
+		expect((cols.stockQty as { notNull: boolean }).notNull).toBe(true);
+	});
+
+	it('stockQty has a default of 0', () => {
+		const cols = getTableColumns(productVariants);
+		expect((cols.stockQty as { default: unknown }).default).toBe(0);
+	});
+});
+
 // ─── productVariants schema — sizeChartUrl column ─────────────────────────────
 
 describe('productVariants schema — sizeChartUrl column', () => {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { addOption as addOptionUtil, updateOptionStock as updateOptionStockUtil } from './variantsEditorUtils';
   type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string };
   type VariantRow = { id?: string; name: string; options: VariantOption[]; sizeChartUrl?: string };
 
@@ -39,9 +40,7 @@
   }
 
   function addOption(vi: number) {
-    rows = rows.map((r, i) =>
-      i === vi ? { ...r, options: [...r.options, { label: '', price_modifier: 0 }] } : r
-    );
+    rows = addOptionUtil(rows, vi);
     onChange(rows);
   }
 
@@ -89,6 +88,11 @@
     onChange(rows);
   }
 
+  function updateOptionStock(vi: number, oi: number, str: string) {
+    rows = updateOptionStockUtil(rows, vi, oi, str);
+    onChange(rows);
+  }
+
   function updateSizeChartUrl(vi: number, url: string) {
     rows = rows.map((r, i) => (i === vi ? { ...r, sizeChartUrl: url } : r));
     onChange(rows);
@@ -118,6 +122,7 @@
               {#if isColorGroup(variant.name)}<th>Color</th>{/if}
               <th>Option Label</th>
               <th>Price Modifier</th>
+              <th>Stock</th>
               <th></th>
             </tr>
           </thead>
@@ -153,6 +158,17 @@
                     placeholder="0.00"
                     oninput={(e) =>
                       updateOptionModifier(vi, oi, (e.target as HTMLInputElement).value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={option.stockQty ?? 0}
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    oninput={(e) =>
+                      updateOptionStock(vi, oi, (e.target as HTMLInputElement).value)}
                   />
                 </td>
                 <td>
