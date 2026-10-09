@@ -79,13 +79,6 @@
     function onResize() { isDesktop = window.innerWidth >= 1024; }
     window.addEventListener('resize', onResize);
 
-    // Install banner
-    try {
-      const dismissed = localStorage.getItem('vendwiz-install-dismissed') === 'true';
-      showInstall = window.matchMedia('(display-mode: browser)').matches && !dismissed;
-      installDismissed = dismissed;
-    } catch (_) {}
-
     // Capture the browser install prompt for the Install button (Chrome/Android)
     function onBeforeInstall(e: Event) {
       e.preventDefault();
