@@ -72,6 +72,7 @@
   // Install banner (AC-11)
   let showInstall = $state(false);
   let installDismissed = $state(false);
+  let deferredPrompt = $state<any>(null);
   onMount(() => {
     // Desktop detection
     isDesktop = window.innerWidth >= 1024;
@@ -85,12 +86,32 @@
       installDismissed = dismissed;
     } catch (_) {}
 
-    return () => window.removeEventListener('resize', onResize);
+    // Capture the browser install prompt for the Install button (Chrome/Android)
+    function onBeforeInstall(e: Event) {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (!installDismissed) showInstall = true;
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+    };
   });
   function dismissInstall() {
     installDismissed = true;
     showInstall = false;
     try { localStorage.setItem('vendwiz-install-dismissed', 'true'); } catch (_) {}
+  }
+  async function installApp() {
+    if (!deferredPrompt) return;
+    try {
+      await deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      dismissInstall();
+    } catch (_) {}
   }
 
   // Apply data-dark attribute to <html>
@@ -111,7 +132,7 @@
 <svelte:head>
   {@html `<style>${themeRootCSS(store.theme)}${themeDarkCSS(store.theme)}${customThemeCSS(store.theme, store.customTheme)}</style>`}
   <meta name="theme-color" content={themeColorFor(store)} />
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="/manifest.json{basePath ? `?base=${encodeURIComponent(basePath)}` : ''}">
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
@@ -133,6 +154,9 @@
 {#if showInstall}
   <div class="sf-install-banner" role="banner">
     <span>📲 Add to Home Screen for a faster experience</span>
+    {#if deferredPrompt}
+      <button class="sf-install-btn" onclick={installApp}>Install</button>
+    {/if}
     <button class="sf-install-dismiss" onclick={dismissInstall} aria-label="Dismiss install prompt">✕</button>
   </div>
 {/if}
@@ -404,6 +428,17 @@
     color: var(--sf-muted, #6c757d);
     padding: 2px 6px;
     line-height: 1;
+  }
+  .sf-install-btn {
+    background: var(--sf-primary, #0d6efd);
+    color: var(--sf-on-primary, #fff);
+    border: none;
+    border-radius: var(--sf-radius, 6px);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    line-height: 1.4;
   }
 
   /* ── Drawer overlay ── */

@@ -1,8 +1,20 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { THEME_HEX } from '$lib/theme/tokens';
 
-export const GET: RequestHandler = async ({ locals }) => {
+// Accept only leading-slash paths composed of safe characters; anything else
+// falls back to '' so the manifest scope defaults to the origin root.
+function normaliseBase(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed || !/^\/([A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*)?$/.test(trimmed)) return '';
+  return trimmed.replace(/\/+$/, '');
+}
+
+export const GET: RequestHandler = async ({ locals, url }) => {
   const store = locals.store;
+
+  const rawBase = url.searchParams.get('base') ?? '';
+  const base = normaliseBase(rawBase);
+  const scopePath = base ? `${base}/` : '/';
 
   const name = store?.name ?? 'VendWiz Store';
   const theme = store?.theme ?? 'basic';
@@ -13,7 +25,8 @@ export const GET: RequestHandler = async ({ locals }) => {
     name,
     short_name: name.slice(0, 12),
     description: store?.description ?? `Shop at ${name}`,
-    start_url: '/',
+    start_url: scopePath,
+    scope: scopePath,
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: themeColor,
