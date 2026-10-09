@@ -12,17 +12,6 @@
 	let saving = $state(false);
 </script>
 
-{#if form?.error}
-	<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-		{form.error}
-	</div>
-{/if}
-{#if form?.success}
-	<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-		Social links saved successfully.
-	</div>
-{/if}
-
 <form
 	method="POST"
 	action="?/update"
@@ -110,7 +99,13 @@
 		</div>
 	</section>
 
-	<div class="flex justify-end">
+	<div class="flex items-center justify-end gap-3">
+		{#if form?.error}
+			<p class="text-sm text-red-600">{form.error}</p>
+		{/if}
+		{#if form?.success}
+			<p class="text-sm text-green-600">Social links saved successfully.</p>
+		{/if}
 		<button
 			type="submit"
 			disabled={saving}

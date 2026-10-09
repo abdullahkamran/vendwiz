@@ -24,9 +24,6 @@
   function nextImage() { activeImageIdx = (activeImageIdx + 1) % Math.max(images.length, 1); }
   function prevImage() { activeImageIdx = (activeImageIdx - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1); }
 
-  // Size chart modal (AC-8)
-  let sizeChartOpen = $state(false);
-
   // Option group selections: { groupId: selectedValueId }
   let selections = $state<Record<string, string>>({});
 
@@ -70,8 +67,17 @@
     toastTimeout = setTimeout(() => (toastMsg = ''), 3000);
   }
 
+  // Pulse animation: short-lived class added on CTA click (AC-12)
+  let atcPulse = $state(false);
+  let buyPulse = $state(false);
+  function triggerPulse(which: 'atc' | 'buy') {
+    if (which === 'atc') { atcPulse = true; setTimeout(() => (atcPulse = false), 300); }
+    else { buyPulse = true; setTimeout(() => (buyPulse = false), 300); }
+  }
+
   function addToCart() {
     if (stockStatus === 'out') return;
+    triggerPulse('atc');
     cart.addItem({
       productId: product.id,
       title: product.title,
@@ -85,6 +91,7 @@
   }
 
   function buyNow() {
+    triggerPulse('buy');
     addToCart();
     goto(`${basePath}/cart`);
   }
@@ -94,6 +101,7 @@
 
   // Review form (AC-8)
   let reviewName = $state('');
+  let reviewEmail = $state('');
   let reviewRating = $state(5);
   let reviewText = $state('');
   let reviewSubmitting = $state(false);
@@ -109,6 +117,7 @@
         body: JSON.stringify({
           productId: product.id,
           reviewerName: reviewName,
+          reviewerEmail: reviewEmail,
           rating: reviewRating,
           body: reviewText || undefined
         })
@@ -116,6 +125,7 @@
       if (res.ok) {
         reviewMsg = 'Review submitted! It will appear after approval.';
         reviewName = '';
+        reviewEmail = '';
         reviewRating = 5;
         reviewText = '';
       } else {
@@ -193,35 +203,6 @@
 <!-- Toast -->
 {#if toastMsg}
   <div class="pdp-toast">✓ {toastMsg}</div>
-{/if}
-
-<!-- Size chart modal (AC-8) -->
-{#if sizeChartOpen}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal-backdrop" onclick={() => (sizeChartOpen = false)}>
-    <div class="modal-box" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-      <div class="modal-header">
-        <h3>Size Guide</h3>
-        <button onclick={() => (sizeChartOpen = false)} aria-label="Close">✕</button>
-      </div>
-      <div class="modal-body">
-        <table class="size-table">
-          <thead>
-            <tr><th>Size</th><th>Chest</th><th>Waist</th><th>Hip</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>XS</td><td>32–34"</td><td>24–26"</td><td>34–36"</td></tr>
-            <tr><td>S</td><td>34–36"</td><td>26–28"</td><td>36–38"</td></tr>
-            <tr><td>M</td><td>36–38"</td><td>28–30"</td><td>38–40"</td></tr>
-            <tr><td>L</td><td>38–40"</td><td>30–32"</td><td>40–42"</td></tr>
-            <tr><td>XL</td><td>40–42"</td><td>32–34"</td><td>42–44"</td></tr>
-          </tbody>
-        </table>
-        <p class="size-note">All measurements are in inches. When in doubt, size up.</p>
-      </div>
-    </div>
-  </div>
 {/if}
 
 <!-- Breadcrumb -->
@@ -377,11 +358,6 @@
     </div>
   {/if}
 
-  <!-- Size chart link (AC-8) — always shown -->
-  <button class="pdp-size-chart-link" onclick={() => (sizeChartOpen = true)}>
-    📏 Size Chart
-  </button>
-
   <!-- Quantity stepper (AC-8) -->
   <div class="pdp-qty">
     <span class="pdp-qty-label">Qty</span>
@@ -396,6 +372,7 @@
   <div class="pdp-ctas">
     <button
       class="pdp-btn-atc"
+      class:pdp-pulse={atcPulse}
       onclick={addToCart}
       disabled={stockStatus === 'out'}
       style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-radius); font-weight:var(--sf-btn-weight); text-transform:var(--sf-btn-transform);"
@@ -405,6 +382,7 @@
     {#if stockStatus !== 'out'}
       <button
         class="pdp-btn-buy"
+        class:pdp-pulse={buyPulse}
         onclick={buyNow}
         style="border:2px solid var(--sf-primary); color:var(--sf-primary); border-radius:var(--sf-radius); font-weight:var(--sf-btn-weight);"
       >
@@ -426,8 +404,8 @@
 
   <div class="tab-panel">
     {#if activeTab === 'description'}
-      {#if product.description}
-        <div class="prose">{@html product.description}</div>
+      {#if product.descriptionHtml}
+        <div class="prose">{@html product.descriptionHtml}</div>
       {:else}
         <p class="tab-empty">No description provided.</p>
       {/if}
@@ -512,6 +490,10 @@
         <input type="text" bind:value={reviewName} required minlength="2" placeholder="Jane Smith" />
       </div>
       <div class="form-field">
+        <label for="review-email">Email <span style="font-weight:400; color:var(--sf-muted, #6c757d); font-size:0.8em;">(used to prevent duplicate reviews)</span></label>
+        <input id="review-email" type="email" bind:value={reviewEmail} required placeholder="you@example.com" />
+      </div>
+      <div class="form-field">
         <label>Rating</label>
         <div class="star-picker">
           {#each [1,2,3,4,5] as star}
@@ -576,43 +558,6 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     max-width: calc(100vw - 32px);
   }
-
-  /* ── Modal ── */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-  }
-  .modal-box {
-    background: var(--sf-surface, #fff);
-    border-radius: var(--sf-radius-lg, 12px);
-    max-width: 360px;
-    width: 100%;
-    overflow: hidden;
-  }
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px;
-    border-bottom: 1px solid var(--sf-border, #dee2e6);
-  }
-  .modal-header h3 { margin: 0; font-size: 1rem; }
-  .modal-header button { background: none; border: none; cursor: pointer; font-size: 1.1rem; }
-  .modal-body { padding: 16px; }
-  .size-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-  .size-table th, .size-table td {
-    padding: 8px 10px;
-    border: 1px solid var(--sf-border, #dee2e6);
-    text-align: left;
-  }
-  .size-table th { background: var(--sf-bg, #f8f9fa); font-weight: 600; }
-  .size-note { margin-top: 12px; font-size: 0.8125rem; color: var(--sf-muted, #6c757d); }
 
   /* ── Desktop two-column layout: gallery (sticky) / info ── */
   .pdp-cols {
@@ -759,17 +704,6 @@
     transition: all 0.15s;
   }
   .variant-price { font-size: 0.75rem; opacity: 0.8; }
-  .pdp-size-chart-link {
-    display: inline-block;
-    background: none;
-    border: none;
-    color: var(--sf-primary, #0d6efd);
-    font-size: 0.8125rem;
-    cursor: pointer;
-    padding: 0;
-    margin-bottom: 16px;
-    text-decoration: underline;
-  }
 
   /* ── Qty stepper ── */
   .pdp-qty {
@@ -829,6 +763,16 @@
     transition: opacity 0.2s;
   }
   .pdp-btn-buy:hover { opacity: 0.8; }
+
+  /* ── Pulse animation (AC-12) — scoped so no theme override can suppress it ── */
+  @keyframes pdp-scale-pulse {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  .pdp-pulse {
+    animation: pdp-scale-pulse 0.3s ease-out;
+  }
 
   /* ── Tabs ── */
   .pdp-tabs { margin-bottom: 24px; }

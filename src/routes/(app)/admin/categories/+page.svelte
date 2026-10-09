@@ -28,6 +28,7 @@
   let formSlug = $state('');
   let formParentId = $state<string>('');
   let formSortOrder = $state(0);
+  let formImageUrl = $state('');
   let formError = $state('');
   let saving = $state(false);
   let slugManuallyEdited = $state(false);
@@ -41,6 +42,7 @@
     formSlug = '';
     formParentId = '';
     formSortOrder = categories.length;
+    formImageUrl = '';
     formError = '';
     slugManuallyEdited = false;
     showModal = true;
@@ -52,6 +54,7 @@
     formSlug = cat.slug;
     formParentId = cat.parentId ?? '';
     formSortOrder = cat.sortOrder;
+    formImageUrl = cat.imageUrl ?? '';
     formError = '';
     slugManuallyEdited = true;
     showModal = true;
@@ -92,7 +95,8 @@
       name: formName.trim(),
       slug: formSlug.trim(),
       parentId: formParentId || null,
-      sortOrder: formSortOrder
+      sortOrder: formSortOrder,
+      imageUrl: formImageUrl.trim() || null
     };
 
     try {
@@ -171,6 +175,7 @@
       <table>
         <thead>
           <tr>
+            <th>Image</th>
             <th>Name</th>
             <th>Slug</th>
             <th>Parent</th>
@@ -181,6 +186,13 @@
         <tbody>
           {#each categories as cat}
             <tr>
+              <td>
+                {#if cat.imageUrl}
+                  <img src={cat.imageUrl} alt={cat.name} style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid #e5e5e5;" />
+                {:else}
+                  <span style="display:inline-block; width:40px; height:40px; background:#f3f4f6; border-radius:4px; border:1px solid #e5e5e5;"></span>
+                {/if}
+              </td>
               <td class:child-indent={!!cat.parentId}>
                 {cat.name}
               </td>
@@ -251,6 +263,19 @@
             bind:value={formSortOrder}
             min="0"
           />
+        </div>
+
+        <div class="form-field">
+          <label for="cat-image">Image URL (optional)</label>
+          <input
+            id="cat-image"
+            type="url"
+            bind:value={formImageUrl}
+            placeholder="https://example.com/category.jpg"
+          />
+          {#if formImageUrl}
+            <img src={formImageUrl} alt="Category thumbnail preview" style="max-width:80px; max-height:80px; object-fit:cover; border-radius:4px; margin-top:4px; border:1px solid #e5e5e5;" />
+          {/if}
         </div>
 
         {#if formError}

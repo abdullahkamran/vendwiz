@@ -2,7 +2,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { reviews, products } from '$lib/server/db/schema';
-import { eq, and, gte } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { reviewSchema } from '$lib/schemas/storefront';
 import { nanoid } from 'nanoid';
 
@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
     return json({ error: parsed.error.issues[0]?.message ?? 'Validation failed' }, { status: 422 });
   }
 
-  const { productId, reviewerName, rating, body: reviewBody } = parsed.data;
+  const { productId, reviewerName, reviewerEmail: email, rating, body: reviewBody } = parsed.data;
 
   // Verify product belongs to this store
   const [product] = await db
@@ -36,24 +36,25 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
     return json({ error: 'Product not found' }, { status: 404 });
   }
 
-  // Rate limit: same IP + productId within 1 hour
+  // Uniqueness check: one review per email per product per store (any status).
+  // email is always a non-null string here because reviewerEmail is z.string().email()
+  // (required) in reviewSchema; the guard was dead code and has been removed so that
+  // the check is unconditional and cannot be bypassed by a malformed payload.
   const ip = getClientAddress();
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const recentReviews = await db
+  const existing = await db
     .select({ id: reviews.id })
     .from(reviews)
     .where(
       and(
         eq(reviews.productId, productId),
         eq(reviews.storeId, locals.store.id),
-        eq(reviews.ip, ip),
-        gte(reviews.createdAt, oneHourAgo)
+        eq(reviews.reviewerEmail, email)
       )
     )
     .limit(1);
 
-  if (recentReviews.length >= 1) {
-    return json({ error: 'You already submitted a review for this product recently.' }, { status: 429 });
+  if (existing.length >= 1) {
+    return json({ error: 'You have already reviewed this product.' }, { status: 409 });
   }
 
   await db.insert(reviews).values({
@@ -61,6 +62,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
     productId,
     storeId: locals.store.id,
     reviewerName,
+    reviewerEmail: email ?? null,
     rating,
     body: reviewBody ?? null,
     ip,

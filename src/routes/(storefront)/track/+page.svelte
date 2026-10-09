@@ -1,6 +1,7 @@
 <script lang="ts">
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
+  let basePath = $derived(data.basePath ?? '');
 
   interface OrderResult {
     orderRef: string;
@@ -28,7 +29,7 @@
     result = null;
     try {
       const res = await fetch(
-        `/api/storefront/track?ref=${encodeURIComponent(ref.trim().toUpperCase())}&email=${encodeURIComponent(email.trim())}`
+        `${basePath}/api/storefront/track?ref=${encodeURIComponent(ref.trim().toUpperCase())}&email=${encodeURIComponent(email.trim())}`
       );
       if (res.ok) {
         result = await res.json() as OrderResult;

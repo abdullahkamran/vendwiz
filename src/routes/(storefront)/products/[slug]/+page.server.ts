@@ -10,6 +10,7 @@ import {
 } from '$lib/server/db/schema';
 import { eq, and, ne, desc, asc } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { renderMarkdown } from '$lib/server/markdown';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
   const storeId = locals.store!.id;
@@ -75,5 +76,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     });
   }
 
-  return { product, images, variants, attributes, optionGroups: groupsWithValues, reviews: approvedReviews, related };
+  // Render description markdown server-side so the PDP can safely use {@html}
+  const descriptionHtml = product.description ? renderMarkdown(product.description) : null;
+
+  return { product: { ...product, descriptionHtml }, images, variants, attributes, optionGroups: groupsWithValues, reviews: approvedReviews, related };
 };

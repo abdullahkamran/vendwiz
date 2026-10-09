@@ -100,17 +100,6 @@
 		'| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Cell     | Cell     | Cell     |\n';
 </script>
 
-{#if form?.error}
-	<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-		{form.error}
-	</div>
-{/if}
-{#if form?.success}
-	<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-		Policy saved successfully.
-	</div>
-{/if}
-
 <section class="border border-[--color-border] rounded-xl bg-[--color-surface] overflow-hidden">
 	<!-- Tab strip -->
 	<div class="flex border-b border-[--color-border] overflow-x-auto">
@@ -262,7 +251,13 @@
 					</div>
 				</div>
 
-				<div class="flex justify-end mt-4">
+				<div class="flex items-center justify-end gap-3 mt-4">
+					{#if form?.error}
+						<p class="text-sm text-red-600">{form.error}</p>
+					{/if}
+					{#if form?.success}
+						<p class="text-sm text-green-600">Policy saved successfully.</p>
+					{/if}
 					<button
 						type="submit"
 						disabled={saving}

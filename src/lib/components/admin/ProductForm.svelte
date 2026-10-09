@@ -5,6 +5,35 @@
   import AttributesTable from './AttributesTable.svelte';
   import { slugify } from '$lib/utils/slug';
 
+  // Textarea DOM ref for the description field (used by markdown toolbar)
+  let descriptionEl: HTMLTextAreaElement | null = $state(null);
+
+  function wrapDescription(before: string, after: string, placeholder = 'text') {
+    const el = descriptionEl;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const sel = el.value.slice(start, end) || placeholder;
+    description = el.value.slice(0, start) + before + sel + after + el.value.slice(end);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + before.length, start + before.length + sel.length);
+    }, 0);
+  }
+
+  function insertDescription(text: string) {
+    const el = descriptionEl;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    description = el.value.slice(0, start) + text + el.value.slice(end);
+    setTimeout(() => {
+      const pos = start + text.length;
+      el.focus();
+      el.setSelectionRange(pos, pos);
+    }, 0);
+  }
+
   type ImageRow = { id?: string; url: string; sortOrder: number };
   type VariantOption = { label: string; price_modifier: number; stockQty?: number };
   type VariantRow = { id?: string; name: string; options: VariantOption[]; sizeChartUrl?: string };
@@ -223,12 +252,21 @@
 
         <div class="form-field">
           <label for="f-description">Description</label>
+          <!-- Markdown toolbar — mirrors the policies editor pattern -->
+          <div class="md-toolbar">
+            <button type="button" title="Bold" onclick={() => wrapDescription('**', '**', 'bold text')} class="md-btn"><strong>B</strong></button>
+            <button type="button" title="Italic" onclick={() => wrapDescription('_', '_', 'italic text')} class="md-btn"><em>I</em></button>
+            <button type="button" title="Numbered list" onclick={() => insertDescription('\n1. ')} class="md-btn">1. List</button>
+            <button type="button" title="New line" onclick={() => insertDescription('\n')} class="md-btn">↵</button>
+          </div>
           <textarea
             id="f-description"
             bind:value={description}
+            bind:this={descriptionEl}
             rows="5"
-            placeholder="Product description…"
+            placeholder="Product description… (markdown supported)"
           ></textarea>
+          <span class="field-hint">Markdown supported (e.g. **bold**, _italic_, 1. numbered list)</span>
         </div>
 
         <div class="form-field form-field-toggle">
@@ -619,5 +657,36 @@
   .btn-primary:disabled {
     opacity: 0.5;
     cursor: default;
+  }
+
+  /* Markdown toolbar */
+  .md-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .md-btn {
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    line-height: 1.4;
+    color: var(--color-text);
+    transition: background 0.1s;
+  }
+
+  .md-btn:hover {
+    background: #f0f0f0;
+    border-color: var(--color-accent);
+  }
+
+  .field-hint {
+    font-size: 0.78rem;
+    color: var(--color-secondary);
+    margin-top: 2px;
   }
 </style>
