@@ -5,6 +5,7 @@
   import { goto } from '$app/navigation';
   import Seo from '$lib/components/storefront/Seo.svelte';
   import { productJsonLd, stripHtml } from '$lib/seo';
+  import { checkAllGroupsSelected, findFirstMissingGroup } from '$lib/utils/product-selection';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
@@ -26,6 +27,10 @@
 
   // Option group selections: { groupId: selectedValueId }
   let selections = $state<Record<string, string>>({});
+
+  // Guard: all option groups must have a selection before cart actions
+  let allGroupsSelected = $derived(checkAllGroupsSelected(optionGroups, selections));
+  let firstMissingGroup = $derived(findFirstMissingGroup(optionGroups, selections));
 
   // Find matching variant based on selections
   let matchedVariant = $derived((() => {
@@ -77,6 +82,7 @@
 
   function addToCart() {
     if (stockStatus === 'out') return;
+    if (!allGroupsSelected) return;
     triggerPulse('atc');
     cart.addItem({
       productId: product.id,
@@ -91,6 +97,7 @@
   }
 
   function buyNow() {
+    if (!allGroupsSelected) return;
     triggerPulse('buy');
     addToCart();
     goto(`${basePath}/cart`);
@@ -265,13 +272,15 @@
     {/if}
   </div>
 
-  <!-- Stock badge -->
-  {#if stockStatus === 'out'}
-    <span class="pdp-stock pdp-stock--out">Out of Stock</span>
-  {:else if stockStatus === 'low'}
-    <span class="pdp-stock pdp-stock--low">Low Stock — only {maxQty} left</span>
-  {:else}
-    <span class="pdp-stock pdp-stock--in">In Stock</span>
+  <!-- Stock badge — hidden while option groups are unresolved -->
+  {#if allGroupsSelected}
+    {#if stockStatus === 'out'}
+      <span class="pdp-stock pdp-stock--out">Out of Stock</span>
+    {:else if stockStatus === 'low'}
+      <span class="pdp-stock pdp-stock--low">Low Stock — only {maxQty} left</span>
+    {:else}
+      <span class="pdp-stock pdp-stock--in">In Stock</span>
+    {/if}
   {/if}
 
   <!-- Option group selectors (color swatches + size buttons) (AC-8) -->
@@ -368,13 +377,18 @@
     </div>
   </div>
 
+  <!-- Helper text: shown when option groups exist and not all are selected -->
+  {#if optionGroups.length > 0 && !allGroupsSelected}
+    <p class="pdp-select-hint">Select a {firstMissingGroup?.name ?? 'option'}</p>
+  {/if}
+
   <!-- Add to Cart + Buy Now (AC-8) -->
   <div class="pdp-ctas">
     <button
       class="pdp-btn-atc"
       class:pdp-pulse={atcPulse}
       onclick={addToCart}
-      disabled={stockStatus === 'out'}
+      disabled={stockStatus === 'out' || !allGroupsSelected}
       style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-radius); font-weight:var(--sf-btn-weight); text-transform:var(--sf-btn-transform);"
     >
       {stockStatus === 'out' ? 'Out of Stock' : 'Add to Cart'}
@@ -384,6 +398,7 @@
         class="pdp-btn-buy"
         class:pdp-pulse={buyPulse}
         onclick={buyNow}
+        disabled={!allGroupsSelected}
         style="border:2px solid var(--sf-primary); color:var(--sf-primary); border-radius:var(--sf-radius); font-weight:var(--sf-btn-weight);"
       >
         Buy Now
@@ -763,6 +778,19 @@
     transition: opacity 0.2s;
   }
   .pdp-btn-buy:hover { opacity: 0.8; }
+  .pdp-btn-buy:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Selection hint ── */
+  .pdp-select-hint {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: var(--sf-pill, 9999px);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    background: #fef3c7;
+    color: #d97706;
+  }
 
   /* ── Pulse animation (AC-12) — scoped so no theme override can suppress it ── */
   @keyframes pdp-scale-pulse {
