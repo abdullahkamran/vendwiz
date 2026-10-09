@@ -95,7 +95,6 @@
   function dismissInstall() {
     installDismissed = true;
     showInstall = false;
-    try { localStorage.setItem('vendwiz-install-dismissed', 'true'); } catch (_) {}
   }
   async function installApp() {
     if (!deferredPrompt) return;
