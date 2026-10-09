@@ -13,7 +13,7 @@
   let images = $derived(data.images as { url: string; alt?: string; order: number }[]);
   let variants = $derived(data.variants);
   let attributes = $derived(data.attributes);
-  let optionGroups = $derived(data.optionGroups as { id: string; name: string; values: { id: string; value: string }[] }[]);
+  let optionGroups = $derived(data.optionGroups as { id: string; name: string; values: { id: string; value: string; label?: string | null }[] }[]);
   let approvedReviews = $derived(data.reviews);
   let related = $derived(data.related);
   let store = $derived(data.store);
@@ -84,6 +84,16 @@
     if (stockStatus === 'out') return;
     if (!allGroupsSelected) return;
     triggerPulse('atc');
+    // Build human-readable variant selections: { groupName: label ?? value }
+    // so the cart displays e.g. "Color: Red" rather than raw DB IDs.
+    const variantSelections: Record<string, string> = {};
+    for (const group of optionGroups) {
+      const selectedValueId = selections[group.id];
+      if (selectedValueId) {
+        const val = group.values.find((v) => v.id === selectedValueId);
+        if (val) variantSelections[group.name] = val.label ?? val.value;
+      }
+    }
     cart.addItem({
       productId: product.id,
       title: product.title,
@@ -91,7 +101,7 @@
       imageUrl: images[0]?.url,
       price: finalPrice,
       quantity: qty,
-      variantSelections: Object.keys(selections).length > 0 ? { ...selections } : undefined
+      variantSelections: Object.keys(variantSelections).length > 0 ? variantSelections : undefined
     });
     showToast(`${product.title} added to cart`);
   }
@@ -289,7 +299,8 @@
       <p class="pdp-option-label">
         {group.name}
         {#if selections[group.id]}
-          <span class="pdp-option-selected">: {group.values.find((v) => v.id === selections[group.id])?.value}</span>
+          {@const selVal = group.values.find((v) => v.id === selections[group.id])}
+          <span class="pdp-option-selected">: {selVal ? (selVal.label ?? selVal.value) : ''}</span>
         {/if}
       </p>
       <div class="pdp-options">
@@ -301,8 +312,8 @@
               class:pdp-swatch--active={selections[group.id] === val.id}
               style="background:{val.value}; border-color:{selections[group.id] === val.id ? 'var(--sf-primary)' : 'transparent'};"
               onclick={() => (selections[group.id] = val.id)}
-              aria-label={val.value}
-              title={val.value}
+              aria-label={val.label ?? val.value}
+              title={val.label ?? val.value}
             ></button>
           {:else}
             <!-- Size button (AC-8) -->
@@ -312,7 +323,7 @@
               onclick={() => (selections[group.id] = val.id)}
               style={selections[group.id] === val.id ? `background:var(--sf-primary); color:var(--sf-on-primary); border-color:var(--sf-primary);` : ''}
             >
-              {val.value}
+              {val.label ?? val.value}
             </button>
           {/if}
         {/each}

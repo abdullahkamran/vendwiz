@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
-import { stores, products, categories, storePolicies, POLICY_TYPES, discountCodes, productVariants } from './schema';
+import { stores, products, categories, storePolicies, POLICY_TYPES, discountCodes, productVariants, productOptionValues } from './schema';
 import { buildSeo } from '../../seo';
 
 // ─── Schema structure ─────────────────────────────────────────────────────────
@@ -222,6 +222,27 @@ describe('categories schema — parentId column', () => {
 	it('parentId is nullable (no notNull constraint)', () => {
 		const cols = getTableColumns(categories);
 		expect((cols.parentId as { notNull: boolean }).notNull).toBe(false);
+	});
+});
+
+// ─── productOptionValues schema — label column ───────────────────────────────
+// These tests fail on any schema revision that omits the label column from
+// productOptionValues; the cart display and colour swatch aria-label depend on it.
+
+describe('productOptionValues schema — label column', () => {
+	it('exposes label column', () => {
+		const cols = getTableColumns(productOptionValues);
+		expect(cols).toHaveProperty('label');
+	});
+
+	it('label column maps to the label DB column name', () => {
+		const cols = getTableColumns(productOptionValues);
+		expect((cols.label as { name: string }).name).toBe('label');
+	});
+
+	it('label column is nullable (no notNull constraint)', () => {
+		const cols = getTableColumns(productOptionValues);
+		expect((cols.label as { notNull: boolean }).notNull).toBe(false);
 	});
 });
 

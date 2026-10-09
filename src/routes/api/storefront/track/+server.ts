@@ -9,7 +9,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
     throw error(404, 'Store not found');
   }
 
-  const ref = url.searchParams.get('ref')?.toUpperCase();
+  // Strip a leading '#' that users may copy from the confirmation page's "#ORD-…" display
+  const ref = url.searchParams.get('ref')?.toUpperCase().replace(/^#/, '');
   const email = url.searchParams.get('email')?.toLowerCase().trim();
 
   if (!ref || !email) {

@@ -205,7 +205,8 @@ export const productOptionValues = pgTable('product_option_values', {
 	groupId: text('group_id')
 		.notNull()
 		.references(() => productOptionGroups.id, { onDelete: 'cascade' }),
-	value: text('value').notNull(), // "S" | "Red"
+	value: text('value').notNull(), // "S" | "#FF0000" (hex for colour groups)
+	label: text('label'), // human-readable label e.g. "Red" — nullable for back-compat
 	sortOrder: integer('sort_order').notNull().default(0)
 });
 

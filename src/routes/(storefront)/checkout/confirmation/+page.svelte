@@ -49,17 +49,17 @@
     ✓
   </div>
 
-  <h1 style="font-size:1.75rem; font-weight:800; color:#111827; margin:0 0 12px;">Order Placed Successfully!</h1>
-  <p style="color:#6b7280; margin:0 0 32px; line-height:1.6;">
+  <h1 style="font-size:1.75rem; font-weight:800; color:var(--sf-text); margin:0 0 12px;">Order Placed Successfully!</h1>
+  <p style="color:var(--sf-muted); margin:0 0 32px; line-height:1.6;">
     Thank you for your order. Your order is being processed and you'll be notified when it ships.
   </p>
 
   {#if orderRef}
-    <div style="background:#f3f4f6; border-radius:10px; padding:16px 24px; margin-bottom:32px; display:flex; align-items:center; justify-content:center; gap:12px;">
-      <span style="color:#6b7280; font-size:0.875rem;">Order Reference:</span>
-      <span style="font-size:1.25rem; font-weight:800; color:#111827; font-family:monospace;">#{orderRef}</span>
+    <div style="background:var(--sf-surface); border-radius:10px; padding:16px 24px; margin-bottom:32px; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;">
+      <span style="color:var(--sf-muted); font-size:0.875rem;">Order Reference:</span>
+      <span style="font-size:1.25rem; font-weight:800; color:var(--sf-text); font-family:monospace; word-break:break-all;">#{orderRef}</span>
       <button onclick={copyRef} title="Copy reference"
-        style="background:none; border:none; cursor:pointer; font-size:1rem; color:#6b7280;">
+        style="background:none; border:none; cursor:pointer; font-size:1rem; color:var(--sf-muted);">
         {copied ? '✓' : '📋'}
       </button>
     </div>
@@ -74,12 +74,12 @@
     {/if}
 
     <a href="{basePath}/track"
-      style="padding:12px 28px; background:#f3f4f6; color:#374151; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
+      style="padding:12px 28px; background:var(--sf-surface); color:var(--sf-text); border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
       Track Your Order
     </a>
 
     <a href="{basePath}/products"
-      style="padding:12px 28px; background:var(--store-primary,#111827); color:#fff; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
+      style="padding:12px 28px; background:var(--sf-primary); color:var(--sf-on-primary); border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
       Continue Shopping
     </a>
   </div>
