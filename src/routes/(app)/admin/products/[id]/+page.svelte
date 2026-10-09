@@ -9,10 +9,11 @@
   let categories = data.categories as Category[];
 
   type ImageRow = { id?: string; url: string; sortOrder: number };
+  type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string };
   type VariantRow = {
     id?: string;
     name: string;
-    options: { label: string; price_modifier: number; stockQty?: number }[];
+    options: VariantOption[];
     sizeChartUrl?: string;
   };
   type AttributeRow = { id?: string; name: string; value: string };
@@ -23,15 +24,52 @@
     sortOrder: img.sortOrder
   }));
 
-  // DB variants use `label` (not `name`) and `optionValueIds` (not `options`).
-  // Reconstruct a synthetic option from the DB row so Zod's options.min(1) passes.
+  // Reconstruct variant rows from optionGroups (new format) when available,
+  // falling back to the legacy DB variants shape for products saved before this change.
+  type RawOptionGroup = { id: string; name: string; sortOrder: number; values: { id: string; value: string; sortOrder: number }[] };
   type RawVariant = typeof data.variants[number];
-  const variantRows: VariantRow[] = data.variants.map((v: RawVariant) => ({
-    id: v.id,
-    name: v.label ?? '',
-    options: [{ label: v.label ?? '', price_modifier: 0, stockQty: v.stockQty ?? 0 }],
-    sizeChartUrl: v.sizeChartUrl ?? ''
-  }));
+
+  const optionGroups: RawOptionGroup[] = (data as Record<string, unknown>).optionGroups as RawOptionGroup[] ?? [];
+
+  const variantRows: VariantRow[] = (() => {
+    if (optionGroups.length > 0) {
+      const basePrice = Number(data.product.basePrice ?? 0);
+      return optionGroups.map((g) => {
+        const isColor = /colou?r/i.test(g.name);
+        return {
+          name: g.name,
+          options: g.values.map((val) => {
+            // Find the matching productVariant row (optionValueIds includes val.id)
+            const matchedVariant = data.variants.find((v: RawVariant) => {
+              const ids = v.optionValueIds as string[];
+              return Array.isArray(ids) && ids.includes(val.id);
+            });
+            const variantPrice = matchedVariant?.price != null ? Number(matchedVariant.price) : null;
+            const priceModifier = variantPrice != null ? variantPrice - basePrice : 0;
+            return {
+              label: val.value,
+              price_modifier: priceModifier,
+              stockQty: matchedVariant?.stockQty ?? 0,
+              ...(isColor ? { colorHex: val.value.startsWith('#') ? val.value : undefined } : {})
+            } satisfies VariantOption;
+          }),
+          sizeChartUrl: g.values.length > 0
+            ? (data.variants.find((v: RawVariant) => {
+                const ids = v.optionValueIds as string[];
+                return Array.isArray(ids) && ids.includes(g.values[0].id);
+              })?.sizeChartUrl ?? '')
+            : ''
+        };
+      });
+    }
+    // Legacy fallback: reconstruct from flat productVariants rows
+    return data.variants.map((v: RawVariant) => ({
+      id: v.id,
+      name: v.label ?? '',
+      options: [{ label: v.label ?? '', price_modifier: 0, stockQty: v.stockQty ?? 0 }],
+      sizeChartUrl: v.sizeChartUrl ?? ''
+    }));
+  })();
 
   type RawAttr = { id?: string; name: string; value: string };
   const attributeRows: AttributeRow[] = (data.attributes as RawAttr[]).map((a) => ({

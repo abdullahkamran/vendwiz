@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
-import { products, productVariants, productAttributes, stores } from '$lib/server/db/schema';
+import { products, productVariants, productAttributes, productOptionGroups, productOptionValues, stores } from '$lib/server/db/schema';
 import { eq, and, ilike, count, desc } from 'drizzle-orm';
 import { productSchema } from '$lib/schemas/catalog';
 import { nanoid } from 'nanoid';
@@ -144,27 +144,50 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     })
     .returning();
 
-  // Insert variants
+  // Insert option groups, option values, and variants with correct optionValueIds
+  // so the storefront matchedVariant derived store can find a match when a colour
+  // (or other option) is selected.
   if (variants.length > 0) {
-    await db.insert(productVariants).values(
-      variants.map((v) => {
-        const variantId = nanoid();
-        return {
-          id: variantId,
+    for (const v of variants) {
+      const groupId = nanoid();
+      await db.insert(productOptionGroups).values({
+        id: groupId,
+        productId: product.id,
+        name: v.name,
+        sortOrder: variants.indexOf(v)
+      });
+
+      const isColor = /colou?r/i.test(v.name);
+
+      for (let oi = 0; oi < v.options.length; oi++) {
+        const opt = v.options[oi];
+        const valueId = nanoid();
+        // For colour groups use the hex as the stored value (the PDP swatch renders
+        // background:{val.value}); for other groups use the label text.
+        const storedValue = isColor ? (opt.colorHex ?? opt.label) : opt.label;
+
+        await db.insert(productOptionValues).values({
+          id: valueId,
+          groupId,
+          value: storedValue,
+          sortOrder: oi
+        });
+
+        // One productVariants row per option value — optionValueIds = [valueId]
+        // so the PDP matchedVariant check (selectedIds.every(id => ids.includes(id)))
+        // can find a match when that option is selected.
+        const priceModifier = opt.price_modifier ?? 0;
+        await db.insert(productVariants).values({
+          id: nanoid(),
           productId: product.id,
-          // optionValueIds must be a string[]. For variants created through the
-          // admin form (which doesn't use productOptionGroups), we store the
-          // variant's own ID so the PDP legacy matcher
-          // (`ids.includes(variant.id)`) can resolve the selection correctly.
-          optionValueIds: [variantId],
-          label: v.name,
-          // Use the stock from the first option; the schema comment explicitly
-          // says stockQty is passed through so the handler can preserve it.
-          stockQty: v.options[0]?.stockQty ?? 0,
+          optionValueIds: [valueId],
+          label: opt.label,
+          price: priceModifier !== 0 ? String(basePrice + priceModifier) : null,
+          stockQty: opt.stockQty ?? 0,
           sizeChartUrl: v.sizeChartUrl || null
-        };
-      })
-    );
+        });
+      }
+    }
   }
 
   // Insert attributes

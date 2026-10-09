@@ -66,11 +66,14 @@ export const actions: Actions = {
 
 		if (!order) return fail(404, { error: 'Order not found' });
 
-		const allowed = ALLOWED_TRANSITIONS[order.status as OrderStatus] ?? [];
-		if (!allowed.includes(newStatus)) {
-			return fail(422, {
-				error: `Cannot transition from ${order.status} to ${newStatus}`
-			});
+		// Allow same-status no-op (e.g. user saves without changing dropdown)
+		if (order.status !== newStatus) {
+			const allowed = ALLOWED_TRANSITIONS[order.status as OrderStatus] ?? [];
+			if (!allowed.includes(newStatus)) {
+				return fail(422, {
+					error: `Cannot transition from ${order.status} to ${newStatus}`
+				});
+			}
 		}
 
 		const updateData: Partial<typeof orders.$inferInsert> = {
@@ -84,7 +87,7 @@ export const actions: Actions = {
 			.set(updateData)
 			.where(and(eq(orders.id, params.id), eq(orders.storeId, store.id)));
 
-		return { success: true };
+		return { success: true, status: newStatus };
 	},
 
 	saveNotes: async ({ params, request, locals }) => {

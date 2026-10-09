@@ -1,9 +1,14 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	type OrderStatus = 'pending' | 'processing' | 'dispatched' | 'completed' | 'cancelled';
+
+	// All five statuses shown in the dropdown regardless of current status;
+	// server still guards against invalid transitions on submit.
+	const ALL_STATUSES: OrderStatus[] = ['pending', 'processing', 'dispatched', 'completed', 'cancelled'];
 
 	// Capture initial prop values in plain variables before passing to $state
 	// to avoid the "captures initial value of data" warning.
@@ -150,35 +155,44 @@
 			<!-- Status Management -->
 			<div class="bg-white shadow rounded-lg p-6">
 				<h2 class="text-lg font-semibold text-gray-900 mb-4">Update Status</h2>
-				{#if data.allowedNext.length > 0}
-					<form method="POST" action="?/updateStatus">
-						<input type="hidden" name="status" value={selectedStatus} />
-						<select
-							class="w-full rounded-md border-gray-300 shadow-sm text-sm mb-3 focus:ring-indigo-500 focus:border-indigo-500"
-							value={selectedStatus}
-							onchange={handleStatusChange}
-						>
-							{#each data.allowedNext as s}
-								<option value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-							{/each}
-						</select>
+				<form
+					method="POST"
+					action="?/updateStatus"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							await update({ reset: false });
+							// Reset dropdown to the newly saved status returned by the action
+							if (result.type === 'success' && result.data && 'status' in result.data) {
+								selectedStatus = result.data.status as OrderStatus;
+								showCancelConfirm = false;
+							}
+						};
+					}}
+				>
+					<input type="hidden" name="status" value={selectedStatus} />
+					<select
+						class="w-full rounded-md border-gray-300 shadow-sm text-sm mb-3 focus:ring-indigo-500 focus:border-indigo-500"
+						value={selectedStatus}
+						onchange={handleStatusChange}
+					>
+						{#each ALL_STATUSES as s}
+							<option value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+						{/each}
+					</select>
 
-						{#if showCancelConfirm}
-							<div class="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
-								⚠️ Cancellation is irreversible. Confirm below.
-							</div>
-						{/if}
+					{#if showCancelConfirm}
+						<div class="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
+							⚠️ Cancellation is irreversible. Confirm below.
+						</div>
+					{/if}
 
-						<button
-							type="submit"
-							class="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
-						>
-							Update Status
-						</button>
-					</form>
-				{:else}
-					<p class="text-sm text-gray-500">No further transitions available.</p>
-				{/if}
+					<button
+						type="submit"
+						class="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
+					>
+						Update Status
+					</button>
+				</form>
 			</div>
 
 			<!-- WhatsApp -->

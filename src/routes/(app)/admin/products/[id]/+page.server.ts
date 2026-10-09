@@ -5,6 +5,8 @@ import {
   products,
   productVariants,
   productAttributes,
+  productOptionGroups,
+  productOptionValues,
   stores
 } from '$lib/server/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
@@ -42,17 +44,27 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const rawImages = ((product.images as ProductImage[]) ?? []).sort((a, b) => a.order - b.order);
   const images = rawImages.map((img, i) => ({ id: undefined, url: img.url, sortOrder: i }));
 
-  const [variants, attributes, allCategories] = await Promise.all([
+  const [variants, attributes, allCategories, optionGroupRows] = await Promise.all([
     db.select().from(productVariants).where(eq(productVariants.productId, params.id)),
     db.select().from(productAttributes).where(eq(productAttributes.productId, params.id)),
-    db.select().from(categories).where(eq(categories.storeId, store.id)).orderBy(asc(categories.sortOrder))
+    db.select().from(categories).where(eq(categories.storeId, store.id)).orderBy(asc(categories.sortOrder)),
+    db.select().from(productOptionGroups).where(eq(productOptionGroups.productId, params.id))
   ]);
+
+  // Load option values for each group (mirrors api/admin/products/[id]/+server.ts GET)
+  const optionGroups = await Promise.all(
+    optionGroupRows.map(async (g) => {
+      const vals = await db.select().from(productOptionValues).where(eq(productOptionValues.groupId, g.id));
+      return { ...g, values: vals };
+    })
+  );
 
   return {
     product,
     images,
     variants,
     attributes,
+    optionGroups,
     categories: allCategories,
     store
   };

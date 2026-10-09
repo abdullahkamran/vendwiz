@@ -97,17 +97,6 @@
 	}
 </script>
 
-{#if form?.error || saveError}
-	<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-		{form?.error ?? saveError}
-	</div>
-{/if}
-{#if form?.success || saveSuccess}
-	<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-		Settings saved successfully.
-	</div>
-{/if}
-
 <form
 	method="POST"
 	action="?/update"
@@ -427,7 +416,13 @@
 		</div>
 	</section>
 
-	<div class="flex justify-end">
+	<div class="flex items-center justify-end gap-3">
+		{#if form?.error || saveError}
+			<p class="text-sm text-red-600">{form?.error ?? saveError}</p>
+		{/if}
+		{#if form?.success || saveSuccess}
+			<p class="text-sm text-green-600">Settings saved successfully.</p>
+		{/if}
 		<button
 			type="submit"
 			disabled={saving || uploadingLogo || uploadingFavicon}

@@ -2,7 +2,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { orders, orderItems } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
   if (!locals.store) {
@@ -23,7 +23,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
       and(
         eq(orders.storeId, locals.store.id),
         eq(orders.orderNumber, ref),
-        eq(orders.customerEmail, email)
+        // Case-insensitive match: stored email may have mixed case (e.g. 'User@Example.com')
+        // while the API already lowercases the query param. Using sql`lower()` ensures
+        // 'user@example.com' matches 'User@Example.COM' in PostgreSQL.
+        sql`lower(${orders.customerEmail}) = ${email}`
       )
     )
     .limit(1);

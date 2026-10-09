@@ -9,13 +9,15 @@
 	let bgColor = $state(data.store.announcementBg ?? '#1a1a2e');
 	let fgColor = $state(data.store.announcementFg ?? '#ffffff');
 	let saving = $state(false);
-</script>
 
-{#if form?.success}
-	<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-		Announcement bar saved successfully.
-	</div>
-{/if}
+	// Re-sync state from server after save so a reload reflects stored values
+	$effect(() => {
+		enabled = data.store.announcementEnabled;
+		text = data.store.announcementText ?? '';
+		bgColor = data.store.announcementBg ?? '#1a1a2e';
+		fgColor = data.store.announcementFg ?? '#ffffff';
+	});
+</script>
 
 <!-- Live preview -->
 {#if enabled && text}
@@ -59,7 +61,7 @@
 						class="sr-only peer"
 					/>
 					<div
-						class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[--color-accent] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[--color-accent]"
+						class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[--color-accent] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"
 					></div>
 				</label>
 			</div>
@@ -129,7 +131,10 @@
 		</div>
 	</section>
 
-	<div class="flex justify-end">
+	<div class="flex items-center justify-end gap-3">
+		{#if form?.success}
+			<p class="text-sm text-green-600">Announcement bar saved successfully.</p>
+		{/if}
 		<button
 			type="submit"
 			disabled={saving}

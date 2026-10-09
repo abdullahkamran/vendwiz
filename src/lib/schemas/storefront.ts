@@ -25,7 +25,8 @@ export const checkoutSchema = z.object({
 export const reviewSchema = z.object({
   productId: z.string(),
   reviewerName: z.string().min(2).max(100),
-  reviewerEmail: z.string().email().optional(),
+  // Required for duplicate-review prevention (email-based per product per store)
+  reviewerEmail: z.string().email(),
   rating: z.number().int().min(1).max(5),
   body: z.string().max(1000).optional()
 });

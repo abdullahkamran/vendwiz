@@ -1,6 +1,11 @@
 <script lang="ts">
-  type VariantOption = { label: string; price_modifier: number; stockQty?: number };
+  type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string };
   type VariantRow = { id?: string; name: string; options: VariantOption[]; sizeChartUrl?: string };
+
+  // Returns true when the variant group name indicates a colour group
+  function isColorGroup(name: string): boolean {
+    return /colou?r/i.test(name);
+  }
 
   let {
     variants = [],
@@ -59,6 +64,18 @@
     onChange(rows);
   }
 
+  function updateOptionColorHex(vi: number, oi: number, colorHex: string) {
+    rows = rows.map((r, i) =>
+      i === vi
+        ? {
+            ...r,
+            options: r.options.map((o, j) => (j === oi ? { ...o, colorHex } : o))
+          }
+        : r
+    );
+    onChange(rows);
+  }
+
   function updateOptionModifier(vi: number, oi: number, modStr: string) {
     const price_modifier = parseFloat(modStr) || 0;
     rows = rows.map((r, i) =>
@@ -98,6 +115,7 @@
         <table class="options-table">
           <thead>
             <tr>
+              {#if isColorGroup(variant.name)}<th>Color</th>{/if}
               <th>Option Label</th>
               <th>Price Modifier</th>
               <th></th>
@@ -106,6 +124,18 @@
           <tbody>
             {#each variant.options as option, oi}
               <tr>
+                {#if isColorGroup(variant.name)}
+                  <td class="color-cell">
+                    <input
+                      type="color"
+                      value={option.colorHex ?? '#000000'}
+                      title="Pick colour"
+                      oninput={(e) =>
+                        updateOptionColorHex(vi, oi, (e.target as HTMLInputElement).value)}
+                      class="color-swatch-input"
+                    />
+                  </td>
+                {/if}
                 <td>
                   <input
                     type="text"
@@ -359,5 +389,21 @@
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     margin-top: 0.25rem;
+  }
+
+  /* Colour group swatch picker */
+  .color-cell {
+    width: 44px;
+    padding: 0.25rem 0.4rem;
+  }
+
+  .color-swatch-input {
+    width: 32px;
+    height: 28px;
+    padding: 1px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
   }
 </style>

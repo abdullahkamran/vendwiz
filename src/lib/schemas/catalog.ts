@@ -4,7 +4,8 @@ export const categorySchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   sortOrder: z.number().int().default(0),
-  parentId: z.string().nullable().optional()
+  parentId: z.string().nullable().optional(),
+  imageUrl: z.string().url().nullable().optional()
 });
 
 export const variantOptionSchema = z.object({
@@ -12,7 +13,11 @@ export const variantOptionSchema = z.object({
   price_modifier: z.number().default(0),
   // stockQty per option is passed through from the edit form so the PUT handler
   // can preserve existing stock rather than hard-coding 0.
-  stockQty: z.number().int().min(0).default(0)
+  stockQty: z.number().int().min(0).default(0),
+  // colorHex is set for colour-group options; used as the productOptionValue.value
+  // so the storefront swatch can render background:{val.value}.
+  // Constrained to #RRGGBB to prevent CSS injection via the style attribute.
+  colorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional()
 });
 
 export const variantSchema = z.object({
