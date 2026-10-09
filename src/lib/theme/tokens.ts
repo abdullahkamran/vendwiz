@@ -40,6 +40,8 @@ export interface DarkTokens {
   '--sf-text': string;
   '--sf-muted': string;
   '--sf-border': string;
+  '--sf-primary': string;
+  '--sf-on-primary': string;
 }
 
 // ─── basic ────────────────────────────────────────────────────────────────────
@@ -76,7 +78,9 @@ const basicDark: DarkTokens = {
   '--sf-surface': '#161b22',
   '--sf-text': '#e6edf3',
   '--sf-muted': '#8b949e',
-  '--sf-border': '#30363d'
+  '--sf-border': '#30363d',
+  '--sf-primary': '#58a6ff',
+  '--sf-on-primary': '#0d1117'
 };
 
 // ─── minimal ──────────────────────────────────────────────────────────────────
@@ -113,7 +117,9 @@ const minimalDark: DarkTokens = {
   '--sf-surface': '#1a1a1a',
   '--sf-text': '#f9fafb',
   '--sf-muted': '#9ca3af',
-  '--sf-border': '#374151'
+  '--sf-border': '#374151',
+  '--sf-primary': '#f9fafb',
+  '--sf-on-primary': '#111827'
 };
 
 // ─── bold ─────────────────────────────────────────────────────────────────────
@@ -150,7 +156,9 @@ const boldDark: DarkTokens = {
   '--sf-surface': '#0f172a',
   '--sf-text': '#f8fafc',
   '--sf-muted': '#cbd5e1',
-  '--sf-border': '#1e293b'
+  '--sf-border': '#1e293b',
+  '--sf-primary': '#fb923c',
+  '--sf-on-primary': '#0f172a'
 };
 
 // ─── playful ──────────────────────────────────────────────────────────────────
@@ -187,7 +195,9 @@ const playfulDark: DarkTokens = {
   '--sf-surface': '#2d1b4e',
   '--sf-text': '#f5e6ff',
   '--sf-muted': '#c4b5fd',
-  '--sf-border': '#5b21b6'
+  '--sf-border': '#5b21b6',
+  '--sf-primary': '#a78bfa',
+  '--sf-on-primary': '#1a0533'
 };
 
 // ─── Exports ──────────────────────────────────────────────────────────────────

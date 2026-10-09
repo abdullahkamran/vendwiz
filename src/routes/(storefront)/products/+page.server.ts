@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { products, categories } from '$lib/server/db/schema';
-import { eq, and, ilike, lte, asc, desc, gt, isNotNull, sql } from 'drizzle-orm';
+import { eq, and, ilike, lte, asc, desc, gt, isNotNull, sql, inArray } from 'drizzle-orm';
 
 const PAGE_SIZE = 24;
 
@@ -20,7 +20,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   // Build where conditions
   const conditions = [eq(products.storeId, storeId), eq(products.isPublished, true)];
   if (q) conditions.push(ilike(products.title, `%${q}%`));
-  if (categoryId) conditions.push(eq(products.categoryId, categoryId));
+  if (categoryId) {
+    // Include products in both the selected category and any of its direct children,
+    // so browsing a parent category also shows products assigned to subcategories.
+    const childRows = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(and(eq(categories.parentId, categoryId), eq(categories.storeId, storeId)));
+    const categoryIds = [categoryId, ...childRows.map((r) => r.id)];
+    conditions.push(inArray(products.categoryId, categoryIds));
+  }
   if (maxPrice) conditions.push(lte(products.basePrice, maxPrice));
   // Push in-stock / on-sale as DB-level conditions so count and pagination are accurate
   if (inStockOnly) conditions.push(gt(products.stockQty, 0));

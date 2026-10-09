@@ -162,14 +162,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       for (let oi = 0; oi < v.options.length; oi++) {
         const opt = v.options[oi];
         const valueId = nanoid();
-        // For colour groups use the hex as the stored value (the PDP swatch renders
-        // background:{val.value}); for other groups use the label text.
+        // For colour groups: value = hex so the PDP swatch renders background:{val.value};
+        // label = human-readable name ("Red") for display in cart and order summaries.
+        // For other groups: value = label text; label mirrors it for consistent lookup.
         const storedValue = isColor ? (opt.colorHex ?? opt.label) : opt.label;
 
         await db.insert(productOptionValues).values({
           id: valueId,
           groupId,
           value: storedValue,
+          label: opt.label,
           sortOrder: oi
         });
 
