@@ -267,7 +267,7 @@ export const orders = pgTable('orders', {
 	// Customer info (guest checkout)
 	customerName: text('customer_name').notNull(),
 	customerPhone: text('customer_phone').notNull(),
-	customerEmail: text('customer_email').notNull(),
+	customerEmail: text('customer_email'),
 	shippingAddress: text('shipping_address').notNull(),
 	// Discount
 	discountCodeId: text('discount_code_id').references(() => discountCodes.id),

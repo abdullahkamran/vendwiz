@@ -11,7 +11,6 @@
   }
 
   let ref = $state('');
-  let email = $state('');
   let loading = $state(false);
   let result = $state<'not_found' | OrderResult | null>(null);
 
@@ -24,12 +23,12 @@
   };
 
   async function trackOrder() {
-    if (!ref.trim() || !email.trim()) return;
+    if (!ref.trim()) return;
     loading = true;
     result = null;
     try {
       const res = await fetch(
-        `${basePath}/api/storefront/track?ref=${encodeURIComponent(ref.trim().toUpperCase())}&email=${encodeURIComponent(email.trim())}`
+        `${basePath}/api/storefront/track?ref=${encodeURIComponent(ref.trim().toUpperCase())}`
       );
       if (res.ok) {
         result = await res.json() as OrderResult;
@@ -58,19 +57,14 @@
 
 <div class="track-wrap">
   <h1 style="font-size:1.75rem; font-weight:800; margin:0 0 8px;">Track Your Order</h1>
-  <p style="color:#6b7280; margin:0 0 32px;">Enter your order reference and email to see the current status.</p>
+  <p style="color:#6b7280; margin:0 0 32px;">Enter your order reference number to see the current status.</p>
 
   <form onsubmit={(e) => { e.preventDefault(); trackOrder(); }}
     style="border:1px solid #e5e7eb; border-radius:12px; padding:24px; margin-bottom:32px;">
-    <div style="margin-bottom:16px;">
+    <div style="margin-bottom:20px;">
       <label style="font-size:0.875rem; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Order Reference</label>
       <input bind:value={ref} required placeholder="e.g. ORD-ABC12345"
         style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px 14px; font-size:0.9rem; box-sizing:border-box; text-transform:uppercase;" />
-    </div>
-    <div style="margin-bottom:20px;">
-      <label style="font-size:0.875rem; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Email Address</label>
-      <input bind:value={email} required type="email" placeholder="you@example.com"
-        style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px 14px; font-size:0.9rem; box-sizing:border-box;" />
     </div>
     <button type="submit" disabled={loading}
       style="width:100%; padding:12px; background:var(--store-primary,#111827); color:#fff; border:none; border-radius:8px; font-size:0.9rem; font-weight:600; cursor:pointer;">

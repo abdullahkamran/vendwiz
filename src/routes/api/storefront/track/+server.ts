@@ -2,7 +2,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { orders, orderItems } from '$lib/server/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
   if (!locals.store) {
@@ -11,10 +11,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
   // Strip a leading '#' that users may copy from the confirmation page's "#ORD-…" display
   const ref = url.searchParams.get('ref')?.toUpperCase().replace(/^#/, '');
-  const email = url.searchParams.get('email')?.toLowerCase().trim();
 
-  if (!ref || !email) {
-    return json({ error: 'ref and email are required' }, { status: 400 });
+  if (!ref) {
+    return json({ error: 'ref is required' }, { status: 400 });
   }
 
   const [order] = await db
@@ -23,11 +22,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
     .where(
       and(
         eq(orders.storeId, locals.store.id),
-        eq(orders.orderNumber, ref),
-        // Case-insensitive match: stored email may have mixed case (e.g. 'User@Example.com')
-        // while the API already lowercases the query param. Using sql`lower()` ensures
-        // 'user@example.com' matches 'User@Example.COM' in PostgreSQL.
-        sql`lower(${orders.customerEmail}) = ${email}`
+        eq(orders.orderNumber, ref)
       )
     )
     .limit(1);

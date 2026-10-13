@@ -70,8 +70,8 @@
     color: var(--sf-text);
   }
   :global(.policy-content p) { margin: 0 0 1em; }
-  :global(.policy-content ul),
-  :global(.policy-content ol) { padding-left: 1.5em; margin: 0 0 1em; }
+  :global(.policy-content ul) { list-style-type: disc; padding-left: 1.5em; margin: 0 0 1em; }
+  :global(.policy-content ol) { list-style-type: decimal; padding-left: 1.5em; margin: 0 0 1em; }
   :global(.policy-content li) { margin-bottom: 0.4em; }
   :global(.policy-content a) { color: var(--sf-primary); }
   :global(.policy-content strong) { font-weight: 700; }

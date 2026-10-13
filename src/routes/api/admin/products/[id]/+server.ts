@@ -123,90 +123,107 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     return json({ error: 'A product with this slug already exists in your store.' }, { status: 400 });
   }
 
-  const [updated] = await db
-    .update(products)
-    .set({
-      title,
-      slug,
-      categoryId: categoryId ?? null,
-      basePrice: String(basePrice),
-      description: description ?? null,
-      seoTitle: seoTitle ?? null,
-      seoDescription: seoDescription ?? null,
-      youtubeUrl: youtubeUrl || null,
-      isPublished,
-      stockQty,
-      lowStockThreshold,
-      // Store images in JSONB
-      images: images.map((img, i) => ({ url: img.url, alt: '', order: img.sortOrder ?? i })),
-      updatedAt: new Date()
-    })
-    .where(eq(products.id, params.id))
-    .returning();
+  let updated: (typeof products.$inferSelect) | undefined;
+  let finalVariants: (typeof productVariants.$inferSelect)[];
+  let finalAttributes: (typeof productAttributes.$inferSelect)[];
 
-  // Replace option groups, option values, and variants: delete all then re-insert
-  // with correct optionValueIds so the PDP matchedVariant lookup works.
-  await db.delete(productOptionGroups).where(eq(productOptionGroups.productId, params.id));
-  await db.delete(productVariants).where(eq(productVariants.productId, params.id));
-  if (variants.length > 0) {
-    for (const v of variants) {
-      const groupId = nanoid();
-      await db.insert(productOptionGroups).values({
-        id: groupId,
-        productId: params.id,
-        name: v.name,
-        sortOrder: variants.indexOf(v)
-      });
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(products)
+        .set({
+          title,
+          slug,
+          categoryId: categoryId ?? null,
+          basePrice: String(basePrice),
+          description: description ?? null,
+          seoTitle: seoTitle ?? null,
+          seoDescription: seoDescription ?? null,
+          youtubeUrl: youtubeUrl || null,
+          isPublished,
+          stockQty,
+          lowStockThreshold,
+          // Store images in JSONB
+          images: images.map((img, i) => ({ url: img.url, alt: '', order: img.sortOrder ?? i })),
+          updatedAt: new Date()
+        })
+        .where(eq(products.id, params.id))
+        .returning();
 
-      const isColor = /colou?r/i.test(v.name);
+      // Replace option groups, option values, and variants: delete all then re-insert
+      // with correct optionValueIds so the PDP matchedVariant lookup works.
+      await tx.delete(productOptionGroups).where(eq(productOptionGroups.productId, params.id));
+      await tx.delete(productVariants).where(eq(productVariants.productId, params.id));
+      if (variants.length > 0) {
+        for (const v of variants) {
+          const groupId = nanoid();
+          await tx.insert(productOptionGroups).values({
+            id: groupId,
+            productId: params.id,
+            name: v.name,
+            sortOrder: variants.indexOf(v)
+          });
 
-      for (let oi = 0; oi < v.options.length; oi++) {
-        const opt = v.options[oi];
-        const valueId = nanoid();
-        // For colour groups: value = hex so the PDP swatch renders background:{val.value};
-        // label = human-readable name ("Red") for display in cart and order summaries.
-        // For other groups: value = label text; label mirrors it for consistent lookup.
-        const storedValue = isColor ? (opt.colorHex ?? opt.label) : opt.label;
+          const isColor = /colou?r/i.test(v.name);
 
-        await db.insert(productOptionValues).values({
-          id: valueId,
-          groupId,
-          value: storedValue,
-          label: opt.label,
-          sortOrder: oi
-        });
+          for (let oi = 0; oi < v.options.length; oi++) {
+            const opt = v.options[oi];
+            const valueId = nanoid();
+            // For colour groups: value = hex so the PDP swatch renders background:{val.value};
+            // label = human-readable name ("Red") for display in cart and order summaries.
+            // For other groups: value = label text; label mirrors it for consistent lookup.
+            const storedValue = isColor ? (opt.colorHex ?? opt.label) : opt.label;
 
-        const priceModifier = opt.price_modifier ?? 0;
-        await db.insert(productVariants).values({
-          id: nanoid(),
-          productId: params.id,
-          optionValueIds: [valueId],
-          label: opt.label,
-          price: priceModifier !== 0 ? String(basePrice + priceModifier) : null,
-          stockQty: opt.stockQty ?? 0,
-          sizeChartUrl: v.sizeChartUrl || null
-        });
+            await tx.insert(productOptionValues).values({
+              id: valueId,
+              groupId,
+              value: storedValue,
+              label: opt.label,
+              sortOrder: oi
+            });
+
+            const priceModifier = opt.price_modifier ?? 0;
+            await tx.insert(productVariants).values({
+              id: nanoid(),
+              productId: params.id,
+              optionValueIds: [valueId],
+              label: opt.label,
+              price: priceModifier !== 0 ? String(basePrice + priceModifier) : null,
+              stockQty: opt.stockQty ?? 0,
+              sizeChartUrl: v.sizeChartUrl || null
+            });
+          }
+        }
       }
-    }
-  }
 
-  // Replace attributes: delete all then re-insert
-  await db.delete(productAttributes).where(eq(productAttributes.productId, params.id));
-  if (attributes.length > 0) {
-    await db.insert(productAttributes).values(
-      attributes.map((a) => ({
-        id: nanoid(),
-        productId: params.id,
-        name: a.name,
-        value: a.value
-      }))
-    );
-  }
+      // Replace attributes: delete all then re-insert
+      await tx.delete(productAttributes).where(eq(productAttributes.productId, params.id));
+      if (attributes.length > 0) {
+        await tx.insert(productAttributes).values(
+          attributes.map((a) => ({
+            id: nanoid(),
+            productId: params.id,
+            name: a.name,
+            value: a.value
+          }))
+        );
+      }
 
-  const [finalVariants, finalAttributes] = await Promise.all([
-    db.select().from(productVariants).where(eq(productVariants.productId, params.id)),
-    db.select().from(productAttributes).where(eq(productAttributes.productId, params.id))
-  ]);
+      const [txVariants, txAttributes] = await Promise.all([
+        tx.select().from(productVariants).where(eq(productVariants.productId, params.id)),
+        tx.select().from(productAttributes).where(eq(productAttributes.productId, params.id))
+      ]);
+
+      return { row, txVariants, txAttributes };
+    });
+
+    updated = result.row;
+    finalVariants = result.txVariants;
+    finalAttributes = result.txAttributes;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Update failed';
+    return json({ error: message }, { status: 500 });
+  }
 
   return json({
     ...updated,

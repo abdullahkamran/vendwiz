@@ -5,6 +5,17 @@ import { orders, orderItems, discountCodes, products, productVariants } from '$l
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { checkoutSchema } from '$lib/schemas/storefront';
+import { sendEmail } from '$lib/server/email';
+
+/** Escape a string for safe interpolation into an HTML body. */
+function htmlEscape(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   if (!locals.isStorefront || !locals.store) {
@@ -189,7 +200,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     orderNumber,
     customerName,
     customerPhone,
-    customerEmail,
+    customerEmail: customerEmail || null,
     shippingAddress,
     subtotal: subtotal.toFixed(2),
     shippingFee: shippingFee.toFixed(2),
@@ -224,6 +235,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         };
       })
     );
+  }
+
+  // ── Confirmation email (fire-and-forget; failure must never fail the order) ─
+  if (customerEmail) {
+    const storeName = locals.store.name ?? 'Store';
+    const itemSummary = items
+      .map((i) => `<li>${htmlEscape(i.title)} × ${i.quantity}</li>`)
+      .join('');
+    sendEmail({
+      to: customerEmail,
+      subject: `Order confirmed – #${orderNumber}`,
+      html: `<p>Hi ${htmlEscape(customerName)},</p>
+<p>Thank you for your order at <strong>${htmlEscape(storeName)}</strong>.</p>
+<p>Order number: <strong>#${orderNumber}</strong></p>
+<ul>${itemSummary}</ul>
+<p>Total: ${locals.store.currencySymbol ?? ''} ${total.toFixed(2)}</p>`
+    }).catch(() => {
+      // intentionally swallowed — email is best-effort
+    });
   }
 
   // ── Inventory decrement after order insert ────────────────────────────────
