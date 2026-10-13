@@ -152,49 +152,6 @@
 		<!-- Right column -->
 		<div class="space-y-6">
 
-			<!-- Status Management -->
-			<div class="bg-white shadow rounded-lg p-6">
-				<h2 class="text-lg font-semibold text-gray-900 mb-4">Update Status</h2>
-				<form
-					method="POST"
-					action="?/updateStatus"
-					use:enhance={() => {
-						return async ({ result, update }) => {
-							await update({ reset: false });
-							// Reset dropdown to the newly saved status returned by the action
-							if (result.type === 'success' && result.data && 'status' in result.data) {
-								selectedStatus = result.data.status as OrderStatus;
-								showCancelConfirm = false;
-							}
-						};
-					}}
-				>
-					<input type="hidden" name="status" value={selectedStatus} />
-					<select
-						class="w-full rounded-md border-gray-300 shadow-sm text-sm mb-3 focus:ring-indigo-500 focus:border-indigo-500"
-						value={selectedStatus}
-						onchange={handleStatusChange}
-					>
-						{#each ALL_STATUSES as s}
-							<option value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-						{/each}
-					</select>
-
-					{#if showCancelConfirm}
-						<div class="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
-							⚠️ Cancellation is irreversible. Confirm below.
-						</div>
-					{/if}
-
-					<button
-						type="submit"
-						class="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
-					>
-						Update Status
-					</button>
-				</form>
-			</div>
-
 			<!-- WhatsApp -->
 			{#if data.waUrl}
 				<div class="bg-white shadow rounded-lg p-6">
@@ -210,23 +167,55 @@
 				</div>
 			{/if}
 
-			<!-- Notes -->
+			<!-- Status + Notes (merged into one form so a single Update button saves both) -->
 			<div class="bg-white shadow rounded-lg p-6">
-				<h2 class="text-lg font-semibold text-gray-900 mb-4">Internal Notes</h2>
-				<form method="POST" action="?/saveNotes">
+				<h2 class="text-lg font-semibold text-gray-900 mb-4">Update Order</h2>
+				<form
+					method="POST"
+					action="?/updateStatus"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							await update({ reset: false });
+							// Sync dropdown to the newly saved status returned by the action
+							if (result.type === 'success' && result.data && 'status' in result.data) {
+								selectedStatus = result.data.status as OrderStatus;
+								showCancelConfirm = false;
+							}
+						};
+					}}
+				>
+					<label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+					<select
+						name="status"
+						bind:value={selectedStatus}
+						onchange={handleStatusChange}
+						class="w-full rounded-md border-gray-300 shadow-sm text-sm mb-3 focus:ring-indigo-500 focus:border-indigo-500"
+					>
+						{#each ALL_STATUSES as s}
+							<option value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+						{/each}
+					</select>
+
+					{#if showCancelConfirm}
+						<div class="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
+							⚠️ Cancellation is irreversible. Confirm below.
+						</div>
+					{/if}
+
+					<label class="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
 					<textarea
 						name="notes"
 						rows="4"
-						value={notes}
-						oninput={(e) => (notes = (e.target as HTMLTextAreaElement).value)}
+						bind:value={notes}
 						class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 mb-3"
 						placeholder="Add internal notes..."
 					></textarea>
+
 					<button
 						type="submit"
-						class="w-full px-4 py-2 bg-gray-800 text-white text-sm rounded-md hover:bg-gray-900"
+						class="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
 					>
-						Save Notes
+						Update
 					</button>
 				</form>
 			</div>
