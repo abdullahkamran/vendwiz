@@ -26,7 +26,7 @@
 
   // Reconstruct variant rows from optionGroups (new format) when available,
   // falling back to the legacy DB variants shape for products saved before this change.
-  type RawOptionGroup = { id: string; name: string; sortOrder: number; values: { id: string; value: string; sortOrder: number }[] };
+  type RawOptionGroup = { id: string; name: string; sortOrder: number; values: { id: string; value: string; label?: string | null; sortOrder: number }[] };
   type RawVariant = typeof data.variants[number];
 
   const optionGroups: RawOptionGroup[] = (data as Record<string, unknown>).optionGroups as RawOptionGroup[] ?? [];
@@ -47,7 +47,7 @@
             const variantPrice = matchedVariant?.price != null ? Number(matchedVariant.price) : null;
             const priceModifier = variantPrice != null ? variantPrice - basePrice : 0;
             return {
-              label: val.value,
+              label: val.label ?? val.value,
               price_modifier: priceModifier,
               stockQty: matchedVariant?.stockQty ?? 0,
               ...(isColor ? { colorHex: val.value.startsWith('#') ? val.value : undefined } : {})

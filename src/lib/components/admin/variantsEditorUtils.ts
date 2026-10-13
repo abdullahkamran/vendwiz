@@ -43,3 +43,27 @@ export function updateOptionStock(rows: VariantRow[], vi: number, oi: number, st
 			: r
 	);
 }
+
+/**
+ * Update the colorHex of option `oi` inside variant `vi`.
+ *
+ * Label auto-population rule (fixes the Zod min(1) rejection on save):
+ *   - If the option's label is empty or was previously auto-filled (starts
+ *     with '#'), replace it with the new hex value so the payload always
+ *     carries a non-empty label.
+ *   - If the user typed a custom name (e.g. "Red"), leave it untouched.
+ */
+export function updateOptionColorHex(rows: VariantRow[], vi: number, oi: number, colorHex: string): VariantRow[] {
+	return rows.map((r, i) =>
+		i === vi
+			? {
+					...r,
+					options: r.options.map((o, j) => {
+						if (j !== oi) return o;
+						const label = !o.label || o.label.startsWith('#') ? colorHex : o.label;
+						return { ...o, colorHex, label };
+					})
+			  }
+			: r
+	);
+}

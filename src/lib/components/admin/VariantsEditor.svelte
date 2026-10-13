@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { addOption as addOptionUtil, updateOptionStock as updateOptionStockUtil } from './variantsEditorUtils';
+  import { addOption as addOptionUtil, updateOptionStock as updateOptionStockUtil, updateOptionColorHex as updateOptionColorHexUtil } from './variantsEditorUtils';
   type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string };
   type VariantRow = { id?: string; name: string; options: VariantOption[]; sizeChartUrl?: string };
 
@@ -64,14 +64,9 @@
   }
 
   function updateOptionColorHex(vi: number, oi: number, colorHex: string) {
-    rows = rows.map((r, i) =>
-      i === vi
-        ? {
-            ...r,
-            options: r.options.map((o, j) => (j === oi ? { ...o, colorHex } : o))
-          }
-        : r
-    );
+    // Delegates to the pure utility so the label auto-population logic is
+    // unit-testable without mounting the component.
+    rows = updateOptionColorHexUtil(rows, vi, oi, colorHex);
     onChange(rows);
   }
 
@@ -140,16 +135,26 @@
                       class="color-swatch-input"
                     />
                   </td>
+                  <td>
+                    <input
+                      type="text"
+                      value={option.label}
+                      placeholder="Color name (e.g. Red)"
+                      oninput={(e) =>
+                        updateOptionLabel(vi, oi, (e.target as HTMLInputElement).value)}
+                    />
+                  </td>
+                {:else}
+                  <td>
+                    <input
+                      type="text"
+                      value={option.label}
+                      placeholder="e.g. Small"
+                      oninput={(e) =>
+                        updateOptionLabel(vi, oi, (e.target as HTMLInputElement).value)}
+                    />
+                  </td>
                 {/if}
-                <td>
-                  <input
-                    type="text"
-                    value={option.label}
-                    placeholder="e.g. Small"
-                    oninput={(e) =>
-                      updateOptionLabel(vi, oi, (e.target as HTMLInputElement).value)}
-                  />
-                </td>
                 <td>
                   <input
                     type="number"
