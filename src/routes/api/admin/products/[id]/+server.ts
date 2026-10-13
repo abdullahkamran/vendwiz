@@ -172,13 +172,17 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
             // For colour groups: value = hex so the PDP swatch renders background:{val.value};
             // label = human-readable name ("Red") for display in cart and order summaries.
             // For other groups: value = label text; label mirrors it for consistent lookup.
-            const storedValue = isColor ? (opt.colorHex ?? opt.label) : opt.label;
+            // Auto-populate empty labels for colour options from colorHex so that a
+            // colour picker interaction (which sets colorHex but leaves label '') does
+            // not produce a blank label in the DB or cart summaries.
+            const effectiveLabel = isColor && !opt.label && opt.colorHex ? opt.colorHex : opt.label;
+            const storedValue = isColor ? (opt.colorHex ?? effectiveLabel) : effectiveLabel;
 
             await tx.insert(productOptionValues).values({
               id: valueId,
               groupId,
               value: storedValue,
-              label: opt.label,
+              label: effectiveLabel,
               sortOrder: oi
             });
 
@@ -187,7 +191,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
               id: nanoid(),
               productId: params.id,
               optionValueIds: [valueId],
-              label: opt.label,
+              label: effectiveLabel,
               price: priceModifier !== 0 ? String(basePrice + priceModifier) : null,
               stockQty: opt.stockQty ?? 0,
               sizeChartUrl: v.sizeChartUrl || null

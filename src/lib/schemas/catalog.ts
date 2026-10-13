@@ -9,7 +9,9 @@ export const categorySchema = z.object({
 });
 
 export const variantOptionSchema = z.object({
-  label: z.string().min(1),
+  // label may be empty for colour-group options: the PUT handler auto-populates
+  // it from colorHex when the variant name matches /colou?r/i and label === ''.
+  label: z.string(),
   price_modifier: z.number().default(0),
   // stockQty per option is passed through from the edit form so the PUT handler
   // can preserve existing stock rather than hard-coding 0.
