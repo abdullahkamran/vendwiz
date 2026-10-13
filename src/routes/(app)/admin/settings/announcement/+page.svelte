@@ -83,7 +83,7 @@
 					<p class="text-xs text-[--color-text-muted] mt-1">{text.length}/200 characters</p>
 				</div>
 
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<div>
 						<label class="block text-sm font-medium text-[--color-text] mb-1" for="announcementBg">
 							Background Color

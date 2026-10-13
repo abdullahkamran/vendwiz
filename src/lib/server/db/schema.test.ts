@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
-import { stores, products, categories, storePolicies, POLICY_TYPES, discountCodes, productVariants, productOptionValues } from './schema';
+import { stores, products, categories, storePolicies, POLICY_TYPES, discountCodes, productVariants, productOptionValues, orders } from './schema';
 import { buildSeo } from '../../seo';
 
 // ─── Schema structure ─────────────────────────────────────────────────────────
@@ -280,5 +280,27 @@ describe('buildSeo — uses schema-aligned store fields', () => {
 		const productUrl = new URL('http://test.localhost:5000/products/blue-shirt');
 		const tags = buildSeo({ url: productUrl, store: storeRow });
 		expect(tags.canonical).toBe('http://test.localhost:5000/products/blue-shirt');
+	});
+});
+
+// ─── orders schema — customerEmail nullable ───────────────────────────────────
+// These tests fail before the migration that drops NOT NULL from customer_email.
+// Email is now optional at checkout so the column must accept NULL.
+
+describe('orders schema — customerEmail column', () => {
+	it('exposes customerEmail', () => {
+		const cols = getTableColumns(orders);
+		expect(cols).toHaveProperty('customerEmail');
+	});
+
+	it('customerEmail maps to the customer_email DB column', () => {
+		const cols = getTableColumns(orders);
+		expect((cols.customerEmail as { name: string }).name).toBe('customer_email');
+	});
+
+	it('customerEmail is nullable (no notNull constraint) — email is optional at checkout', () => {
+		const cols = getTableColumns(orders);
+		// Before the fix the column had .notNull() so this assertion was false.
+		expect((cols.customerEmail as { notNull: boolean }).notNull).toBe(false);
 	});
 });

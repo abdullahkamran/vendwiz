@@ -80,7 +80,7 @@ export const actions: Actions = {
 			status: newStatus,
 			updatedAt: new Date()
 		};
-		if (notes) updateData.notes = notes;
+		if (notes !== null) updateData.notes = notes;
 
 		await db
 			.update(orders)

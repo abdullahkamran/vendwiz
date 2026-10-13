@@ -346,7 +346,7 @@
     background: #fff;
     border: 1px solid #e5e5e5;
     border-radius: 8px;
-    overflow: hidden;
+    overflow-x: auto;
   }
 
   table {
