@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
 	test: {
 		environment: 'node',
-		exclude: [...configDefaults.exclude, 'e2e/**']
+		exclude: [...configDefaults.exclude, 'e2e/**', '**/.features-gen/**']
 	},
 	resolve: {
 		alias: {
