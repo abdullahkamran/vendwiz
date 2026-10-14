@@ -3,6 +3,7 @@ import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { orders, orderItems, products } from '$lib/server/db/schema';
 import { eq, and, gte, lte, sql, inArray } from 'drizzle-orm';
+import { loadOverview } from '$lib/server/analyticsOverview';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -114,7 +115,14 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			)
 		);
 
+	// Calendar-month overview (month-over-month, status chart, completed orders, reviews)
+	const overview = await loadOverview(store, {
+		month: url.searchParams.get('month'),
+		months: url.searchParams.get('months')
+	});
+
 	return {
+		overview,
 		range,
 		customFrom,
 		customTo,

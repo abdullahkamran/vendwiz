@@ -31,6 +31,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
   const staticUrls = [
     '/',
     '/products',
+    '/about',
     '/contact',
     '/policies/return',
     '/policies/shipping',

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
 
 	let { children }: { children: any } = $props();
 
@@ -9,6 +11,7 @@
 		{ href: '/admin/settings/social', label: 'Social' },
 		{ href: '/admin/settings/policies', label: 'Policies' },
 		{ href: '/admin/settings/announcement', label: 'Announcement' },
+		{ href: '/admin/settings/payments', label: 'Payments' },
 		{ href: '/admin/settings/shipping', label: 'Shipping & Tax' }
 	];
 
@@ -18,6 +21,7 @@
 	}
 
 	let dirty = $state(false);
+	let pendingHref = $state<string | null>(null);
 
 	// Reset dirty whenever the route changes (back/forward, confirmed navigation, etc.)
 	$effect(() => {
@@ -36,11 +40,9 @@
 	function handleTabClick(e: MouseEvent, href: string, exact: boolean = false) {
 		if (!dirty) return;
 		if (isActive(href, exact)) return;
-		if (!confirm('You have unsaved changes — leave anyway?')) {
-			e.preventDefault();
-		} else {
-			dirty = false;
-		}
+		// Hold the click and ask first (dialog below)
+		e.preventDefault();
+		pendingHref = href;
 	}
 
 	onMount(() => {
@@ -77,3 +79,19 @@
 		{@render children()}
 	</div>
 </div>
+
+<ConfirmDialog
+	open={pendingHref !== null}
+	title="Leave this page?"
+	message="You have unsaved changes. If you leave now, they will be lost."
+	confirmLabel="Leave without saving"
+	cancelLabel="Keep editing"
+	variant="danger"
+	onconfirm={() => {
+		const href = pendingHref;
+		pendingHref = null;
+		dirty = false;
+		if (href) goto(href);
+	}}
+	oncancel={() => (pendingHref = null)}
+/>

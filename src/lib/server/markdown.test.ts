@@ -67,3 +67,39 @@ describe('renderMarkdown — XSS safety', () => {
 		expect(html).not.toContain('<script>');
 	});
 });
+
+describe('renderMarkdown — About Us page content', () => {
+	it('renders an uploaded picture as an <img>', () => {
+		const html = renderMarkdown('![Our workshop](/uploads/about/workshop.webp)');
+		expect(html).toContain('<img src="/uploads/about/workshop.webp" alt="Our workshop"');
+	});
+	it('renders headings, bold, italic and both kinds of list', () => {
+		const html = renderMarkdown('## Our story\n\n**Handmade** and _local_\n\n- one\n- two\n\n1. first\n2. second');
+		expect(html).toContain('<h2>Our story</h2>');
+		expect(html).toContain('<strong>Handmade</strong>');
+		expect(html).toContain('<em>local</em>');
+		expect(html).toContain('<ul>');
+		expect(html).toContain('<ol>');
+	});
+	it('does not let a script URL through a link or picture', () => {
+		// markdown-it refuses the URL, so no real link / image is produced (the text stays inert)
+		expect(renderMarkdown('[click](javascript:alert(1))')).not.toMatch(/<as|href=/);
+		expect(renderMarkdown('![x](javascript:alert(1))')).not.toMatch(/<imgs|src=/);
+	});
+	it('escapes raw HTML mixed into the content', () => {
+		expect(renderMarkdown('Hello <img src=x onerror=alert(1)>')).not.toContain('<img src=x');
+	});
+});
+
+describe('renderMarkdown — line spacing', () => {
+	it('a line break (two spaces + newline) becomes <br> inside the same paragraph', () => {
+		expect(renderMarkdown('First line  \nSecond line')).toBe('<p>First line<br>\nSecond line</p>\n');
+	});
+	it('a single Enter alone does not start a new line (so the editor offers a Blank line button)', () => {
+		expect(renderMarkdown('First line\nSecond line')).not.toContain('<br>');
+	});
+	it('a blank-line marker renders an empty paragraph that keeps vertical space', () => {
+		const html = renderMarkdown('Above\n\n&nbsp;\n\nBelow');
+		expect(html).toBe('<p>Above</p>\n<p>\u00a0</p>\n<p>Below</p>\n');
+	});
+});

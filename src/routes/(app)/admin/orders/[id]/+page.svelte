@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
+	import { paymentLabel } from '$lib/paymentInfo';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -241,6 +242,10 @@
 			<div class="bg-white shadow rounded-lg p-6">
 				<h2 class="text-lg font-semibold text-gray-900 mb-4">Order Info</h2>
 				<dl class="space-y-2 text-sm">
+					<div>
+						<dt class="text-gray-500">Payment method</dt>
+						<dd class="font-medium">{paymentLabel(data.order.paymentMethod)}</dd>
+					</div>
 					<div>
 						<dt class="text-gray-500">Placed</dt>
 						<dd>{new Date(data.order.createdAt).toLocaleString()}</dd>

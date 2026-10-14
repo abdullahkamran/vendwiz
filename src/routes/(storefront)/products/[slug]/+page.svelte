@@ -253,8 +253,13 @@
   }
 
   // Find material & dimensions from attributes
-  let materialAttr = $derived(attributes.find((a) => /material/i.test(a.name))?.value ?? null);
-  let dimAttr = $derived(attributes.find((a) => /dimension|size|weight|measurement/i.test(a.name))?.value ?? null);
+  let materialAttrRow = $derived(attributes.find((a) => /material/i.test(a.name)) ?? null);
+  let dimAttrRow = $derived(attributes.find((a) => /dimension|size|weight|measurement/i.test(a.name)) ?? null);
+  let materialAttr = $derived(materialAttrRow?.value ?? null);
+  let dimAttr = $derived(dimAttrRow?.value ?? null);
+  // Every other attribute (colour family, care instructions, origin…) is listed under the description,
+  // so nothing the owner adds goes unseen. Material and dimensions already have their own tabs.
+  let otherAttributes = $derived(attributes.filter((a) => a !== materialAttrRow && a !== dimAttrRow));
 
   // SEO: effective price for JSON-LD (sale price takes precedence)
   let ldPrice = $derived(finalPrice);
@@ -490,18 +495,22 @@
       {:else}
         <p class="tab-empty">No description provided.</p>
       {/if}
+      {#if otherAttributes.length > 0}
+        <h3 class="attr-heading">Product details</h3>
+        <table class="attr-table">
+          <tbody>
+            {#each otherAttributes as a (a.id ?? a.name + a.value)}
+              <tr>
+                <td class="attr-name">{a.name}</td>
+                <td>{a.value}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
     {:else if activeTab === 'material'}
       {#if materialAttr}
         <p>{materialAttr}</p>
-      {:else if attributes.length > 0}
-        <table class="attr-table">
-          {#each attributes as a}
-            <tr>
-              <td class="attr-name">{a.name}</td>
-              <td>{a.value}</td>
-            </tr>
-          {/each}
-        </table>
       {:else}
         <p class="tab-empty">No material information.</p>
       {/if}
@@ -920,6 +929,7 @@
   .tab-btn--active { color: var(--sf-primary, #0d6efd); }
   .tab-panel { font-size: 0.9375rem; color: var(--sf-text, #212529); line-height: 1.7; }
   .tab-empty { color: var(--sf-muted, #6c757d); font-size: 0.875rem; }
+  .attr-heading { font-size: 1rem; font-weight: 700; margin: 28px 0 8px; color: var(--sf-text, #212529); }
   .attr-table { width: 100%; border-collapse: collapse; }
   .attr-table tr { border-bottom: 1px solid var(--sf-border, #f3f4f6); }
   .attr-table td { padding: 8px 4px; }

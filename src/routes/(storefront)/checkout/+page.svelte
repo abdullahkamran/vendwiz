@@ -5,6 +5,8 @@
   import { checkoutSchema } from '$lib/schemas/storefront';
   import { COUNTRIES, defaultCountryIso, findCountry } from '$lib/countries';
   import { composePhone } from '$lib/utils/phone';
+  import { availablePaymentMethods, DEFAULT_PAYMENT_METHOD, type PaymentMethod } from '$lib/paymentInfo';
+  import BankDetails from '$lib/components/storefront/BankDetails.svelte';
 
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
@@ -37,6 +39,8 @@
   let email = $state('');
   let address = $state('');
   let notes = $state('');
+  // Cash on delivery is preselected; bank transfer is the alternative
+  let paymentMethod = $state<PaymentMethod>(DEFAULT_PAYMENT_METHOD);
   let submitting = $state(false);
   let errorMsg = $state('');
 
@@ -120,6 +124,7 @@
         customerEmail: email,
         shippingAddress: address,
         notes: notes || undefined,
+        paymentMethod,
         discountCode: $cartDiscount?.code || undefined,
         items: $cart.map((i) => ({
           productId: i.productId,
@@ -140,7 +145,7 @@
       if (res.ok && (json as { orderRef?: string }).orderRef) {
         cart.clear();
         cartDiscount.clear();
-        goto(`${basePath}/checkout/confirmation?ref=${(json as { orderRef: string }).orderRef}`);
+        goto(`${basePath}/checkout/confirmation?ref=${(json as { orderRef: string }).orderRef}&pay=${paymentMethod}`);
       } else {
         errorMsg = (json as { error?: string }).error ?? 'Order failed. Please try again.';
       }
@@ -274,6 +279,29 @@
             style="width:100%; border:1px solid var(--sf-border); border-radius:var(--sf-radius); padding:10px 14px; font-size:0.9rem; resize:vertical; box-sizing:border-box; background:var(--sf-bg); color:var(--sf-text);"
           ></textarea>
         </div>
+      </div>
+
+      <!-- Payment method -->
+      <div style="margin-bottom:24px;">
+        <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 14px; color:var(--sf-text);">Payment Method</h2>
+        <div role="radiogroup" aria-label="Payment method" style="display:flex; flex-direction:column; gap:10px;">
+          {#each availablePaymentMethods(store) as m (m.id)}
+            <label
+              style="display:flex; align-items:flex-start; gap:12px; padding:14px 16px; cursor:pointer; background:var(--sf-bg); border-radius:var(--sf-radius-lg); border:2px solid {paymentMethod === m.id ? 'var(--sf-primary)' : 'var(--sf-border)'};"
+            >
+              <input type="radio" name="paymentMethod" value={m.id} bind:group={paymentMethod} style="margin-top:3px; accent-color:var(--sf-primary);" />
+              <span>
+                <span style="display:block; font-weight:600; color:var(--sf-text); font-size:0.95rem;">{m.label}</span>
+                <span style="display:block; color:var(--sf-muted); font-size:0.8125rem; margin-top:2px;">{m.description}</span>
+              </span>
+            </label>
+          {/each}
+        </div>
+        {#if paymentMethod === 'bank_transfer'}
+          <div style="margin-top:12px;">
+            <BankDetails {store} compact />
+          </div>
+        {/if}
       </div>
 
       {#if errorMsg}

@@ -203,6 +203,7 @@
       {/if}
     {/each}
     <hr class="sf-drawer-sep" />
+    <a href="{basePath}/about" onclick={closeDrawer} class="sf-drawer-link">About Us</a>
     <a href="{basePath}/policies/return" onclick={closeDrawer} class="sf-drawer-link">Return Policy</a>
     <a href="{basePath}/policies/shipping" onclick={closeDrawer} class="sf-drawer-link">Shipping Info</a>
     <a href="{basePath}/policies/terms" onclick={closeDrawer} class="sf-drawer-link">Terms &amp; Conditions</a>
@@ -221,8 +222,19 @@
     <div class="sf-container sf-header-inner sf-header-desktop"
       class:sf-header-centered={store.theme === 'minimal'}>
       {#if store.theme === 'minimal'}
-        <!-- dhCentered: empty left (keeps the brand centred) / brand centre / search + actions right -->
-        <div class="sf-dh-col sf-dh-left"></div>
+        <!-- dhCentered: Home left (also keeps the brand centred) / brand centre / search + actions right -->
+        <div class="sf-dh-col sf-dh-left">
+          <nav class="sf-dh-nav" aria-label="Main navigation">
+            <a href="{basePath || '/'}"
+              class="sf-dh-navlink"
+              class:sf-dh-navlink--active={localPathname === '/'}
+            >Home</a>
+            <a href="{basePath}/about"
+              class="sf-dh-navlink"
+              class:sf-dh-navlink--active={localPathname === '/about'}
+            >About Us</a>
+          </nav>
+        </div>
         <div class="sf-dh-col sf-dh-center">
           <a href="{basePath || '/'}" class="sf-logo">
             {#if store.logoUrl}
@@ -261,6 +273,10 @@
               class="sf-dh-navlink"
               class:sf-dh-navlink--active={localPathname === '/'}
             >Home</a>
+            <a href="{basePath}/about"
+              class="sf-dh-navlink"
+              class:sf-dh-navlink--active={localPathname === '/about'}
+            >About Us</a>
             <a href="{basePath}/products"
               class="sf-dh-navlink"
               class:sf-dh-navlink--active={localPathname === '/products' && !catParam}
@@ -330,6 +346,8 @@
         {/if}
       </a>
       <div class="sf-header-actions">
+        <a href="{basePath || '/'}" class="sf-icon-btn" aria-label="Home" title="Home">🏠</a>
+        <a href="{basePath}/about" class="sf-icon-btn" aria-label="About Us" title="About Us">ℹ️</a>
         <button class="sf-icon-btn" onclick={toggleDark}
           aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
           {isDark ? '☀️' : '🌙'}
@@ -386,6 +404,7 @@
     </div>
 
     <div class="sf-footer-col">
+      <a href="{basePath}/about" class="sf-footer-link">About Us</a>
       <a href="{basePath}/policies/return" class="sf-footer-link">Return Policy</a>
       <a href="{basePath}/policies/shipping" class="sf-footer-link">Shipping Info</a>
       <a href="{basePath}/policies/terms" class="sf-footer-link">Terms &amp; Conditions</a>
@@ -594,7 +613,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    height: 56px;
+    height: 64px;
   }
 
   /* Desktop header inner: 3-col grid */
@@ -602,7 +621,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     gap: 24px;
-    height: 72px;
+    height: 88px;
     align-items: center;
     /* max-width and padding-inline come from .sf-container at ≥1024 px */
   }
@@ -746,8 +765,16 @@
     overflow: hidden;
   }
   .sf-logo-img {
-    height: 32px;
+    height: 44px;
+    width: auto;
+    max-width: 220px;
     object-fit: contain;
+  }
+  @media (min-width: 1024px) {
+    .sf-logo-img {
+      height: 64px;
+      max-width: 280px;
+    }
   }
   .sf-logo-text {
     font-size: 1.1rem;
@@ -849,7 +876,9 @@
   }
   .sf-footer-brand-link { text-decoration: none; }
   .sf-footer-brand-logo {
-    height: 36px;
+    height: 64px;
+    width: auto;
+    max-width: 260px;
     object-fit: contain;
   }
   .sf-footer-brand-name {

@@ -22,6 +22,8 @@ export const checkoutSchema = z.object({
     .min(10, 'Please enter your complete address (street, area and city)')
     .max(500, 'Address is too long (500 characters max)'),
   notes: z.string().max(500, 'Notes are too long (500 characters max)').optional(),
+  // Defaults to cash on delivery, so older clients that don't send it still work
+  paymentMethod: z.enum(['cod', 'bank_transfer']).default('cod'),
   discountCode: z.string().optional(),
   items: z
     .array(

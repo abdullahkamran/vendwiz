@@ -111,6 +111,12 @@ export const stores = pgTable('stores', {
 	freeShippingThreshold: numeric('free_shipping_threshold', { precision: 10, scale: 2 }),
 	taxRate: numeric('tax_rate', { precision: 5, scale: 4 }).notNull().default('0'), // 0.18 = 18%
 	taxLabel: text('tax_label').default('Tax'), // GST / VAT / Sales Tax
+	// Bank details shown to customers who choose bank transfer (all optional; blank = bank transfer off)
+	bankName: text('bank_name'),
+	bankAccountTitle: text('bank_account_title'),
+	bankAccountNumber: text('bank_account_number'),
+	bankIban: text('bank_iban'),
+	bankBranch: text('bank_branch'),
 	currencyCode: text('currency_code').notNull().default('PKR'), // references currencies.code
 	// Denormalised from currencies.symbol so every price display can read it directly
 	currencySymbol: text('currency_symbol').notNull().default('Rs.'),
@@ -289,6 +295,8 @@ export const orders = pgTable('orders', {
 	customerEmail: text('customer_email'),
 	shippingAddress: text('shipping_address').notNull(),
 	// Discount
+	// 'cod' (cash on delivery) or 'bank_transfer'
+	paymentMethod: text('payment_method').notNull().default('cod'),
 	discountCodeId: text('discount_code_id').references(() => discountCodes.id),
 	discountAmount: numeric('discount_amount', { precision: 10, scale: 2 }).notNull().default('0'),
 	// Pricing

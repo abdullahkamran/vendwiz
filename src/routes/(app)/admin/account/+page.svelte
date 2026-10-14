@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { authClient } from '$lib/auth-client';
+	import { hasBankDetails } from '$lib/paymentInfo';
 
 	let { data } = $props();
 
@@ -12,6 +13,14 @@
 
 	// Per-field password visibility toggles
 	let show = $state({ current: false, newPw: false, confirm: false });
+
+	// Bank details are edited in Settings → Payments; this page only summarises them
+	let bankOn = $derived(hasBankDetails(data.store ?? {}));
+	/** "•••• 4567": enough to recognise the account without printing the whole number */
+	function maskedAccount(value: string | null | undefined) {
+		const digits = (value ?? '').replace(/s/g, '');
+		return digits.length > 4 ? `•••• ${digits.slice(-4)}` : digits;
+	}
 
 	async function handleChangePassword(e: SubmitEvent) {
 		e.preventDefault();
@@ -53,6 +62,30 @@
 		<div class="flex flex-col gap-1 text-sm text-[var(--color-text-muted)]">
 			<span><span class="font-medium text-[var(--color-text)]">Name:</span> {data.user?.name}</span>
 			<span><span class="font-medium text-[var(--color-text)]">Email:</span> {data.user?.email}</span>
+		</div>
+	</div>
+
+	<!-- Store payment details: a summary with a link to where they are edited -->
+	<div class="bg-white rounded-xl border border-[var(--color-border)] p-6 mb-6">
+		<div class="flex items-start justify-between gap-4">
+			<div>
+				<h2 class="text-sm font-semibold text-[var(--color-text)] mb-3">Bank details</h2>
+				{#if bankOn}
+					<div class="flex flex-col gap-1 text-sm text-[var(--color-text-muted)]">
+						<span><span class="font-medium text-[var(--color-text)]">Bank:</span> {data.store.bankName}</span>
+						<span><span class="font-medium text-[var(--color-text)]">Account title:</span> {data.store.bankAccountTitle}</span>
+						<span><span class="font-medium text-[var(--color-text)]">Account number:</span> {maskedAccount(data.store.bankAccountNumber)}</span>
+					</div>
+					<p class="text-xs text-[var(--color-text-muted)] mt-3">Customers can pay by bank transfer at checkout.</p>
+				{:else}
+					<p class="text-sm text-[var(--color-text-muted)]">
+						Not set up yet. Customers can only pay cash on delivery.
+					</p>
+				{/if}
+			</div>
+			<a href="/admin/settings/payments" class="btn btn-sm flex-shrink-0 {bankOn ? 'btn-secondary' : 'btn-primary'}">
+				{bankOn ? 'Edit bank details' : 'Add bank details'}
+			</a>
 		</div>
 	</div>
 

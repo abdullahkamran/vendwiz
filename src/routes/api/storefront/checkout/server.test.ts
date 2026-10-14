@@ -138,6 +138,36 @@ function makeEvent(body: unknown) {
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
+describe('POST /api/storefront/checkout — payment method', () => {
+	const order = {
+		customerName: 'Alice',
+		customerPhone: '+921234567890',
+		shippingAddress: '123 Main Street, Cityville',
+		items: BASE_ITEMS
+	};
+
+	it('rejects bank transfer for a store that has not set up bank details', async () => {
+		const res = await POST(makeEvent({ ...order, paymentMethod: 'bank_transfer' }));
+		expect(res.status).toBe(422);
+		expect((await res.json()).error).toMatch(/bank transfer is not available/i);
+	});
+
+	it('accepts bank transfer once the store has bank details', async () => {
+		const event = {
+			request: { json: () => Promise.resolve({ ...order, paymentMethod: 'bank_transfer' }) },
+			locals: {
+				isStorefront: true,
+				store: { ...BASE_STORE, bankName: 'HBL', bankAccountTitle: 'Test Store', bankAccountNumber: '0123-456' }
+			}
+		} as unknown as Parameters<typeof POST>[0];
+		expect((await POST(event)).status).toBe(200);
+	});
+
+	it('defaults to cash on delivery', async () => {
+		expect((await POST(makeEvent(order))).status).toBe(200);
+	});
+});
+
 describe('POST /api/storefront/checkout — confirmation email', () => {
 	beforeEach(() => {
 		ctx.sendEmailArgs = [];

@@ -9,6 +9,7 @@ import { sendEmail } from '$lib/server/email';
 import { matchLineVariants } from '$lib/server/cartStock';
 import { saleDiscount, applySale } from '$lib/utils/pricing';
 import { pickItemImage } from '$lib/utils/orderItemImage';
+import { hasBankDetails } from '$lib/paymentInfo';
 import { loadOptionImageRows } from '$lib/server/orderImages';
 import { syncProductStock } from '$lib/server/productStock';
 
@@ -42,8 +43,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: parsed.error.issues[0]?.message ?? 'Validation failed' }, { status: 422 });
   }
 
-  const { customerName, customerPhone, customerEmail, shippingAddress, notes, discountCode, items } =
+  const { customerName, customerPhone, customerEmail, shippingAddress, notes, discountCode, items, paymentMethod } =
     parsed.data;
+
+  if (paymentMethod === 'bank_transfer' && !hasBankDetails(locals.store)) {
+    return json({ error: 'Bank transfer is not available for this store. Please choose cash on delivery.' }, { status: 422 });
+  }
 
   // Load shipping config from the store row (no separate shippingConfig table)
   const flatRate = Number(locals.store.shippingFee ?? 0);
@@ -211,6 +216,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     orderNumber,
     customerName,
     customerPhone,
+    paymentMethod,
     customerEmail: customerEmail || null,
     shippingAddress,
     subtotal: subtotal.toFixed(2),
@@ -274,7 +280,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 <p>Thank you for your order at <strong>${htmlEscape(storeName)}</strong>.</p>
 <p>Order number: <strong>#${orderNumber}</strong></p>
 <ul>${itemSummary}</ul>
-<p>Total: ${locals.store.currencySymbol ?? ''} ${total.toFixed(2)}</p>`
+<p>Total: ${locals.store.currencySymbol ?? ''} ${total.toFixed(2)}</p>
+<p>Payment: ${paymentMethod === 'bank_transfer' ? 'Bank transfer — please send your payment screenshot to our WhatsApp so we can confirm it.' : 'Cash on delivery'}</p>`
     }).catch(() => {
       // intentionally swallowed — email is best-effort
     });

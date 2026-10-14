@@ -1,9 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import ConfirmDialog from '$lib/components/admin/ConfirmDialog.svelte';
 	import type { PageData, ActionData } from './$types';
 	import type { DiscountCode } from '$lib/types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	// Deleting asks first; the dialog's confirm button submits the single hidden delete form below
+	let deleteTarget = $state<DiscountCode | null>(null);
+	let deleteForm = $state<HTMLFormElement | null>(null);
 
 	function getStatus(d: DiscountCode): { label: string; cls: string } {
 		if (!d.isActive) return { label: 'Inactive', cls: 'bg-gray-100 text-gray-600' };
@@ -106,22 +111,13 @@
 									</a>
 
 									<!-- Delete -->
-									<form
-										method="POST"
-										action="?/deleteDiscount"
-										use:enhance
-										onsubmit={(e) => {
-											if (!confirm(`Delete discount code ${d.code}?`)) e.preventDefault();
-										}}
+									<button
+										type="button"
+										class="btn btn-delete btn-sm"
+										onclick={() => (deleteTarget = d)}
 									>
-										<input type="hidden" name="id" value={d.id} />
-										<button
-											type="submit"
-											class="btn btn-delete btn-sm"
-										>
-											Delete
-										</button>
-									</form>
+										Delete
+									</button>
 								</div>
 							</td>
 						</tr>
@@ -131,3 +127,23 @@
 		</div>
 	{/if}
 </div>
+
+<!-- One shared form does the actual delete once the dialog is confirmed -->
+<form method="POST" action="?/deleteDiscount" use:enhance bind:this={deleteForm} class="hidden">
+	<input type="hidden" name="id" value={deleteTarget?.id ?? ''} />
+</form>
+
+<ConfirmDialog
+	open={deleteTarget !== null}
+	title="Delete discount code"
+	message={deleteTarget
+		? `Delete ${deleteTarget.code}? Past orders that used it keep their discount amount. This cannot be undone.`
+		: ''}
+	confirmLabel="Delete"
+	variant="danger"
+	onconfirm={() => {
+		deleteForm?.requestSubmit();
+		deleteTarget = null;
+	}}
+	oncancel={() => (deleteTarget = null)}
+/>

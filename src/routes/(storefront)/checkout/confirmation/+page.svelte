@@ -1,11 +1,18 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import BankDetails from '$lib/components/storefront/BankDetails.svelte';
+  import { isPaymentMethod, hasBankDetails } from '$lib/paymentInfo';
 
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
   let basePath = $derived(data.basePath ?? '');
 
   let orderRef = $derived($page.url.searchParams.get('ref') ?? '');
+  // How the customer chose to pay (set by checkout); anything unknown is treated as cash on delivery
+  let isBankTransfer = $derived.by(() => {
+    const pay = $page.url.searchParams.get('pay');
+    return isPaymentMethod(pay) && pay === 'bank_transfer' && hasBankDetails(store);
+  });
 
   let copied = $state(false);
   async function copyRef() {
@@ -34,9 +41,6 @@
     }
   }
 
-  let waPhone = $derived(store.whatsapp?.replace(/\D/g, '') ?? '');
-  let waMsg = $derived(encodeURIComponent(`Hi! I just placed order #${orderRef} on ${store.name}. Please confirm.`));
-  let waUrl = $derived(waPhone ? `https://wa.me/${waPhone}?text=${waMsg}` : null);
 </script>
 
 <svelte:head>
@@ -50,9 +54,15 @@
   </div>
 
   <h1 style="font-size:1.75rem; font-weight:800; color:var(--sf-text); margin:0 0 12px;">Order Placed Successfully!</h1>
-  <p style="color:var(--sf-muted); margin:0 0 32px; line-height:1.6;">
-    Thank you for your order. Your order is being processed and you'll be notified when it ships.
-  </p>
+  {#if isBankTransfer}
+    <p style="color:var(--sf-muted); margin:0 0 24px; line-height:1.6;">
+      Thank you for your order! To proceed, please complete your bank transfer using the details below. We'll start processing your order as soon as we confirm your payment.
+    </p>
+  {:else}
+    <p style="color:var(--sf-muted); margin:0 0 32px; line-height:1.6;">
+      Thank you for your order! We are processing your order and will let you know when it ships. You'll pay in cash when it is delivered.
+    </p>
+  {/if}
 
   {#if orderRef}
     <div style="background:var(--sf-surface); border-radius:10px; padding:16px 24px; margin-bottom:32px; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;">
@@ -65,13 +75,13 @@
     </div>
   {/if}
 
+  {#if isBankTransfer}
+    <div style="margin-bottom:32px;">
+      <BankDetails {store} {orderRef} />
+    </div>
+  {/if}
+
   <div style="display:flex; flex-direction:column; gap:12px; align-items:center;">
-    {#if waUrl}
-      <a href={waUrl} target="_blank" rel="noopener"
-        style="display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:#25D366; color:#fff; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
-        💬 Send WhatsApp Confirmation
-      </a>
-    {/if}
 
     <a href="{basePath}/track"
       style="padding:12px 28px; background:var(--sf-surface); color:var(--sf-text); border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">

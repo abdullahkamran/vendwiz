@@ -25,7 +25,8 @@ export const actions: Actions = {
 		const title = (data.get('title') as string)?.trim();
 		const content = (data.get('content') as string)?.trim() ?? '';
 
-		const validTypes = ['return_refund', 'shipping', 'terms', 'faq'];
+		// 'about' is the store's About Us page (shown at /about); the rest are the policy pages
+		const validTypes = ['about', 'return_refund', 'shipping', 'terms', 'faq'];
 		if (!validTypes.includes(type)) {
 			return fail(400, { error: 'Invalid policy type', type });
 		}
