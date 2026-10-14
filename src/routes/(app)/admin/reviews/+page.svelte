@@ -75,14 +75,14 @@
 				{#each selected as id}
 					<input type="hidden" name="ids" value={id} />
 				{/each}
-				<button type="submit" class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+				<button type="submit" class="btn btn-success btn-sm">
 					Approve All
 				</button>
 			</form>
 			<button
 				type="button"
 				onclick={() => (deleteAllConfirm = true)}
-				class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+				class="btn btn-danger btn-sm"
 			>
 				Delete All
 			</button>
@@ -92,13 +92,13 @@
 						<input type="hidden" name="ids" value={id} />
 					{/each}
 					<span class="text-sm text-red-700">Confirm delete {selected.length} reviews?</span>
-					<button type="submit" class="px-3 py-1 text-sm bg-red-700 text-white rounded hover:bg-red-800">
+					<button type="submit" class="btn btn-danger btn-sm">
 						Yes, Delete
 					</button>
 					<button
 						type="button"
 						onclick={() => (deleteAllConfirm = false)}
-						class="px-3 py-1 text-sm text-gray-600 hover:text-gray-900"
+						class="btn btn-secondary btn-sm"
 					>
 						Cancel
 					</button>
@@ -159,13 +159,14 @@
 								{review.status === 'approved' ? 'Approved' : 'Hidden'}
 							</span>
 						</td>
-						<td class="px-6 py-4 text-sm flex gap-2">
+						<td class="px-6 py-4 text-sm">
+							<div class="flex items-center gap-2">
 							{#if review.status !== 'approved'}
 								<form method="POST" action="?/approve">
 									<input type="hidden" name="id" value={review.id} />
 									<button
 										type="submit"
-										class="text-green-600 hover:text-green-900 font-medium"
+										class="btn btn-success btn-sm"
 									>
 										Approve
 									</button>
@@ -175,7 +176,7 @@
 									<input type="hidden" name="id" value={review.id} />
 									<button
 										type="submit"
-										class="text-gray-600 hover:text-gray-900 font-medium"
+										class="btn btn-secondary btn-sm"
 									>
 										Hide
 									</button>
@@ -186,11 +187,11 @@
 								<form method="POST" action="?/delete" class="inline flex items-center gap-1">
 									<input type="hidden" name="id" value={review.id} />
 									<span class="text-red-600 text-xs">Sure?</span>
-									<button type="submit" class="text-red-700 font-medium hover:text-red-900">Yes</button>
+									<button type="submit" class="btn btn-danger btn-sm">Yes</button>
 									<button
 										type="button"
 										onclick={() => (deleteConfirm = null)}
-										class="text-gray-500 hover:text-gray-700"
+										class="btn btn-secondary btn-sm"
 									>
 										No
 									</button>
@@ -199,11 +200,12 @@
 								<button
 									type="button"
 									onclick={() => (deleteConfirm = review.id)}
-									class="text-red-600 hover:text-red-900 font-medium"
+									class="btn btn-delete btn-sm"
 								>
 									Delete
 								</button>
 							{/if}
+							</div>
 						</td>
 					</tr>
 				{:else}

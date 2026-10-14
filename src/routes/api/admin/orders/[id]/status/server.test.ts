@@ -23,6 +23,7 @@ const ctx = {
 vi.mock('drizzle-orm', () => ({
 	eq: (_a: unknown, _b: unknown) => `eq`,
 	and: (..._args: unknown[]) => `and`,
+	inArray: (_a: unknown, _b: unknown) => `inArray`,
 	sql: (strings: TemplateStringsArray, ...vals: unknown[]) => ({ __sql: true, strings, vals })
 }));
 
@@ -35,7 +36,7 @@ vi.mock('$lib/server/db/schema', () => ({
 		variantId: 'orderItems.variantId',
 		quantity: 'orderItems.quantity'
 	},
-	products: { id: 'products.id', stockQty: 'products.stockQty' },
+	products: { id: 'products.id', stockQty: 'products.stockQty', isDefault: 'products.isDefault' },
 	productVariants: { id: 'productVariants.id', stockQty: 'productVariants.stockQty' }
 }));
 

@@ -33,7 +33,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
   const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '20', 10)));
   const offset = (page - 1) * limit;
 
-  const conditions = [eq(products.storeId, store.id)];
+  // The hidden default product (placeholder for deleted products on past orders) is never listed
+  const conditions = [eq(products.storeId, store.id), eq(products.isDefault, false)];
   if (search) conditions.push(ilike(products.title, `%${search}%`));
   if (categoryId) conditions.push(eq(products.categoryId, categoryId));
   if (status === 'active') conditions.push(eq(products.isPublished, true));

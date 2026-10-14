@@ -279,10 +279,10 @@
 
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
 			{#each themes as t}
-				<label class="relative cursor-pointer">
+				<label class="relative cursor-pointer block h-full">
 					<input type="radio" name="theme" value={t.id} bind:group={theme} class="sr-only" />
 					<div
-						class="rounded-xl border-2 p-3 transition-all {theme === t.id
+						class="h-full rounded-xl border-2 p-3 transition-all {theme === t.id
 							? 'border-[--color-accent] shadow-sm'
 							: 'border-[--color-border] hover:border-gray-300'}"
 					>
@@ -427,7 +427,7 @@
 		<button
 			type="submit"
 			disabled={saving || uploadingLogo || uploadingFavicon}
-			class="px-5 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+			class="btn btn-primary"
 		>
 			{saving ? 'Saving…' : 'Save Settings'}
 		</button>

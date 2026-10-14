@@ -51,7 +51,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		: [[], []];
 	const items = rawItems.map((item) => ({
 		...item,
-		imageUrl: pickItemImage(item, productRows, optionImageRows)
+		imageUrl: item.imageUrl ?? pickItemImage(item, productRows, optionImageRows)
 	}));
 
 	// Any status can move to any other, except that a cancelled order is final

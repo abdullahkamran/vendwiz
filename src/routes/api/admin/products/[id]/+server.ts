@@ -2,7 +2,8 @@ import { sumFirstGroupStock } from '$lib/utils/stock';
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
-import { products, productVariants, productAttributes, productOptionGroups, productOptionValues, stores } from '$lib/server/db/schema';
+import { products, productVariants, productAttributes, productOptionGroups, productOptionValues, orderItems, stores } from '$lib/server/db/schema';
+import { getDefaultProduct, repointOrderLinesToDefaultVariant } from '$lib/server/defaults';
 import { eq, and, ne } from 'drizzle-orm';
 import { productSchema } from '$lib/schemas/catalog';
 import { nanoid } from 'nanoid';
@@ -158,6 +159,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
         .where(eq(products.id, params.id))
         .returning();
 
+      // Past order lines that used one of these variants move to the hidden default variant
+      // before the variants are rebuilt below.
+      await repointOrderLinesToDefaultVariant(store.id, params.id, tx);
+
       // Replace option groups, option values, and variants: delete all then re-insert
       // with correct optionValueIds so the PDP matchedVariant lookup works.
       await tx.delete(productOptionGroups).where(eq(productOptionGroups.productId, params.id));
@@ -267,8 +272,19 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
     return error(404, 'Product not found');
   }
 
-  // Hard delete (cascade handles related records)
-  await db.delete(products).where(eq(products.id, params.id));
+  if (existing.isDefault) {
+    return error(400, 'The default product cannot be deleted');
+  }
+
+  // Past order lines that bought this product move to the store's hidden default product, and
+  // keep the title / price / image saved on the line. Then hard delete (cascade handles the
+  // product's own variants, attributes and reviews).
+  await db.transaction(async (tx) => {
+    await repointOrderLinesToDefaultVariant(store.id, params.id, tx);
+    const fallback = await getDefaultProduct(store.id, tx);
+    await tx.update(orderItems).set({ productId: fallback.id }).where(eq(orderItems.productId, params.id));
+    await tx.delete(products).where(eq(products.id, params.id));
+  });
 
   return json({ success: true });
 };

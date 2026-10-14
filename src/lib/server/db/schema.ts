@@ -163,6 +163,8 @@ export const categories = pgTable('categories', {
 	sortOrder: integer('sort_order').notNull().default(0),
 	// Nullable self-reference for subcategory support
 	parentId: text('parent_id').references((): AnyPgColumn => categories.id, { onDelete: 'set null' }),
+	// Hidden per-store placeholder that products move to when their category is deleted
+	isDefault: boolean('is_default').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
@@ -191,6 +193,8 @@ export const products = pgTable('products', {
 	// Sale pricing: set a salePrice to mark a product as "on sale"
 	salePrice: numeric('sale_price', { precision: 10, scale: 2 }),
 	isPublished: boolean('is_published').notNull().default(true),
+	// Hidden per-store placeholder that past order lines point to when their product is deleted
+	isDefault: boolean('is_default').notNull().default(false),
 	sortOrder: integer('sort_order').notNull().default(0),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
@@ -234,7 +238,9 @@ export const productVariants = pgTable('product_variants', {
 	stockQty: integer('stock_qty').notNull().default(0),
 	sku: text('sku'),
 	// URL of a size-chart image; only relevant for size-type variants
-	sizeChartUrl: text('size_chart_url')
+	sizeChartUrl: text('size_chart_url'),
+	// Hidden placeholder (lives on the default product) that past order lines point to when their variant is removed
+	isDefault: boolean('is_default').notNull().default(false)
 });
 
 // Product specification attributes (e.g., Material: Cotton, Weight: 200g)
@@ -262,6 +268,8 @@ export const discountCodes = pgTable('discount_codes', {
 	usageLimit: integer('usage_limit'), // null = unlimited
 	usageCount: integer('usage_count').notNull().default(0),
 	isActive: boolean('is_active').notNull().default(true),
+	// Hidden per-store placeholder that past orders point to when their discount code is deleted
+	isDefault: boolean('is_default').notNull().default(false),
 	expiresAt: timestamp('expires_at'),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
@@ -306,6 +314,8 @@ export const orderItems = pgTable('order_items', {
 	// Snapshot at order time
 	productTitle: text('product_title').notNull(),
 	variantLabel: text('variant_label'),
+	// Image shown for the line, saved at order time so it survives the product being deleted
+	imageUrl: text('image_url'),
 	unitPrice: numeric('unit_price', { precision: 10, scale: 2 }).notNull(),
 	quantity: integer('quantity').notNull(),
 	subtotal: numeric('subtotal', { precision: 10, scale: 2 }).notNull()

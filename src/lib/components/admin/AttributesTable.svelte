@@ -171,7 +171,7 @@
   }
 
   .btn-add:hover {
-    background: #e8f0fd;
+    background: #f3f4f6;
   }
 
   .empty-msg {

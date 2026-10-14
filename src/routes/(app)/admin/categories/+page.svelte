@@ -215,8 +215,8 @@
               <td>{getParentName(cat.parentId ?? null)}</td>
               <td>{cat.sortOrder}</td>
               <td class="actions-cell">
-                <button class="btn-edit" onclick={() => openEdit(cat)}>Edit</button>
-                <button class="btn-delete" onclick={() => (deleteTarget = cat)}>Delete</button>
+                <button class="btn-edit btn-sm" onclick={() => openEdit(cat)}>Edit</button>
+                <button class="btn-delete btn-sm" onclick={() => (deleteTarget = cat)}>Delete</button>
               </td>
             </tr>
           {/each}
@@ -323,7 +323,7 @@
       <div class="modal-body">
         <p>
           Are you sure you want to delete <strong>{deleteTarget.name}</strong>? This cannot be
-          undone. Categories with assigned products cannot be deleted.
+          undone. Products in it will move to the hidden default category.
         </p>
       </div>
       <div class="modal-footer">

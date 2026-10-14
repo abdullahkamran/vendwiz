@@ -222,8 +222,8 @@
                 </span>
               </td>
               <td class="actions-cell">
-                <a href="/admin/products/{product.id}" class="btn-edit">Edit</a>
-                <button class="btn-delete" onclick={() => (deleteTarget = product)}>Delete</button>
+                <a href="/admin/products/{product.id}" class="btn-edit btn-sm">Edit</a>
+                <button class="btn-delete btn-sm" onclick={() => (deleteTarget = product)}>Delete</button>
               </td>
             </tr>
           {/each}
@@ -234,9 +234,9 @@
     <!-- Pagination -->
     {#if pages > 1}
       <div class="pagination">
-        <button onclick={prevPage} disabled={page <= 1}>← Prev</button>
+        <button class="btn btn-secondary btn-sm" onclick={prevPage} disabled={page <= 1}>← Prev</button>
         <span>Page {page} of {pages}</span>
-        <button onclick={nextPage} disabled={page >= pages}>Next →</button>
+        <button class="btn btn-secondary btn-sm" onclick={nextPage} disabled={page >= pages}>Next →</button>
       </div>
     {/if}
   {/if}

@@ -95,11 +95,11 @@
 
 		<button
 			type="submit"
-			class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
+			class="btn btn-primary"
 		>
 			Filter
 		</button>
-		<a href="/admin/orders" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Clear</a>
+		<a href="/admin/orders" class="btn btn-secondary">Clear</a>
 	</form>
 
 	<!-- Table -->
@@ -139,7 +139,7 @@
 						<td class="px-6 py-4 whitespace-nowrap text-sm">
 							<a
 								href="/admin/orders/{order.id}"
-								class="text-indigo-600 hover:text-indigo-900 font-medium"
+								class="btn btn-secondary btn-sm"
 							>
 								View
 							</a>

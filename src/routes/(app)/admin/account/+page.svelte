@@ -180,7 +180,7 @@
 			<button
 				type="submit"
 				disabled={loading}
-				class="w-full bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-lg font-medium text-sm hover:opacity-90 disabled:opacity-60 transition-opacity cursor-pointer"
+				class="btn btn-primary w-full"
 			>
 				{loading ? 'Saving…' : 'Change password'}
 			</button>

@@ -71,7 +71,7 @@
 					<button
 						type="button"
 						onclick={generateCode}
-						class="px-3 py-2 border border-[--color-border] rounded-lg text-sm hover:bg-[--color-surface-2] transition-colors whitespace-nowrap"
+						class="btn btn-secondary"
 					>
 						Generate
 					</button>
@@ -185,14 +185,14 @@
 	<div class="flex gap-3 justify-end">
 		<a
 			href="/admin/discounts"
-			class="px-5 py-2 border border-[--color-border] rounded-lg text-sm font-medium hover:bg-[--color-surface-2] transition-colors"
+			class="btn btn-secondary"
 		>
 			Cancel
 		</a>
 		<button
 			type="submit"
 			disabled={saving}
-			class="px-5 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+			class="btn btn-primary"
 		>
 			{saving ? 'Saving…' : discount ? 'Update Discount' : 'Create Discount'}
 		</button>

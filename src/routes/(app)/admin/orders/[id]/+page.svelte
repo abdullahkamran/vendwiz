@@ -202,7 +202,7 @@
 						bind:value={selectedStatus}
 						onchange={handleStatusChange}
 						disabled={data.order.status === 'cancelled'}
-						class="w-full rounded-md border-gray-300 shadow-sm text-sm mb-3 focus:ring-indigo-500 focus:border-indigo-500"
+						class="w-full border border-[var(--color-border)] rounded text-sm mb-3 disabled:bg-[var(--color-surface-2)] disabled:text-[var(--color-text-muted)]"
 					>
 						{#each ALL_STATUSES as s}
 							<option value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -224,13 +224,13 @@
 						name="notes"
 						rows="4"
 						bind:value={notes}
-						class="w-full rounded-md border-gray-300 shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 mb-3"
+						class="w-full border border-[var(--color-border)] rounded text-sm mb-3"
 						placeholder="Add internal notes..."
 					></textarea>
 
 					<button
 						type="submit"
-						class="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
+						class="btn btn-primary w-full"
 					>
 						Update
 					</button>

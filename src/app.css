@@ -41,11 +41,243 @@ body {
 	margin: 0;
 }
 
-a {
-	color: inherit;
-	text-decoration: none;
+@layer base {
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
 }
 
 img {
 	max-width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Admin panel — minimalist design (mirrors the storefront's "Minimal" theme)
+   Scoped to .admin-shell so login / register / storefront are unaffected.
+   Everything below is presentation only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.admin-shell {
+	/* Palette: ink on white, hairline borders */
+	--color-primary: #111827;
+	--color-primary-fg: #ffffff;
+	--color-accent: #111827;
+	--color-accent-fg: #ffffff;
+	--color-surface: #ffffff;
+	--color-surface-2: #fafafa;
+	--color-text: #111827;
+	--color-text-muted: #6b7280;
+	--color-border: #e5e7eb;
+	--color-secondary: #6b7280;
+
+	/* Typography: Poppins body, Playfair Display headings (as on the Minimal storefront) */
+	--font-sans: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-heading: 'Playfair Display', Georgia, serif;
+	font-family: var(--font-sans);
+	color: var(--color-text);
+	-webkit-font-smoothing: antialiased;
+
+	/* Square-ish corners, no shadows */
+	--radius: 4px;
+	--radius-sm: 2px;
+	--radius-md: 4px;
+	--radius-lg: 8px;
+	--radius-xl: 8px;
+	--radius-2xl: 8px;
+
+	/* Tailwind accent colours used by the admin pages (indigo / blue) → neutral ink */
+	--color-indigo-50: #f9fafb;
+	--color-indigo-100: #f3f4f6;
+	--color-indigo-200: #e5e7eb;
+	--color-indigo-400: #9ca3af;
+	--color-indigo-500: #374151;
+	--color-indigo-600: #111827;
+	--color-indigo-700: #374151;
+	--color-indigo-800: #111827;
+	--color-indigo-900: #111827;
+	--color-blue-50: #f9fafb;
+	--color-blue-100: #f3f4f6;
+	--color-blue-600: #111827;
+	--color-blue-800: #374151;
+}
+
+.admin-shell h1,
+.admin-shell h2 {
+	font-family: var(--font-heading);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	color: var(--color-text);
+}
+
+.admin-shell h1 {
+	letter-spacing: -0.025em;
+}
+
+/* Flat surfaces: hairline border instead of drop shadow */
+.admin-shell .shadow,
+.admin-shell .shadow-sm,
+.admin-shell .shadow-md,
+.admin-shell .shadow-lg {
+	box-shadow: none;
+}
+.admin-shell .bg-white.shadow,
+.admin-shell .bg-white.shadow-sm,
+.admin-shell .bg-white.shadow-md {
+	border: 1px solid var(--color-border);
+}
+
+/* Form controls: every field gets a visible outline (this project has no form-reset plugin, so a
+   bare <select>/<textarea> would otherwise be borderless). Layered so page classes override. */
+@layer components {
+	.admin-shell
+		:is(
+			input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']):not([type='file']):not([type='hidden']),
+			select,
+			textarea
+		) {
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background-color: #ffffff;
+		color: var(--color-text);
+		font-family: inherit;
+		padding: 0.5rem 0.75rem;
+	}
+	.admin-shell
+		:is(
+			input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']):not([type='file']):not([type='hidden']),
+			select,
+			textarea
+		):focus {
+		outline: none;
+		border-color: var(--color-text);
+		box-shadow: 0 0 0 1px var(--color-text);
+	}
+}
+.admin-shell input::placeholder,
+.admin-shell textarea::placeholder {
+	color: #9ca3af;
+}
+.admin-shell input[type='checkbox'],
+.admin-shell input[type='radio'] {
+	accent-color: var(--color-primary);
+}
+
+/* Links in content read as ink with an underline on hover */
+.admin-shell main a.text-indigo-600:hover,
+.admin-shell main a.text-indigo-900:hover {
+	text-decoration: underline;
+}
+
+/* Buttons share the same quiet weight */
+.admin-shell button {
+	font-family: inherit;
+}
+
+/* Tables: airy, hairline rows, small-caps headers */
+.admin-shell table th {
+	font-weight: 500;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	font-size: 0.7rem;
+	color: var(--color-text-muted);
+}
+
+/* Thin neutral scrollbars */
+.admin-shell *::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+.admin-shell *::-webkit-scrollbar-thumb {
+	background: #d1d5db;
+	border-radius: 9999px;
+}
+
+/* ── Admin buttons: one set of styles used everywhere ──────────────────────
+   .btn + a variant (.btn-primary / .btn-secondary / .btn-danger / .btn-success / .btn-delete),
+   optional .btn-sm for table rows. Works on <button> and <a>. The existing per-page class names
+   (btn-edit, btn-delete, btn-add…) are mapped onto the same look so no screen drifts. */
+.admin-shell :is(button, a):is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-success, .btn-edit, .btn-delete, .btn-add, .btn-add-option, .btn-add-variant, .btn-remove-variant) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4rem;
+	padding: 0.5rem 1rem;
+	font-family: inherit;
+	font-size: 0.8125rem;
+	font-weight: 500;
+	line-height: 1.25;
+	white-space: nowrap;
+	text-decoration: none;
+	border: 1px solid transparent;
+	border-radius: var(--radius-md);
+	cursor: pointer;
+	transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.admin-shell :is(button, a).btn-sm {
+	padding: 0.3rem 0.7rem;
+	font-size: 0.75rem;
+}
+.admin-shell :is(button, a):is(.btn:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled, .btn-success:disabled) {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Primary: solid ink */
+.admin-shell :is(button, a):is(.btn-primary) {
+	background: var(--color-primary);
+	border-color: var(--color-primary);
+	color: #ffffff;
+}
+.admin-shell :is(button, a):is(.btn-primary):hover:not(:disabled) {
+	background: #374151;
+	border-color: #374151;
+	color: #ffffff;
+}
+
+/* Secondary: outline */
+.admin-shell :is(button, a):is(.btn-secondary, .btn-edit, .btn-add, .btn-add-option, .btn-add-variant) {
+	background: #ffffff;
+	border: 1px solid #d1d5db;
+	color: var(--color-text);
+}
+.admin-shell :is(button, a):is(.btn-secondary, .btn-edit, .btn-add, .btn-add-option, .btn-add-variant):hover:not(:disabled) {
+	background: #f9fafb;
+	border-color: #9ca3af;
+	color: var(--color-text);
+}
+
+/* Danger: solid red (destructive confirm / deactivate) */
+.admin-shell :is(button, a):is(.btn-danger) {
+	background: #dc2626;
+	border-color: #dc2626;
+	color: #ffffff;
+}
+.admin-shell :is(button, a):is(.btn-danger):hover:not(:disabled) {
+	background: #b91c1c;
+	border-color: #b91c1c;
+	color: #ffffff;
+}
+
+/* Delete / remove: red outline (destructive but not yet confirmed) */
+.admin-shell :is(button, a):is(.btn-delete, .btn-remove-variant) {
+	background: #ffffff;
+	border: 1px solid #fecaca;
+	color: #dc2626;
+}
+.admin-shell :is(button, a):is(.btn-delete, .btn-remove-variant):hover:not(:disabled) {
+	background: #fef2f2;
+	border-color: #f87171;
+	color: #b91c1c;
+}
+
+/* Success: solid green (approve / activate) */
+.admin-shell :is(button, a):is(.btn-success) {
+	background: #16a34a;
+	border-color: #16a34a;
+	color: #ffffff;
+}
+.admin-shell :is(button, a):is(.btn-success):hover:not(:disabled) {
+	background: #15803d;
+	border-color: #15803d;
+	color: #ffffff;
 }

@@ -19,7 +19,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   const storeCategories = await db
     .select()
     .from(categories)
-    .where(eq(categories.storeId, store.id))
+    .where(and(eq(categories.storeId, store.id), eq(categories.isDefault, false)))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
 
   // Load one active discount code for the promo banner (first valid one)

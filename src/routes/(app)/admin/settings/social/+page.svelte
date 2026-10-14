@@ -109,7 +109,7 @@
 		<button
 			type="submit"
 			disabled={saving}
-			class="px-5 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+			class="btn btn-primary"
 		>
 			{saving ? 'Saving…' : 'Save Social Links'}
 		</button>

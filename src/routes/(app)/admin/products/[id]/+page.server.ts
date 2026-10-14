@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const [variants, attributes, allCategories, optionGroupRows] = await Promise.all([
     db.select().from(productVariants).where(eq(productVariants.productId, params.id)),
     db.select().from(productAttributes).where(eq(productAttributes.productId, params.id)),
-    db.select().from(categories).where(eq(categories.storeId, store.id)).orderBy(asc(categories.sortOrder)),
+    db.select().from(categories).where(and(eq(categories.storeId, store.id), eq(categories.isDefault, false))).orderBy(asc(categories.sortOrder)),
     db.select().from(productOptionGroups).where(eq(productOptionGroups.productId, params.id))
   ]);
 

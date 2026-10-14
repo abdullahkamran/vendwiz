@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   const allCategories = await db
     .select()
     .from(categories)
-    .where(eq(categories.storeId, storeId))
+    .where(and(eq(categories.storeId, storeId), eq(categories.isDefault, false)))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
 
   return { featured, categories: allCategories };

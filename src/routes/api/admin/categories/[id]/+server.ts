@@ -2,7 +2,8 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { categories, products, stores } from '$lib/server/db/schema';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { getDefaultCategory } from '$lib/server/defaults';
 import { categorySchema } from '$lib/schemas/catalog';
 
 async function getStoreForUser(userId: string) {
@@ -85,20 +86,17 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
     return error(404, 'Category not found');
   }
 
-  // Prevent deletion if products are assigned
-  const [productCount] = await db
-    .select({ count: count() })
-    .from(products)
-    .where(eq(products.categoryId, params.id));
-
-  if ((productCount?.count ?? 0) > 0) {
-    return json(
-      { error: 'Cannot delete category with assigned products. Reassign products first.' },
-      { status: 409 }
-    );
+  if (existing.isDefault) {
+    return json({ error: 'The default category cannot be deleted.' }, { status: 400 });
   }
 
-  await db.delete(categories).where(eq(categories.id, params.id));
+  // Products in this category move to the store's hidden default category, so deleting a
+  // category is always allowed and no product is left without a valid category.
+  await db.transaction(async (tx) => {
+    const fallback = await getDefaultCategory(store.id, tx);
+    await tx.update(products).set({ categoryId: fallback.id }).where(eq(products.categoryId, params.id));
+    await tx.delete(categories).where(eq(categories.id, params.id));
+  });
 
   return json({ success: true });
 };

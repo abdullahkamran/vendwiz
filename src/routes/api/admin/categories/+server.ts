@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { categories, stores } from '$lib/server/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { categorySchema } from '$lib/schemas/catalog';
 
@@ -29,7 +29,7 @@ export const GET: RequestHandler = async ({ locals }) => {
   const rows = await db
     .select()
     .from(categories)
-    .where(eq(categories.storeId, store.id))
+    .where(and(eq(categories.storeId, store.id), eq(categories.isDefault, false)))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
 
   return json(rows);

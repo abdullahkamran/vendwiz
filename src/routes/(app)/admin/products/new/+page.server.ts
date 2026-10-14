@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { categories, stores } from '$lib/server/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   const allCategories = await db
     .select()
     .from(categories)
-    .where(eq(categories.storeId, store.id))
+    .where(and(eq(categories.storeId, store.id), eq(categories.isDefault, false)))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
 
   return { categories: allCategories, store };

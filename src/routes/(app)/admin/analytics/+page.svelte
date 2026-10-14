@@ -59,11 +59,11 @@
 	}
 
 	const STATUS_COLORS: Record<string, string> = {
-		pending: '#f59e0b',
-		processing: '#3b82f6',
-		dispatched: '#6366f1',
-		completed: '#10b981',
-		cancelled: '#ef4444'
+		pending: '#d97706',
+		processing: '#9ca3af',
+		dispatched: '#111827',
+		completed: '#16a34a',
+		cancelled: '#dc2626'
 	};
 </script>
 
@@ -86,7 +86,7 @@
 				<input type="date" name="from" value={data.customFrom} class="rounded-md border-gray-300 shadow-sm text-sm" />
 				<input type="date" name="to" value={data.customTo} class="rounded-md border-gray-300 shadow-sm text-sm" />
 			{/if}
-			<button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700">
+			<button type="submit" class="btn btn-primary">
 				Apply
 			</button>
 		</form>
@@ -125,7 +125,7 @@
 							y={barY(d.count)}
 							width={barW(i)}
 							height={barH(d.count)}
-							fill="#6366f1"
+							fill="#111827"
 							rx="2"
 						/>
 					{/each}

@@ -23,7 +23,7 @@
 		<h1 class="text-2xl font-bold text-[--color-text]">Discount Codes</h1>
 		<a
 			href="/admin/discounts/new"
-			class="px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+			class="btn btn-primary"
 		>
 			+ New Discount
 		</a>
@@ -40,7 +40,7 @@
 			<p class="text-[--color-text-muted] mb-3">No discount codes yet</p>
 			<a
 				href="/admin/discounts/new"
-				class="inline-flex px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+				class="btn btn-primary"
 			>
 				Create your first discount
 			</a>
@@ -91,7 +91,7 @@
 										<input type="hidden" name="isActive" value={String(d.isActive)} />
 										<button
 											type="submit"
-											class="text-xs px-2 py-1 border border-[--color-border] rounded hover:bg-[--color-surface-2] transition-colors"
+											class="btn btn-sm {d.isActive ? 'btn-danger' : 'btn-success'}"
 											title="{d.isActive ? 'Deactivate' : 'Activate'}"
 										>
 											{d.isActive ? 'Deactivate' : 'Activate'}
@@ -100,7 +100,7 @@
 
 									<a
 										href="/admin/discounts/{d.id}"
-										class="text-xs px-2 py-1 border border-[--color-border] rounded hover:bg-[--color-surface-2] transition-colors"
+										class="btn btn-secondary btn-sm"
 									>
 										Edit
 									</a>
@@ -117,7 +117,7 @@
 										<input type="hidden" name="id" value={d.id} />
 										<button
 											type="submit"
-											class="text-xs px-2 py-1 border border-red-200 rounded text-red-600 hover:bg-red-50 transition-colors"
+											class="btn btn-delete btn-sm"
 										>
 											Delete
 										</button>

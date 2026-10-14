@@ -48,19 +48,19 @@
 	<div class="flex flex-wrap gap-3">
 		<a
 			href="/admin/products/new"
-			class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+			class="btn btn-primary"
 		>
 			+ New product
 		</a>
 		<a
 			href="/admin/categories/new"
-			class="inline-flex items-center gap-2 border border-[var(--color-border)] text-[var(--color-text)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-surface-2)] transition-colors"
+			class="btn btn-secondary"
 		>
 			+ New category
 		</a>
 		<a
 			href="/admin/discounts/new"
-			class="inline-flex items-center gap-2 border border-[var(--color-border)] text-[var(--color-text)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-surface-2)] transition-colors"
+			class="btn btn-secondary"
 		>
 			+ New discount
 		</a>
@@ -68,7 +68,7 @@
 			href="{`//${data.store.subdomain}.vendwiz.com`}"
 			target="_blank"
 			rel="noopener noreferrer"
-			class="inline-flex items-center gap-2 border border-[var(--color-border)] text-[var(--color-text)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-surface-2)] transition-colors"
+			class="btn btn-secondary"
 		>
 			View storefront ↗
 		</a>

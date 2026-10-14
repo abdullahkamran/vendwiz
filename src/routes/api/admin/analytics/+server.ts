@@ -63,9 +63,20 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			? await db.select().from(orderItems).where(inArray(orderItems.orderId, revenueOrderIds))
 			: [];
 
+	// Lines whose product was deleted point at the hidden default product: report them by saved title
+	const defaultProductIds = new Set(
+		(
+			await db
+				.select({ id: products.id })
+				.from(products)
+				.where(and(eq(products.storeId, store.id), eq(products.isDefault, true)))
+		).map((r) => r.id)
+	);
+
 	const productMap = new Map<string, { title: string; qtySold: number; revenue: number }>();
 	for (const item of allOrderItems) {
-		const id = item.productId ?? item.id;
+		// Deleted products have no id any more: group their sales by the saved title
+		const id = item.productId && !defaultProductIds.has(item.productId) ? item.productId : `deleted:${item.productTitle}`;
 		const existing = productMap.get(id) ?? {
 			title: item.productTitle,
 			qtySold: 0,

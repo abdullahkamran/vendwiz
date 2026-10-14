@@ -30,6 +30,7 @@ export const GET: RequestHandler = async ({ locals }) => {
     .where(
       and(
         eq(products.storeId, store.id),
+        eq(products.isDefault, false),
         gt(products.stockQty, 0),
         sql`${products.stockQty} <= ${products.lowStockThreshold}`
       )
@@ -42,6 +43,7 @@ export const GET: RequestHandler = async ({ locals }) => {
     .where(
       and(
         eq(products.storeId, store.id),
+        eq(products.isDefault, false),
         eq(products.stockQty, 0)
       )
     );

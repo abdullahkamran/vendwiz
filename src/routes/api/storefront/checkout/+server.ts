@@ -8,6 +8,8 @@ import { checkoutSchema } from '$lib/schemas/storefront';
 import { sendEmail } from '$lib/server/email';
 import { matchLineVariants } from '$lib/server/cartStock';
 import { saleDiscount, applySale } from '$lib/utils/pricing';
+import { pickItemImage } from '$lib/utils/orderItemImage';
+import { loadOptionImageRows } from '$lib/server/orderImages';
 import { syncProductStock } from '$lib/server/productStock';
 
 /** Escape a string for safe interpolation into an HTML body. */
@@ -58,7 +60,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       basePrice: products.basePrice,
       salePrice: products.salePrice,
       stockQty: products.stockQty,
-      isPublished: products.isPublished
+      isPublished: products.isPublished,
+      images: products.images
     })
     .from(products)
     .where(and(eq(products.storeId, storeId), inArray(products.id, productIds)));
@@ -220,6 +223,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     status: 'pending'
   });
 
+  // Images are saved on the order lines (taken from our own catalogue, never from the client) so
+  // past orders keep them after a product is deleted. Best effort: never blocks the order.
+  let optionImageRows: Awaited<ReturnType<typeof loadOptionImageRows>> = [];
+  try {
+    optionImageRows = await loadOptionImageRows([...new Set(productIds)]);
+  } catch (err) {
+    console.error('loadOptionImageRows failed', err);
+  }
+
   // Insert order items — unit price comes from DB-sourced prices; variantId stored
   if (items.length > 0) {
     await db.insert(orderItems).values(
@@ -230,15 +242,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
           : null;
         const variant = variantKey ? variantResolutionMap.get(variantKey) : null;
         const unitPrice = variant ? variant.price : (priceMap.get(item.productId) as number);
+        const variantLabel =
+          variant?.label ??
+          (hasVariant ? Object.values(item.variantSelections as Record<string, string>).join(' / ') : null);
         return {
           id: nanoid(),
           orderId,
           productId: item.productId,
           variantId: variant?.id ?? null,
           productTitle: item.title,
-          variantLabel:
-            variant?.label ??
-            (hasVariant ? Object.values(item.variantSelections as Record<string, string>).join(' / ') : null),
+          variantLabel,
+          imageUrl: pickItemImage({ productId: item.productId, variantLabel }, dbProducts, optionImageRows),
           unitPrice: unitPrice.toFixed(2),
           quantity: item.quantity,
           subtotal: (unitPrice * item.quantity).toFixed(2)
