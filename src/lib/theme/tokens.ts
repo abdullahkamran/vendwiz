@@ -241,7 +241,9 @@ export function tokensToCSS(tokens: Partial<ThemeTokens> | DarkTokens): string {
 /** Returns the full :root block for the given theme slug. */
 export function themeRootCSS(theme: string): string {
   const tokens = THEME_TOKENS[theme] ?? THEME_TOKENS.basic;
-  return `:root {\n${tokensToCSS(tokens)}\n}`;
+  // The home slideshow keeps its light-mode colours in dark mode (dark tokens never override these)
+  const hero = `\n  --sf-hero-bg: ${tokens['--sf-primary']};\n  --sf-hero-fg: ${tokens['--sf-on-primary']};`;
+  return `:root {\n${tokensToCSS(tokens)}${hero}\n}`;
 }
 
 /** Returns the dark-mode override block for the given theme slug. */

@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { isValidSizeChartUrl } from './productFormValidation';
   import { addOption as addOptionUtil, updateOptionStock as updateOptionStockUtil, updateOptionColorHex as updateOptionColorHexUtil } from './variantsEditorUtils';
-  type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string };
+  type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string; imageUrl?: string | null };
   type VariantRow = { id?: string; name: string; options: VariantOption[]; sizeChartUrl?: string };
 
   // Returns true when the variant group name indicates a colour group
@@ -10,10 +11,16 @@
 
   let {
     variants = [],
-    onChange
+    onChange,
+    showErrors = false,
+    productImages = []
   }: {
     variants: VariantRow[];
     onChange: (variants: VariantRow[]) => void;
+    // When true, required fields left empty are highlighted in red
+    showErrors?: boolean;
+    // The product's gallery images, offered as choices for an option's image
+    productImages?: { url: string }[];
   } = $props();
 
   let rows = $state<VariantRow[]>(
@@ -88,6 +95,46 @@
     onChange(rows);
   }
 
+  // Colour-specific product image: uploaded per option, optional
+  let uploadingKey = $state<string | null>(null);
+  let imageError = $state('');
+  let pickerKey = $state<string | null>(null);
+
+  function updateOptionImage(vi: number, oi: number, imageUrl: string) {
+    rows = rows.map((r, i) =>
+      i === vi
+        ? { ...r, options: r.options.map((o, j) => (j === oi ? { ...o, imageUrl } : o)) }
+        : r
+    );
+    onChange(rows);
+  }
+
+  async function uploadOptionImage(vi: number, oi: number, file: File | undefined) {
+    if (!file) return;
+    imageError = '';
+    if (!file.type.startsWith('image/')) {
+      imageError = 'Only image files are accepted';
+      return;
+    }
+    uploadingKey = `${vi}-${oi}`;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        imageError = data?.message ?? 'Image upload failed';
+        return;
+      }
+      const { url } = await res.json();
+      updateOptionImage(vi, oi, url as string);
+    } catch {
+      imageError = 'Network error during upload';
+    } finally {
+      uploadingKey = null;
+    }
+  }
+
   function updateSizeChartUrl(vi: number, url: string) {
     rows = rows.map((r, i) => (i === vi ? { ...r, sizeChartUrl: url } : r));
     onChange(rows);
@@ -98,13 +145,20 @@
   {#each rows as variant, vi}
     <div class="variant-block">
       <div class="variant-header">
-        <input
-          type="text"
-          class="variant-name-input"
-          value={variant.name}
-          placeholder="Variant name (e.g. Size, Color)"
-          oninput={(e) => updateVariantName(vi, (e.target as HTMLInputElement).value)}
-        />
+        <div class="variant-name-wrap">
+          <input
+            type="text"
+            class="variant-name-input"
+            class:field-invalid={showErrors && !variant.name.trim()}
+            value={variant.name}
+            placeholder="Variant name (e.g. Size, Color)"
+            aria-invalid={showErrors && !variant.name.trim()}
+            oninput={(e) => updateVariantName(vi, (e.target as HTMLInputElement).value)}
+          />
+          {#if showErrors && !variant.name.trim()}
+            <span class="field-error-msg">Variant name is required</span>
+          {/if}
+        </div>
         <button type="button" class="btn-remove-variant" onclick={() => removeVariant(vi)}>
           Remove Variant
         </button>
@@ -116,6 +170,7 @@
             <tr>
               {#if isColorGroup(variant.name)}<th>Color</th>{/if}
               <th>Option Label</th>
+              <th>Image (optional)</th>
               <th>Price Modifier</th>
               <th>Stock</th>
               <th></th>
@@ -155,6 +210,63 @@
                     />
                   </td>
                 {/if}
+                <td class="option-image-cell">
+                  {#if option.imageUrl}
+                    <img class="option-image-thumb" src={option.imageUrl} alt="{option.label || 'Option'} image" />
+                  {/if}
+                  <button
+                    type="button"
+                    class="btn-pick-option-image"
+                    onclick={() => (pickerKey = pickerKey === `${vi}-${oi}` ? null : `${vi}-${oi}`)}
+                  >
+                    {uploadingKey === `${vi}-${oi}` ? 'Uploading…' : option.imageUrl ? 'Change' : 'Select image'}
+                  </button>
+                  {#if option.imageUrl}
+                    <button
+                      type="button"
+                      class="btn-remove-option"
+                      title="Remove image (the default product image will be shown)"
+                      onclick={() => updateOptionImage(vi, oi, '')}
+                    >
+                      &times;
+                    </button>
+                  {/if}
+                  {#if pickerKey === `${vi}-${oi}`}
+                    <div class="image-picker" role="dialog" aria-label="Select image for this option">
+                      {#if productImages.length > 0}
+                        <p class="image-picker-title">Choose from product images</p>
+                        <div class="image-picker-grid">
+                          {#each productImages as img}
+                            <button
+                              type="button"
+                              class="image-picker-item"
+                              class:image-picker-item--active={option.imageUrl === img.url}
+                              onclick={() => { updateOptionImage(vi, oi, img.url); pickerKey = null; }}
+                            >
+                              <img src={img.url} alt="" />
+                            </button>
+                          {/each}
+                        </div>
+                      {/if}
+                      <label class="btn-upload-option-image">
+                        Upload new image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          disabled={uploadingKey !== null}
+                          onchange={(e) => {
+                            const input = e.target as HTMLInputElement;
+                            uploadOptionImage(vi, oi, input.files?.[0]);
+                            input.value = '';
+                            pickerKey = null;
+                          }}
+                        />
+                      </label>
+                      <button type="button" class="image-picker-close" onclick={() => (pickerKey = null)}>Close</button>
+                    </div>
+                  {/if}
+                </td>
                 <td>
                   <input
                     type="number"
@@ -204,8 +316,12 @@
             class="size-chart-input"
             value={variant.sizeChartUrl ?? ''}
             placeholder="https://example.com/size-chart.jpg"
+            class:field-invalid={showErrors && !isValidSizeChartUrl(variant.sizeChartUrl)}
             oninput={(e) => updateSizeChartUrl(vi, (e.target as HTMLInputElement).value)}
           />
+          {#if showErrors && !isValidSizeChartUrl(variant.sizeChartUrl)}
+            <span class="field-error-msg">Enter a valid https:// image link</span>
+          {/if}
           {#if variant.sizeChartUrl}
             <img
               class="size-chart-preview"
@@ -217,6 +333,10 @@
       {/if}
     </div>
   {/each}
+
+  {#if imageError}
+    <p class="field-error-msg">{imageError}</p>
+  {/if}
 
   {#if rows.length === 0}
     <p class="empty-msg">No variants yet.</p>
@@ -248,8 +368,29 @@
     align-items: center;
   }
 
-  .variant-name-input {
+  .variant-name-wrap {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .variant-header {
+    align-items: flex-start;
+  }
+
+  .field-invalid {
+    border-color: #cc3333 !important;
+    background: #fff5f5 !important;
+  }
+
+  .field-error-msg {
+    color: #cc3333;
+    font-size: 0.78rem;
+  }
+
+  .variant-name-input {
+    width: 100%;
     padding: 0.5rem 0.75rem;
     border: 1px solid #e0e0e0;
     border-radius: 6px;
@@ -410,6 +551,113 @@
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     margin-top: 0.25rem;
+  }
+
+  /* Colour option image */
+  .option-image-cell {
+    white-space: nowrap;
+    width: 170px;
+    position: relative;
+  }
+
+  .btn-pick-option-image {
+    background: none;
+    border: 1px dashed #aaa;
+    color: var(--color-secondary);
+    padding: 0.3rem 0.6rem;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .btn-pick-option-image:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .image-picker {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 20;
+    width: 260px;
+    padding: 0.6rem;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    white-space: normal;
+  }
+
+  .image-picker-title {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--color-secondary);
+  }
+
+  .image-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.35rem;
+  }
+
+  .image-picker-item {
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+    aspect-ratio: 1;
+  }
+
+  .image-picker-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 3px;
+    display: block;
+  }
+
+  .image-picker-item:hover,
+  .image-picker-item--active {
+    border-color: var(--color-accent);
+  }
+
+  .image-picker-close {
+    align-self: flex-end;
+    background: none;
+    border: none;
+    color: var(--color-secondary);
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .option-image-thumb {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-right: 0.25rem;
+  }
+
+  .btn-upload-option-image {
+    display: inline-block;
+    border: 1px dashed #aaa;
+    color: var(--color-secondary);
+    padding: 0.3rem 0.6rem;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .btn-upload-option-image:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
   }
 
   /* Colour group swatch picker */

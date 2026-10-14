@@ -148,7 +148,7 @@ describe('POST /api/storefront/checkout — confirmation email', () => {
 		const res = await POST(
 			makeEvent({
 				customerName: 'Alice',
-				customerPhone: '1234567890',
+				customerPhone: '+921234567890',
 				shippingAddress: '123 Main Street, Cityville',
 				// customerEmail intentionally omitted
 				items: BASE_ITEMS
@@ -165,7 +165,7 @@ describe('POST /api/storefront/checkout — confirmation email', () => {
 		const res = await POST(
 			makeEvent({
 				customerName: 'Alice',
-				customerPhone: '1234567890',
+				customerPhone: '+921234567890',
 				shippingAddress: '123 Main Street, Cityville',
 				customerEmail: '',
 				items: BASE_ITEMS
@@ -181,7 +181,7 @@ describe('POST /api/storefront/checkout — confirmation email', () => {
 		const res = await POST(
 			makeEvent({
 				customerName: 'Bob',
-				customerPhone: '0987654321',
+				customerPhone: '+920987654321',
 				shippingAddress: '456 Elm Street, Townsville',
 				customerEmail: 'bob@example.com',
 				items: BASE_ITEMS

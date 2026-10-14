@@ -1,19 +1,16 @@
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { orders, orderItems } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { orders, orderItems, products, productOptionGroups, productOptionValues } from '$lib/server/db/schema';
+import { eq, and, inArray, isNotNull } from 'drizzle-orm';
+import { pickItemImage } from '$lib/utils/orderItemImage';
 import { buildWhatsAppUrl } from '$lib/utils/whatsapp';
+import { whatsappDigits } from '$lib/utils/phone';
+import { restoreOrderStock } from '$lib/server/orderStock';
 
 type OrderStatus = 'pending' | 'processing' | 'dispatched' | 'completed' | 'cancelled';
 
-const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-	pending: ['processing', 'cancelled'],
-	processing: ['dispatched', 'cancelled'],
-	dispatched: ['completed', 'cancelled'],
-	completed: [],
-	cancelled: []
-};
+const ALL_STATUSES: OrderStatus[] = ['pending', 'processing', 'dispatched', 'completed', 'cancelled'];
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -29,20 +26,45 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	if (!order) throw error(404, 'Order not found');
 
-	const items = await db
+	const rawItems = await db
 		.select()
 		.from(orderItems)
 		.where(eq(orderItems.orderId, order.id));
 
-	const allowedNext = ALLOWED_TRANSITIONS[order.status as OrderStatus] ?? [];
+	// Order items don't store an image, so look one up: the colour/option image the customer
+	// picked if there is one, otherwise the product's first image.
+	const productIds = [...new Set(rawItems.map((i) => i.productId).filter((id): id is string => !!id))];
+	const [productRows, optionImageRows] = productIds.length
+		? await Promise.all([
+				db.select({ id: products.id, images: products.images }).from(products).where(inArray(products.id, productIds)),
+				db
+					.select({
+						productId: productOptionGroups.productId,
+						label: productOptionValues.label,
+						value: productOptionValues.value,
+						imageUrl: productOptionValues.imageUrl
+					})
+					.from(productOptionValues)
+					.innerJoin(productOptionGroups, eq(productOptionValues.groupId, productOptionGroups.id))
+					.where(and(inArray(productOptionGroups.productId, productIds), isNotNull(productOptionValues.imageUrl)))
+			])
+		: [[], []];
+	const items = rawItems.map((item) => ({
+		...item,
+		imageUrl: pickItemImage(item, productRows, optionImageRows)
+	}));
 
-	// Build a simple WhatsApp message without the deleted helper
-	const waMessage = store.whatsapp
-		? encodeURIComponent(
-				`Hi ${order.customerName}, your order #${order.orderNumber} status is: ${order.status}.`
-			)
-		: null;
-	const waUrl = store.whatsapp && waMessage ? buildWhatsAppUrl(store.whatsapp, decodeURIComponent(waMessage)) : null;
+	// Any status can move to any other, except that a cancelled order is final
+	const allowedNext = order.status === 'cancelled' ? [] : ALL_STATUSES.filter((s) => s !== order.status);
+
+	// Confirmation message to the BUYER, sent to the phone number they gave at checkout
+	// (stored with its country code, so wa.me can open their chat directly)
+	const buyerDigits = whatsappDigits(order.customerPhone);
+	const waMessage =
+		`Hi ${order.customerName}, thank you for your order at ${store.name}! ` +
+		`Your order #${order.orderNumber} is confirmed. Total: ${store.currencySymbol} ${order.total}. ` +
+		`We'll keep you posted on its progress.`;
+	const waUrl = buyerDigits ? buildWhatsAppUrl(buyerDigits, waMessage) : null;
 
 	return { order, items, allowedNext, waUrl, storeWhatsapp: store.whatsapp, store };
 };
@@ -66,14 +88,12 @@ export const actions: Actions = {
 
 		if (!order) return fail(404, { error: 'Order not found' });
 
-		// Allow same-status no-op (e.g. user saves without changing dropdown)
-		if (order.status !== newStatus) {
-			const allowed = ALLOWED_TRANSITIONS[order.status as OrderStatus] ?? [];
-			if (!allowed.includes(newStatus)) {
-				return fail(422, {
-					error: `Cannot transition from ${order.status} to ${newStatus}`
-				});
-			}
+		if (!ALL_STATUSES.includes(newStatus)) {
+			return fail(400, { error: 'Please choose a valid status' });
+		}
+		// A cancelled order is final: its stock has already been returned
+		if (order.status === 'cancelled' && newStatus !== 'cancelled') {
+			return fail(422, { error: 'This order is cancelled and its status can no longer be changed.' });
 		}
 
 		const updateData: Partial<typeof orders.$inferInsert> = {
@@ -86,6 +106,11 @@ export const actions: Actions = {
 			.update(orders)
 			.set(updateData)
 			.where(and(eq(orders.id, params.id), eq(orders.storeId, store.id)));
+
+		// Moving into cancelled returns the order's items to stock (once)
+		if (newStatus === 'cancelled' && order.status !== 'cancelled') {
+			await restoreOrderStock(order.id);
+		}
 
 		return { success: true, status: newStatus };
 	},

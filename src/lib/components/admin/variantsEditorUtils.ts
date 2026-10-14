@@ -10,6 +10,7 @@ export type VariantOption = {
 	price_modifier: number;
 	stockQty?: number;
 	colorHex?: string;
+	imageUrl?: string | null;
 };
 
 export type VariantRow = {

@@ -1,10 +1,51 @@
 <script lang="ts">
-  import { cart, cartDiscount } from '$lib/stores/cart';
+  import { cart, cartDiscount, MAX_CART_QTY } from '$lib/stores/cart';
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
 
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
   let basePath = $derived(data.basePath ?? '');
+
+  // Stock verification when proceeding to checkout
+  type StockIssue = { productId: string; variantSelections?: Record<string, string>; message: string };
+  let checkingStock = $state(false);
+  let stockIssues = $state<StockIssue[]>([]);
+  let stockCheckError = $state('');
+
+  const lineKey = (productId: string, sel?: Record<string, string>) => `${productId}_${JSON.stringify(sel ?? {})}`;
+  function issueFor(item: { productId: string; variantSelections?: Record<string, string> }) {
+    return stockIssues.find((i) => lineKey(i.productId, i.variantSelections) === lineKey(item.productId, item.variantSelections));
+  }
+
+  async function proceedToCheckout() {
+    if (checkingStock) return;
+    checkingStock = true;
+    stockCheckError = '';
+    try {
+      const res = await fetch(`${basePath}/api/storefront/cart-check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: $cart.map((i) => ({ productId: i.productId, quantity: i.quantity, variantSelections: i.variantSelections }))
+        })
+      });
+      if (!res.ok) throw new Error('check failed');
+      const result = await res.json();
+      stockIssues = result.issues ?? [];
+      if (result.ok) await goto(`${basePath}/checkout`);
+    } catch {
+      stockCheckError = 'Could not verify stock right now. Please try again.';
+    } finally {
+      checkingStock = false;
+    }
+  }
+
+  // Lowering a quantity (or removing an item) may resolve an earlier warning
+  $effect(() => {
+    $cart;
+    stockIssues = [];
+  });
 
   let discountCode = $state('');
   let discountMsg = $state('');
@@ -122,6 +163,9 @@
               {#if item.quantity > 1}
                 <p class="cart-item-unit">{store.currencySymbol} {item.price.toLocaleString()} each</p>
               {/if}
+              {#if issueFor(item)}
+                <p class="cart-item-stock-error" role="alert">{issueFor(item)?.message}</p>
+              {/if}
             </div>
 
             <!-- Qty stepper + remove -->
@@ -132,6 +176,8 @@
                   class="cart-qty-btn">−</button>
                 <span class="cart-qty-val">{item.quantity}</span>
                 <button
+                  disabled={item.quantity >= MAX_CART_QTY}
+                  title={item.quantity >= MAX_CART_QTY ? `Maximum ${MAX_CART_QTY} per item` : undefined}
                   onclick={() => cart.updateQuantity(item.productId, item.quantity + 1, item.variantSelections)}
                   class="cart-qty-btn">+</button>
               </div>
@@ -221,10 +267,24 @@
           </div>
 
           <!-- CTA -->
-          <a href="{basePath}/checkout" class="cart-checkout-btn"
+          {#if stockIssues.length > 0}
+            <div class="cart-stock-alert" role="alert">
+              <strong>Some items aren't available in the quantity you chose:</strong>
+              <ul>
+                {#each stockIssues as issue}
+                  <li>{issue.message}</li>
+                {/each}
+              </ul>
+              <span>Please adjust your cart, then try again.</span>
+            </div>
+          {/if}
+          {#if stockCheckError}
+            <p class="cart-stock-alert" role="alert">{stockCheckError}</p>
+          {/if}
+          <button type="button" class="cart-checkout-btn" onclick={proceedToCheckout} disabled={checkingStock}
             style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-pill); font-weight:var(--sf-btn-weight); text-transform:var(--sf-btn-transform); letter-spacing:var(--sf-letter-spacing);">
-            Proceed to Checkout →
-          </a>
+            {checkingStock ? 'Checking stock…' : 'Proceed to Checkout →'}
+          </button>
         </div>
       </div><!-- .cart-summary-col -->
     </div><!-- .cart-cols -->
@@ -448,10 +508,36 @@
     display: block;
     width: 100%;
     padding: 14px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
     text-decoration: none;
     text-align: center;
     font-size: 1rem;
     box-sizing: border-box;
     margin-top: 16px;
+  }
+  .cart-checkout-btn:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+  .cart-item-stock-error {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #dc2626;
+  }
+  .cart-stock-alert {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid #fca5a5;
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+  .cart-stock-alert ul {
+    margin: 6px 0;
+    padding-left: 18px;
   }
 </style>

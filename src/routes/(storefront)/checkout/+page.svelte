@@ -3,6 +3,8 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { checkoutSchema } from '$lib/schemas/storefront';
+  import { COUNTRIES, defaultCountryIso, findCountry } from '$lib/countries';
+  import { composePhone } from '$lib/utils/phone';
 
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
@@ -28,7 +30,10 @@
   });
 
   let name = $state('');
-  let phone = $state('');
+  let phone = $state(''); // what the customer types, without the country code
+  // Preselect the country from the store's currency; the code is merged into the phone number
+  let countryIso = $state(defaultCountryIso(data.store?.currencyCode));
+  let fullPhone = $derived(composePhone(findCountry(countryIso).dial, phone));
   let email = $state('');
   let address = $state('');
   let notes = $state('');
@@ -47,7 +52,7 @@
     // Build a partial body for the relevant field and parse with zod
     const partial = {
       customerName: name,
-      customerPhone: phone,
+      customerPhone: fullPhone,
       customerEmail: email,
       shippingAddress: address,
       items: [{ productId: 'x', title: 'x', slug: 'x', price: 1, quantity: 1 }]
@@ -77,7 +82,7 @@
   function validateAll(): boolean {
     const partial = {
       customerName: name,
-      customerPhone: phone,
+      customerPhone: fullPhone,
       customerEmail: email,
       shippingAddress: address,
       items: [{ productId: 'x', title: 'x', slug: 'x', price: 1, quantity: 1 }]
@@ -111,7 +116,7 @@
     try {
       const body = {
         customerName: name,
-        customerPhone: phone,
+        customerPhone: fullPhone,
         customerEmail: email,
         shippingAddress: address,
         notes: notes || undefined,
@@ -178,6 +183,7 @@
             id="co-name"
             bind:value={name}
             onblur={() => validateField('name')}
+            oninput={() => queueMicrotask(() => errors.name && validateField('name'))}
             placeholder="Your full name"
             aria-invalid={errors.name ? 'true' : undefined}
             style="width:100%; border:1px solid {errors.name ? 'var(--sf-error)' : 'var(--sf-border)'}; border-radius:var(--sf-radius); padding:10px 14px; font-size:0.9rem; box-sizing:border-box; background:var(--sf-bg); color:var(--sf-text);"
@@ -190,15 +196,32 @@
         <!-- Phone Number -->
         <div style="margin-bottom:16px;">
           <label for="co-phone" style="font-size:0.875rem; font-weight:600; color:var(--sf-text); display:block; margin-bottom:6px;">Phone Number *</label>
-          <input
-            id="co-phone"
-            bind:value={phone}
-            onblur={() => validateField('phone')}
-            type="tel"
-            placeholder="e.g. 03001234567"
-            aria-invalid={errors.phone ? 'true' : undefined}
-            style="width:100%; border:1px solid {errors.phone ? 'var(--sf-error)' : 'var(--sf-border)'}; border-radius:var(--sf-radius); padding:10px 14px; font-size:0.9rem; box-sizing:border-box; background:var(--sf-bg); color:var(--sf-text);"
-          />
+          <div style="display:flex; gap:8px;">
+            <select
+              id="co-country"
+              bind:value={countryIso}
+              onchange={() => queueMicrotask(() => errors.phone && validateField('phone'))}
+              aria-label="Country code"
+              style="flex:0 0 auto; max-width:46%; border:1px solid {errors.phone ? 'var(--sf-error)' : 'var(--sf-border)'}; border-radius:var(--sf-radius); padding:10px 8px; font-size:0.9rem; background:var(--sf-bg); color:var(--sf-text);"
+            >
+              {#each COUNTRIES as c (c.iso)}
+                <option value={c.iso}>{c.flag} +{c.dial} {c.name}</option>
+              {/each}
+            </select>
+            <input
+              id="co-phone"
+              bind:value={phone}
+              onblur={() => validateField('phone')}
+              oninput={() => queueMicrotask(() => errors.phone && validateField('phone'))}
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel-national"
+              placeholder="e.g. 300 1234567"
+              aria-invalid={errors.phone ? 'true' : undefined}
+              style="flex:1; min-width:0; border:1px solid {errors.phone ? 'var(--sf-error)' : 'var(--sf-border)'}; border-radius:var(--sf-radius); padding:10px 14px; font-size:0.9rem; box-sizing:border-box; background:var(--sf-bg); color:var(--sf-text);"
+            />
+          </div>
+          <p style="font-size:0.75rem; color:var(--sf-muted); margin:4px 0 0;">We'll use this number for WhatsApp order updates.</p>
           {#if errors.phone}
             <p class="sf-field-error" style="font-size:0.8rem; color:var(--sf-error); margin:4px 0 0;">{errors.phone}</p>
           {/if}
@@ -211,6 +234,7 @@
             id="co-email"
             bind:value={email}
             onblur={() => validateField('email')}
+            oninput={() => queueMicrotask(() => errors.email && validateField('email'))}
             type="email"
             placeholder="you@example.com"
             aria-invalid={errors.email ? 'true' : undefined}
@@ -228,6 +252,7 @@
             id="co-address"
             bind:value={address}
             onblur={() => validateField('address')}
+            oninput={() => queueMicrotask(() => errors.address && validateField('address'))}
             rows="3"
             placeholder="Full shipping address including city"
             aria-invalid={errors.address ? 'true' : undefined}

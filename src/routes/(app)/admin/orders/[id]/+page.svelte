@@ -7,7 +7,7 @@
 	type OrderStatus = 'pending' | 'processing' | 'dispatched' | 'completed' | 'cancelled';
 
 	// All five statuses shown in the dropdown regardless of current status;
-	// server still guards against invalid transitions on submit.
+	// any status can move to any other.
 	const ALL_STATUSES: OrderStatus[] = ['pending', 'processing', 'dispatched', 'completed', 'cancelled'];
 
 	// Capture initial prop values in plain variables before passing to $state
@@ -98,9 +98,17 @@
 				<div class="divide-y divide-gray-200">
 					{#each items as item}
 						<div class="py-3 flex items-start gap-4">
-							<div class="w-14 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
-								No img
-							</div>
+							{#if item.imageUrl}
+								<img
+									src={item.imageUrl}
+									alt={item.productTitle}
+									class="w-14 h-14 rounded object-cover bg-gray-100 shrink-0"
+								/>
+							{:else}
+								<div class="w-14 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs shrink-0">
+									No img
+								</div>
+							{/if}
 							<div class="flex-1">
 								<div class="font-medium text-gray-900">{item.productTitle}</div>
 								{#if item.variantLabel}
@@ -162,7 +170,7 @@
 						rel="noopener noreferrer"
 						class="block w-full text-center px-4 py-2 bg-green-500 text-white text-sm rounded-md hover:bg-green-600"
 					>
-						📱 Open WhatsApp Notification
+						📱 Send WhatsApp Confirmation
 					</a>
 				</div>
 			{/if}
@@ -185,10 +193,15 @@
 					}}
 				>
 					<label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+					{#if data.order.status === 'cancelled'}
+						<!-- A disabled select isn't submitted; keep the status in the form so notes can still be saved -->
+						<input type="hidden" name="status" value="cancelled" />
+					{/if}
 					<select
 						name="status"
 						bind:value={selectedStatus}
 						onchange={handleStatusChange}
+						disabled={data.order.status === 'cancelled'}
 						class="w-full rounded-md border-gray-300 shadow-sm text-sm mb-3 focus:ring-indigo-500 focus:border-indigo-500"
 					>
 						{#each ALL_STATUSES as s}
@@ -196,9 +209,13 @@
 						{/each}
 					</select>
 
-					{#if showCancelConfirm}
-						<div class="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
-							⚠️ Cancellation is irreversible. Confirm below.
+					{#if data.order.status === 'cancelled'}
+						<div class="mb-3 p-2 bg-gray-50 border border-gray-200 rounded text-gray-700 text-xs">
+							This order is cancelled. Its items were returned to stock and the status can no longer be changed.
+						</div>
+					{:else if showCancelConfirm}
+						<div class="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800 text-xs">
+							Cancelling will return this order's items to stock, and a cancelled order can't be changed afterwards.
 						</div>
 					{/if}
 

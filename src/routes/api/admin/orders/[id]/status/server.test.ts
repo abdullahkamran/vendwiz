@@ -160,4 +160,30 @@ describe('PUT /api/admin/orders/[id]/status — stock restore', () => {
 		// order update + 1 live product (null-productId row skipped)
 		expect(ctx.updateCallCount).toBe(2);
 	});
+
+	it('any status can move to any other (no transition validation)', async () => {
+		ctx.orderRow = { id: 'order-1', storeId: 'store-1', status: 'pending' };
+		await expect(PUT(makeEvent('completed'))).resolves.toBeDefined();
+		expect(ctx.updateCallCount).toBe(1);
+	});
+
+	it('a cancelled order cannot move to another status', async () => {
+		ctx.orderRow = { id: 'order-1', storeId: 'store-1', status: 'cancelled' };
+		ctx.itemRows = [{ productId: 'prod-1', variantId: null, quantity: 3 }];
+
+		await expect(PUT(makeEvent('pending'))).rejects.toMatchObject({ status: 422 });
+		// Nothing was written
+		expect(ctx.updateCallCount).toBe(0);
+	});
+
+	it('re-saving an already-cancelled order does NOT restore stock again', async () => {
+		ctx.orderRow = { id: 'order-1', storeId: 'store-1', status: 'cancelled' };
+		ctx.itemRows = [{ productId: 'prod-1', variantId: 'var-1', quantity: 2 }];
+
+		await PUT(makeEvent('cancelled'));
+
+		// Only the order row itself is updated
+		expect(ctx.updateCallCount).toBe(1);
+		expect(ctx.setCalls[0]).not.toHaveProperty('stockQty');
+	});
 });

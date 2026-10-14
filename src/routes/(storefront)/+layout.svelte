@@ -27,7 +27,10 @@
     if (theme !== 'custom' || !customTheme || typeof customTheme !== 'object') return '';
     const ct = customTheme as Record<string, string>;
     const overrides: string[] = [];
-    if (ct.primaryColor && isSafeCSSColor(ct.primaryColor)) overrides.push(`  --sf-primary: ${ct.primaryColor};`);
+    if (ct.primaryColor && isSafeCSSColor(ct.primaryColor)) {
+      overrides.push(`  --sf-primary: ${ct.primaryColor};`);
+      overrides.push(`  --sf-hero-bg: ${ct.primaryColor};`);
+    }
     if (ct.accentColor && isSafeCSSColor(ct.accentColor)) overrides.push(`  --sf-announce-bg: ${ct.accentColor};`);
     if (ct.secondaryColor && isSafeCSSColor(ct.secondaryColor)) overrides.push(`  --sf-surface: ${ct.secondaryColor};`);
     return overrides.length ? `:root {\n${overrides.join('\n')}\n}` : '';
@@ -218,13 +221,8 @@
     <div class="sf-container sf-header-inner sf-header-desktop"
       class:sf-header-centered={store.theme === 'minimal'}>
       {#if store.theme === 'minimal'}
-        <!-- dhCentered: search left / brand centre / actions right -->
-        <div class="sf-dh-col sf-dh-left">
-          <form method="GET" action="{basePath}/products" class="sf-dh-search-wrap">
-            <input type="search" name="q" placeholder="Search products…"
-              class="sf-dh-search" aria-label="Search products" />
-          </form>
-        </div>
+        <!-- dhCentered: empty left (keeps the brand centred) / brand centre / search + actions right -->
+        <div class="sf-dh-col sf-dh-left"></div>
         <div class="sf-dh-col sf-dh-center">
           <a href="{basePath || '/'}" class="sf-logo">
             {#if store.logoUrl}
@@ -235,6 +233,10 @@
           </a>
         </div>
         <div class="sf-dh-col sf-dh-right">
+          <form method="GET" action="{basePath}/products" class="sf-dh-search-wrap">
+            <input type="search" name="q" placeholder="Search products…"
+              class="sf-dh-search" aria-label="Search products" />
+          </form>
           <button class="sf-icon-btn" onclick={toggleDark}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
             {isDark ? '☀️' : '🌙'}
@@ -264,16 +266,24 @@
               class:sf-dh-navlink--active={localPathname === '/products' && !catParam}
             >All Products</a>
             {#each categoryTree as cat}
-              <a href="{basePath}/products?category={cat.id}"
-                class="sf-dh-navlink"
-                class:sf-dh-navlink--active={localPathname === '/products' && catParam === cat.id}
-              >{cat.name}</a>
-              {#each cat.children as child}
-                <a href="{basePath}/products?category={child.id}"
-                  class="sf-dh-navlink sf-dh-navlink--sub"
-                  class:sf-dh-navlink--active={localPathname === '/products' && catParam === child.id}
-                >{child.name}</a>
-              {/each}
+              <!-- Subcategories live in a dropdown under their parent; no subcategories, no dropdown -->
+              <div class="sf-dh-navitem">
+                <a href="{basePath}/products?category={cat.id}"
+                  class="sf-dh-navlink"
+                  class:sf-dh-navlink--active={localPathname === '/products' && (catParam === cat.id || cat.children.some((c) => c.id === catParam))}
+                  aria-haspopup={cat.children.length > 0 ? 'true' : undefined}
+                >{cat.name}{#if cat.children.length > 0}<span class="sf-dh-caret" aria-hidden="true">▾</span>{/if}</a>
+                {#if cat.children.length > 0}
+                  <div class="sf-dh-dropdown">
+                    {#each cat.children as child}
+                      <a href="{basePath}/products?category={child.id}"
+                        class="sf-dh-dropdown-link"
+                        class:sf-dh-dropdown-link--active={localPathname === '/products' && catParam === child.id}
+                      >{child.name}</a>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
             {/each}
           </nav>
         </div>
@@ -605,7 +615,6 @@
   }
   .sf-dh-left {
     gap: 16px;
-    overflow: hidden;
   }
   .sf-dh-center {
     justify-content: center;
@@ -630,8 +639,10 @@
     display: flex;
     align-items: center;
     gap: 2px;
-    overflow: hidden;
-    flex-wrap: nowrap;
+    flex-wrap: wrap; /* wrap rather than clip, so dropdowns are never cut off */
+  }
+  .sf-dh-navitem {
+    position: relative;
   }
   .sf-dh-navlink {
     text-decoration: none;
@@ -649,12 +660,49 @@
     color: var(--sf-primary, #0d6efd);
     border-bottom-color: var(--sf-primary, #0d6efd);
   }
-  /* Child category links in the desktop nav: slightly smaller and muted */
-  .sf-dh-navlink--sub {
-    font-size: 0.8125rem;
-    color: var(--sf-muted, #6c757d);
+  .sf-dh-caret {
+    margin-left: 4px;
+    font-size: 1.4rem; /* doubled for visibility */
+    line-height: 0; /* keep the larger arrow from making the nav row taller */
+    vertical-align: middle;
+    opacity: 0.8;
   }
-  .sf-dh-navlink--sub:hover { color: var(--sf-primary, #0d6efd); }
+
+  /* Subcategory dropdown: opens on hover or keyboard focus */
+  .sf-dh-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 60;
+    min-width: 180px;
+    padding: 6px 0;
+    background: var(--sf-surface, #fff);
+    border: 1px solid var(--sf-border, #dee2e6);
+    border-radius: var(--sf-radius, 6px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+  .sf-dh-navitem:hover > .sf-dh-dropdown,
+  .sf-dh-navitem:focus-within > .sf-dh-dropdown {
+    display: block;
+  }
+  .sf-dh-dropdown-link {
+    display: block;
+    padding: 8px 16px;
+    font-size: 0.8125rem;
+    color: var(--sf-text, #212529);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .sf-dh-dropdown-link:hover,
+  .sf-dh-dropdown-link:focus-visible {
+    background: var(--sf-bg, #f8f9fa);
+    color: var(--sf-primary, #0d6efd);
+  }
+  .sf-dh-dropdown-link--active {
+    color: var(--sf-primary, #0d6efd);
+    font-weight: 600;
+  }
 
   /* Desktop header search */
   .sf-dh-search-wrap { display: flex; }

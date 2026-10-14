@@ -10,6 +10,7 @@
     slug: string;
     categoryId: string | null;
     basePrice: string;
+    salePrice?: string | null;
     isPublished: boolean;
     stockQty: number;
     lowStockThreshold: number;
@@ -20,7 +21,7 @@
 
   let categories = $state<Category[]>(data.categories as Category[]);
   let products = $state<ProductRow[]>([]);
-  let currencySymbol = $state(data.store.currencySymbol);
+  let currencySymbol = $derived(data.store.currencySymbol);
   let total = $state(0);
   let page = $state(1);
   let pages = $state(1);
@@ -126,19 +127,6 @@
     return String(qty);
   }
 
-  async function handleCurrencyChange(e: Event) {
-    const val = (e.target as HTMLSelectElement).value;
-    const res = await fetch('/api/admin/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currencySymbol: val })
-    });
-    if (res.ok) {
-      currencySymbol = val;
-    } else {
-      (e.target as HTMLSelectElement).value = currencySymbol;
-    }
-  }
 </script>
 
 <div class="page">
@@ -179,15 +167,6 @@
       <option value="active">Active</option>
       <option value="inactive">Inactive</option>
     </select>
-    <select value={currencySymbol} onchange={handleCurrencyChange}>
-      <option value="Rs.">Rs.</option>
-      <option value="$">$</option>
-      <option value="€">€</option>
-      <option value="£">£</option>
-      <option value="₹">₹</option>
-      <option value="AED">AED</option>
-      <option value="SAR">SAR</option>
-    </select>
   </div>
 
   {#if loading}
@@ -223,7 +202,15 @@
                 <div class="slug-hint">{product.slug}</div>
               </td>
               <td>{getCategoryName(product.categoryId)}</td>
-              <td>{currencySymbol} {Number(product.basePrice).toFixed(2)}</td>
+              <td>
+                {#if product.salePrice}
+                  <strong>{currencySymbol} {Number(product.salePrice).toFixed(2)}</strong>
+                  <s style="opacity:0.6; margin-left:4px;">{currencySymbol} {Number(product.basePrice).toFixed(2)}</s>
+                  <span class="badge badge-green" style="margin-left:4px;">Sale</span>
+                {:else}
+                  {currencySymbol} {Number(product.basePrice).toFixed(2)}
+                {/if}
+              </td>
               <td>
                 <span class="badge {stockBadgeClass(product.stockQty, product.lowStockThreshold)}">
                   {stockBadgeLabel(product.stockQty, product.lowStockThreshold)}

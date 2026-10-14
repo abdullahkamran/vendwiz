@@ -19,7 +19,9 @@ export const variantOptionSchema = z.object({
   // colorHex is set for colour-group options; used as the productOptionValue.value
   // so the storefront swatch can render background:{val.value}.
   // Constrained to #RRGGBB to prevent CSS injection via the style attribute.
-  colorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional()
+  colorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  // Optional image shown on the storefront when this colour is selected ('' = none)
+  imageUrl: z.string().optional().nullable()
 });
 
 export const variantSchema = z.object({
@@ -43,6 +45,8 @@ export const productSchema = z.object({
   slug: z.string().min(1).max(200).regex(/^[a-z0-9-]+$/),
   categoryId: z.string().optional().nullable(),
   basePrice: z.number().min(0),
+  // Optional sale price; must be lower than basePrice (checked by the API / admin form)
+  salePrice: z.number().min(0).nullable().optional(),
   description: z.string().optional(),
   // SEO fields stored as seoTitle / seoDescription in DB
   seoTitle: z.string().max(60).optional(),

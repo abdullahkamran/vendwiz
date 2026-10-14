@@ -1,3 +1,4 @@
+import { sumFirstGroupStock } from '$lib/utils/stock';
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
@@ -99,6 +100,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     slug,
     categoryId,
     basePrice,
+    salePrice,
     description,
     seoTitle,
     seoDescription,
@@ -110,6 +112,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     variants,
     attributes
   } = parsed.data;
+
+  if (salePrice !== null && salePrice !== undefined && salePrice >= basePrice) {
+    return json({ error: 'Sale price must be lower than the regular price.' }, { status: 400 });
+  }
 
   // Enforce slug uniqueness within the store
   const slugConflict = await db
@@ -133,12 +139,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       slug,
       categoryId: categoryId ?? null,
       basePrice: String(basePrice),
+      salePrice: salePrice != null ? String(salePrice) : null,
       description: description ?? null,
       seoTitle: seoTitle ?? null,
       seoDescription: seoDescription ?? null,
       youtubeUrl: youtubeUrl || null,
       isPublished,
-      stockQty,
+      // With variants, inventory is the combined stock of the variants, not a separate figure
+      stockQty: sumFirstGroupStock(variants) ?? stockQty,
       lowStockThreshold,
       images: images.map((img, i) => ({ url: img.url, alt: '', order: img.sortOrder ?? i }))
     })
@@ -172,6 +180,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
           groupId,
           value: storedValue,
           label: opt.label,
+          imageUrl: opt.imageUrl || null,
           sortOrder: oi
         });
 

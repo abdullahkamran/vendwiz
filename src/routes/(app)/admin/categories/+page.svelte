@@ -30,6 +30,9 @@
   let formSortOrder = $state(0);
   let formImageUrl = $state('');
   let formError = $state('');
+  // Per-field validation messages, shown once a save has been attempted
+  let nameError = $state('');
+  let slugError = $state('');
   let saving = $state(false);
   let slugManuallyEdited = $state(false);
 
@@ -44,6 +47,8 @@
     formSortOrder = categories.length;
     formImageUrl = '';
     formError = '';
+    nameError = '';
+    slugError = '';
     slugManuallyEdited = false;
     showModal = true;
   }
@@ -56,6 +61,8 @@
     formSortOrder = cat.sortOrder;
     formImageUrl = cat.imageUrl ?? '';
     formError = '';
+    nameError = '';
+    slugError = '';
     slugManuallyEdited = true;
     showModal = true;
   }
@@ -64,10 +71,13 @@
     showModal = false;
     editingCategory = null;
     formError = '';
+    nameError = '';
+    slugError = '';
   }
 
   function handleNameInput(e: Event) {
     formName = (e.target as HTMLInputElement).value;
+    if (nameError && formName.trim()) nameError = '';
     if (!slugManuallyEdited) {
       formSlug = slugify(formName);
     }
@@ -76,20 +86,25 @@
   function handleSlugInput(e: Event) {
     formSlug = (e.target as HTMLInputElement).value;
     slugManuallyEdited = true;
+    if (slugError) slugError = '';
   }
 
   async function saveCategory() {
-    if (!formName.trim()) {
-      formError = 'Name is required';
-      return;
-    }
-    if (!formSlug.trim()) {
-      formError = 'Slug is required';
+    nameError = formName.trim() ? '' : 'Name is required';
+    slugError = !formSlug.trim()
+      ? 'Slug is required'
+      : /^[a-z0-9-]+$/.test(formSlug.trim())
+        ? ''
+        : 'Use lowercase letters, numbers and hyphens only';
+    if (nameError || slugError) {
+      formError = 'Please fix the fields highlighted in red.';
       return;
     }
 
     saving = true;
     formError = '';
+    nameError = '';
+    slugError = '';
 
     const payload = {
       name: formName.trim(),
@@ -228,7 +243,10 @@
             value={formName}
             oninput={handleNameInput}
             placeholder="e.g. Men's Clothing"
+            class:field-invalid={nameError}
+            aria-invalid={!!nameError}
           />
+          {#if nameError}<span class="field-error-msg">{nameError}</span>{/if}
         </div>
 
         <div class="form-field">
@@ -239,7 +257,10 @@
             value={formSlug}
             oninput={handleSlugInput}
             placeholder="e.g. mens-clothing"
+            class:field-invalid={slugError}
+            aria-invalid={!!slugError}
           />
+          {#if slugError}<span class="field-error-msg">{slugError}</span>{/if}
           <span class="field-hint">Lowercase, hyphens only</span>
         </div>
 
@@ -566,6 +587,16 @@
   .field-hint {
     font-size: 0.76rem;
     color: var(--color-secondary);
+  }
+
+  .form-field input.field-invalid {
+    border-color: #cc3333;
+    background: #fff5f5;
+  }
+
+  .field-error-msg {
+    color: #cc3333;
+    font-size: 0.78rem;
   }
 
   .form-error {

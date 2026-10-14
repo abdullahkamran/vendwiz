@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { cart } from '$lib/stores/cart';
+  import { cart, MAX_CART_QTY } from '$lib/stores/cart';
   import Seo from '$lib/components/storefront/Seo.svelte';
 
   let { data }: { data: import('./$types').PageData } = $props();
@@ -59,15 +59,33 @@
   // Per-product "just added" feedback state
   let added = $state<Record<string, boolean>>({});
   let addedTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+  // Per-product "max stock reached" message shown on the card
+  let stockMsg = $state<Record<string, string>>({});
+  let stockMsgTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
   function addToCart(item: (typeof items)[0]) {
     if (item.stockQty === 0) return;
+    // Variants must be chosen on the details page — never add a bare product
+    if (item.hasVariants) {
+      goto(`${basePath}/products/${item.slug}`);
+      return;
+    }
+    // Stock is verified at "Proceed to Checkout"; here only the per-item limit applies
+    const inCart = $cart
+      .filter((c) => c.productId === item.id && Object.keys(c.variantSelections ?? {}).length === 0)
+      .reduce((sum, c) => sum + c.quantity, 0);
+    if (inCart >= MAX_CART_QTY) {
+      stockMsg[item.id] = `Maximum ${MAX_CART_QTY} per item`;
+      clearTimeout(stockMsgTimers[item.id]);
+      stockMsgTimers[item.id] = setTimeout(() => { stockMsg[item.id] = ''; }, 2500);
+      return;
+    }
     cart.addItem({
       productId: item.id,
       title: item.title,
       slug: item.slug,
       imageUrl: item.imageUrl ?? undefined,
-      price: Number(item.basePrice),
+      price: Number(item.salePrice ?? item.basePrice),
       quantity: 1
     });
     // Show "Added ✓" for ~1 s, then revert
@@ -79,7 +97,6 @@
   let cardLayout = $derived(
     store.theme === 'minimal' ? 'editorial'
     : store.theme === 'bold' ? 'overlay'
-    : store.theme === 'playful' ? 'horizontal'
     : 'vertical'
   );
 
@@ -273,7 +290,7 @@
     {:else}
       <div class="products-grid products-grid--{cardLayout}">
         {#each items as product}
-          <div class="product-card-wrap">
+          <div class="product-card-wrap" class:product-card-wrap--full={store.theme !== 'basic'}>
             <!-- Out of stock overlay -->
             {#if product.stockQty === 0}
               <div class="oos-overlay">
@@ -316,6 +333,9 @@
               >
                 {added[product.id] ? 'Added ✓' : 'Add to Cart'}
               </button>
+              {#if stockMsg[product.id]}
+                <p class="stock-msg" role="alert">{stockMsg[product.id]}</p>
+              {/if}
             </div>
           </div>
         {/each}
@@ -595,7 +615,7 @@
     .filter-backdrop { display: none !important; }
   }
 
-  /* ── Product grid: 2-col mobile, 3-col desktop (2-col for horizontal/playful) ── */
+  /* ── Product grid: 2-col mobile, 3-col desktop ── */
   .products-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -606,9 +626,6 @@
     .products-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 24px;
-    }
-    .products-grid--horizontal {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
   .product-card-wrap {
@@ -660,18 +677,6 @@
   }
   .product-card--overlay .price-base,
   .product-card--overlay .price-sale { color: #fff !important; }
-  /* horizontal-row (playful) */
-  .product-card--horizontal {
-    flex-direction: row;
-    align-items: center;
-  }
-  .product-card--horizontal .product-card-img-wrap {
-    width: 80px;
-    height: 80px;
-    flex-shrink: 0;
-  }
-  .product-card--horizontal .product-card-info { padding: 8px 10px; flex: 1; }
-
   .product-card-img-wrap {
     width: 100%;
     overflow: hidden;
@@ -729,6 +734,21 @@
   }
   .product-card-action {
     padding: 0 10px 10px;
+  }
+  /* Minimal / Bold / Playful / Custom: the button runs edge to edge under the card, a bit taller */
+  .product-card-wrap--full .product-card-action {
+    padding: 8px 0 0;
+  }
+  .product-card-wrap--full .btn-add-cart {
+    padding: 11px 12px;
+    font-size: 0.875rem;
+  }
+  .stock-msg {
+    margin: 6px 0 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #dc2626;
+    text-align: center;
   }
   .btn-add-cart {
     width: 100%;

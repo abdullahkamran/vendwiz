@@ -2,6 +2,8 @@
   import type { Category } from '$lib/server/db/schema';
   import ImageUploader from './ImageUploader.svelte';
   import VariantsEditor from './VariantsEditor.svelte';
+  import { validateProductForm, TAB_ORDER } from './productFormValidation';
+  import { sumFirstGroupStock } from '$lib/utils/stock';
   import AttributesTable from './AttributesTable.svelte';
   import { slugify } from '$lib/utils/slug';
 
@@ -35,7 +37,7 @@
   }
 
   type ImageRow = { id?: string; url: string; sortOrder: number };
-  type VariantOption = { label: string; price_modifier: number; stockQty?: number };
+  type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string; imageUrl?: string | null };
   type VariantRow = { id?: string; name: string; options: VariantOption[]; sizeChartUrl?: string };
   type AttributeRow = { id?: string; name: string; value: string };
 
@@ -45,6 +47,7 @@
     slug: string;
     categoryId: string | null;
     basePrice: string | number;
+    salePrice?: string | number | null;
     description: string | null;
     seoTitle: string | null;
     seoDescription: string | null;
@@ -80,6 +83,8 @@
   let slug = $state(product?.slug ?? '');
   let categoryId = $state(product?.categoryId ?? '');
   let basePrice = $state(Number(product?.basePrice ?? 0));
+  // Optional sale price (empty = not on sale)
+  let salePrice = $state<number | null>(product?.salePrice != null ? Number(product.salePrice) : null);
   let description = $state(product?.description ?? '');
   let youtubeUrl = $state(product?.youtubeUrl ?? '');
   let isPublished = $state(product?.isPublished ?? true);
@@ -104,10 +109,12 @@
   let saving = $state(false);
   let saveError = $state('');
   let unsaved = $state(false);
+  // Set after a failed save attempt so invalid / missing fields show in red
+  let showErrors = $state(false);
 
   // Mark unsaved on any change
   $effect(() => {
-    title; slug; categoryId; basePrice; description; youtubeUrl; isPublished;
+    title; slug; categoryId; basePrice; salePrice; description; youtubeUrl; isPublished;
     stockQty; lowStockThreshold; seoTitle; seoDescription;
     unsaved = true;
   });
@@ -127,25 +134,51 @@
   let metaTitleCount = $derived(seoTitle.length);
   let metaDescCount = $derived(seoDescription.length);
 
+  // With variants, inventory is the combined stock of all variant options (read-only here)
+  let variantStock = $derived(sumFirstGroupStock(variants));
+  let effectiveStock = $derived(variantStock ?? stockQty);
+
   function stockStatus(): { label: string; cls: string } {
-    if (stockQty === 0) return { label: 'Out of Stock', cls: 'badge-red' };
-    if (stockQty <= lowStockThreshold) return { label: 'Low Stock', cls: 'badge-yellow' };
+    if (effectiveStock === 0) return { label: 'Out of Stock', cls: 'badge-red' };
+    if (effectiveStock <= lowStockThreshold) return { label: 'Low Stock', cls: 'badge-yellow' };
     return { label: 'In Stock', cls: 'badge-green' };
   }
 
+  // Turns raw server validation text (e.g. "variants.1.name: Too small…") into something a person can act on
+  function friendlyError(msg: string): string {
+    const m = msg.match(/variants.(d+).name/);
+    if (m) return `Variant ${Number(m[1]) + 1} needs a name. Please fill in the highlighted field.`;
+    return msg;
+  }
+
+  let validation = $derived(
+    validateProductForm({
+      title, slug, basePrice, salePrice, youtubeUrl, stockQty: effectiveStock, lowStockThreshold, seoTitle, seoDescription,
+      variants, attributes
+    })
+  );
+  let fe = $derived(validation.fields);
+
   async function handleSave() {
-    saving = true;
     saveError = '';
+    if (!validation.valid) {
+      showErrors = true;
+      activeTab = TAB_ORDER.find((t) => validation.tabs.has(t)) ?? activeTab;
+      saveError = 'Please fix the fields highlighted in red.';
+      return;
+    }
+    saving = true;
     try {
       await onSave({
         title,
         slug,
         categoryId: categoryId || null,
         basePrice,
+        salePrice: salePrice ?? null,
         description,
         youtubeUrl: youtubeUrl || '',
         isPublished,
-        stockQty,
+        stockQty: effectiveStock,
         lowStockThreshold,
         seoTitle,
         seoDescription,
@@ -155,7 +188,7 @@
       });
       unsaved = false;
     } catch (err) {
-      saveError = err instanceof Error ? err.message : 'Save failed';
+      saveError = err instanceof Error ? friendlyError(err.message) : 'Save failed';
     } finally {
       saving = false;
     }
@@ -178,11 +211,12 @@
       <button
         class="tab-btn"
         class:active={activeTab === tab.key}
+        class:has-error={showErrors && validation.tabs.has(tab.key)}
         role="tab"
         aria-selected={activeTab === tab.key}
         onclick={() => (activeTab = tab.key)}
       >
-        {tab.label}
+        {tab.label}{#if showErrors && validation.tabs.has(tab.key)} <span class="tab-error-dot" aria-label="has errors">●</span>{/if}
       </button>
     {/each}
   </div>
@@ -201,7 +235,10 @@
             oninput={handleTitleInput}
             placeholder="e.g. Classic White T-Shirt"
             maxlength="200"
+            class:field-invalid={showErrors && fe.title}
+            aria-invalid={showErrors && !!fe.title}
           />
+          {#if showErrors && fe.title}<span class="field-error-msg">{fe.title}</span>{/if}
         </div>
 
         <div class="form-field">
@@ -212,7 +249,10 @@
             value={slug}
             oninput={handleSlugInput}
             placeholder="e.g. classic-white-t-shirt"
+            class:field-invalid={showErrors && fe.slug}
+            aria-invalid={showErrors && !!fe.slug}
           />
+          {#if showErrors && fe.slug}<span class="field-error-msg">{fe.slug}</span>{/if}
           <span class="field-hint">Lowercase, hyphens only. Must be unique within your store.</span>
         </div>
 
@@ -236,7 +276,28 @@
               min="0"
               step="0.01"
               placeholder="0.00"
+              class:field-invalid={showErrors && fe.basePrice}
+              aria-invalid={showErrors && !!fe.basePrice}
             />
+          {#if showErrors && fe.basePrice}<span class="field-error-msg">{fe.basePrice}</span>{/if}
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="f-sale-price">Sale Price (optional)</label>
+            <input
+              id="f-sale-price"
+              type="number"
+              bind:value={salePrice}
+              min="0"
+              step="0.01"
+              placeholder="Leave empty if not on sale"
+              class:field-invalid={showErrors && fe.salePrice}
+              aria-invalid={showErrors && !!fe.salePrice}
+            />
+            {#if showErrors && fe.salePrice}<span class="field-error-msg">{fe.salePrice}</span>{/if}
+            <span class="field-hint">Must be lower than the base price. Customers see the base price crossed out.</span>
           </div>
         </div>
 
@@ -247,7 +308,10 @@
             type="url"
             bind:value={youtubeUrl}
             placeholder="https://www.youtube.com/watch?v=..."
+            class:field-invalid={showErrors && fe.youtubeUrl}
+            aria-invalid={showErrors && !!fe.youtubeUrl}
           />
+          {#if showErrors && fe.youtubeUrl}<span class="field-error-msg">{fe.youtubeUrl}</span>{/if}
         </div>
 
         <div class="form-field">
@@ -293,6 +357,8 @@
       <div class="form-section">
         <VariantsEditor
           variants={variants}
+          productImages={images}
+          {showErrors}
           onChange={(updated) => { variants = updated; unsaved = true; }}
         />
       </div>
@@ -303,6 +369,7 @@
       <div class="form-section">
         <AttributesTable
           attributes={attributes}
+          {showErrors}
           onChange={(updated) => { attributes = updated; unsaved = true; }}
         />
       </div>
@@ -322,10 +389,17 @@
             <input
               id="f-stock"
               type="number"
-              bind:value={stockQty}
+              value={effectiveStock}
+              oninput={(e) => (stockQty = (e.currentTarget as HTMLInputElement).valueAsNumber)}
+              disabled={variantStock !== null}
               min="0"
               step="1"
+              class:field-invalid={showErrors && fe.stockQty}
             />
+            {#if variantStock !== null}
+              <span class="field-hint">Calculated from your variants' stock. Change it per option in the Variants tab.</span>
+            {/if}
+          {#if showErrors && fe.stockQty}<span class="field-error-msg">{fe.stockQty}</span>{/if}
           </div>
 
           <div class="form-field">
@@ -336,7 +410,9 @@
               bind:value={lowStockThreshold}
               min="0"
               step="1"
+              class:field-invalid={showErrors && fe.lowStockThreshold}
             />
+          {#if showErrors && fe.lowStockThreshold}<span class="field-error-msg">{fe.lowStockThreshold}</span>{/if}
             <span class="field-hint">Alert when stock falls to or below this number</span>
           </div>
         </div>
@@ -359,7 +435,9 @@
             bind:value={seoTitle}
             maxlength="60"
             placeholder="Page title for search engines"
+            class:field-invalid={showErrors && fe.seoTitle}
           />
+          {#if showErrors && fe.seoTitle}<span class="field-error-msg">{fe.seoTitle}</span>{/if}
         </div>
 
         <div class="form-field">
@@ -375,7 +453,9 @@
             maxlength="160"
             rows="3"
             placeholder="Brief description for search engines"
+            class:field-invalid={showErrors && fe.seoDescription}
           ></textarea>
+          {#if showErrors && fe.seoDescription}<span class="field-error-msg">{fe.seoDescription}</span>{/if}
         </div>
 
         {#if seoTitle || seoDescription || title}
@@ -523,6 +603,25 @@
 
   .required {
     color: #cc3333;
+  }
+
+  .form-field :global(.field-invalid) {
+    border-color: #cc3333;
+    background: #fff5f5;
+  }
+
+  .field-error-msg {
+    color: #cc3333;
+    font-size: 0.78rem;
+  }
+
+  .tab-btn.has-error {
+    color: #cc3333;
+  }
+
+  .tab-error-dot {
+    font-size: 0.6rem;
+    vertical-align: middle;
   }
 
   /* Inventory */

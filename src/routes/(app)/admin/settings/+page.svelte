@@ -18,7 +18,7 @@
 	let theme = $state(normalizeTheme(data.store.theme));
 	let seoTitle = $state(data.store.seoTitle ?? '');
 	let seoDescription = $state(data.store.seoDescription ?? '');
-	let currencySymbol = $state(data.store.currencySymbol ?? 'Rs.');
+	let currencyCode = $state(data.store.currencyCode ?? 'PKR');
 
 	const customThemeData = data.store.customTheme as CustomTheme | null;
 	let primaryColor = $state(customThemeData?.primaryColor ?? '#1a1a2e');
@@ -102,7 +102,7 @@
 	action="?/update"
 	use:enhance={(args) => {
 		// Cancel the SvelteKit form action; use PUT /api/admin/settings directly so
-		// currencySymbol is included and state can be refreshed after save.
+		// currencyCode is included and state can be refreshed after save.
 		args.cancel();
 		saveError = '';
 		saveSuccess = false;
@@ -125,7 +125,7 @@
 						faviconUrl: faviconUrl || null,
 						theme,
 						customTheme,
-						currencySymbol,
+						currencyCode,
 						seoTitle: seoTitle || null,
 						seoDescription: seoDescription || null
 					})
@@ -148,7 +148,7 @@
 				theme = normalizeTheme(data.store.theme);
 				seoTitle = data.store.seoTitle ?? '';
 				seoDescription = data.store.seoDescription ?? '';
-				currencySymbol = data.store.currencySymbol ?? 'Rs.';
+				currencyCode = data.store.currencyCode ?? 'PKR';
 				const refreshedCustomTheme = data.store.customTheme as CustomTheme | null;
 				primaryColor = refreshedCustomTheme?.primaryColor ?? '#1a1a2e';
 				accentColor = refreshedCustomTheme?.accentColor ?? '#e94560';
@@ -197,21 +197,22 @@
 				></textarea>
 			</div>
 
-			<!-- Currency symbol -->
+			<!-- Currency -->
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="currencySymbol">
-					Currency symbol
+				<label class="block text-sm font-medium text-[--color-text] mb-1" for="currencyCode">
+					Currency
 				</label>
-				<input
-					id="currencySymbol"
-					name="currencySymbol"
-					type="text"
-					maxlength="8"
-					bind:value={currencySymbol}
+				<select
+					id="currencyCode"
+					name="currencyCode"
+					bind:value={currencyCode}
 					class="w-full border border-[--color-border] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
-					placeholder="Rs."
-				/>
-				<p class="text-xs text-[--color-text-muted] mt-1">Displayed next to prices across your storefront (max 8 characters).</p>
+				>
+					{#each data.currencies as c (c.code)}
+						<option value={c.code}>{c.name} ({c.symbol})</option>
+					{/each}
+				</select>
+				<p class="text-xs text-[--color-text-muted] mt-1">Used for all prices across your admin portal and storefront.</p>
 			</div>
 
 			<!-- Logo upload -->

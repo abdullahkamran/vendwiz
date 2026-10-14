@@ -1,19 +1,10 @@
 import type { RequestHandler } from './$types';
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { orders, orderItems, products, productVariants } from '$lib/server/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { orders } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { restoreOrderStock } from '$lib/server/orderStock';
 import { orderStatusSchema } from '$lib/schemas/orders';
-
-type OrderStatus = 'pending' | 'processing' | 'dispatched' | 'completed' | 'cancelled';
-
-const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-	pending: ['processing', 'cancelled'],
-	processing: ['dispatched', 'cancelled'],
-	dispatched: ['completed', 'cancelled'],
-	completed: [],
-	cancelled: []
-};
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -33,9 +24,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 	if (!order) throw error(404, 'Order not found');
 
-	const allowed = ALLOWED_TRANSITIONS[order.status as OrderStatus] ?? [];
-	if (!allowed.includes(parsed.data.status)) {
-		throw error(422, `Cannot transition from ${order.status} to ${parsed.data.status}`);
+	// A cancelled order is final: its stock has been returned, so it can't be reopened.
+	if (order.status === 'cancelled' && parsed.data.status !== 'cancelled') {
+		throw error(422, 'This order is cancelled and its status can no longer be changed.');
 	}
 
 	const updateData: Partial<typeof orders.$inferInsert> = {
@@ -52,33 +43,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		.where(and(eq(orders.id, params.id), eq(orders.storeId, store.id)))
 		.returning();
 
-	// ── Restore inventory when an order is cancelled ──────────────────────────
-	if (parsed.data.status === 'cancelled') {
-		const items = await db
-			.select({
-				productId: orderItems.productId,
-				variantId: orderItems.variantId,
-				quantity: orderItems.quantity
-			})
-			.from(orderItems)
-			.where(eq(orderItems.orderId, params.id));
-
-		for (const item of items) {
-			// Skip rows where the product has since been deleted
-			if (!item.productId) continue;
-
-			await db
-				.update(products)
-				.set({ stockQty: sql`${products.stockQty} + ${item.quantity}` })
-				.where(eq(products.id, item.productId));
-
-			if (item.variantId) {
-				await db
-					.update(productVariants)
-					.set({ stockQty: sql`${productVariants.stockQty} + ${item.quantity}` })
-					.where(eq(productVariants.id, item.variantId));
-			}
-		}
+	// ── Restore inventory when an order moves into cancelled ───────────────
+	// (only on the actual transition, so re-saving a cancelled order can't restore twice)
+	if (parsed.data.status === 'cancelled' && order.status !== 'cancelled') {
+		await restoreOrderStock(params.id);
 	}
 
 	return json(updated);

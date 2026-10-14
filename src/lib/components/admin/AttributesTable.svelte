@@ -5,10 +5,13 @@
 
   let {
     attributes = [],
-    onChange
+    onChange,
+    showErrors = false
   }: {
     attributes: AttributeRow[];
     onChange: (attrs: AttributeRow[]) => void;
+    // When true, empty required cells are highlighted in red
+    showErrors?: boolean;
   } = $props();
 
   let rows = $state<AttributeRow[]>(attributes.map((a) => ({ ...a })));
@@ -52,6 +55,8 @@
                 type="text"
                 value={row.name}
                 placeholder="e.g. Material"
+                class:field-invalid={showErrors && !row.name.trim()}
+                aria-invalid={showErrors && !row.name.trim()}
                 oninput={(e) => updateName(i, (e.target as HTMLInputElement).value)}
               />
             </td>
@@ -60,6 +65,8 @@
                 type="text"
                 value={row.value}
                 placeholder="e.g. 100% Cotton"
+                class:field-invalid={showErrors && !row.value.trim()}
+                aria-invalid={showErrors && !row.value.trim()}
                 oninput={(e) => updateValue(i, (e.target as HTMLInputElement).value)}
               />
             </td>
@@ -72,6 +79,9 @@
         {/each}
       </tbody>
     </table>
+    {#if showErrors && rows.some((r) => !r.name.trim() || !r.value.trim())}
+      <p class="field-error-msg">Each attribute needs both a name and a value — fill in the highlighted cells or remove the row.</p>
+    {/if}
   {:else}
     <p class="empty-msg">No attributes yet.</p>
   {/if}
@@ -116,6 +126,16 @@
     border-radius: 4px;
     font-size: 0.875rem;
     background: #fff;
+  }
+
+  td input.field-invalid {
+    border-color: #cc3333;
+    background: #fff5f5;
+  }
+
+  .field-error-msg {
+    color: #cc3333;
+    font-size: 0.78rem;
   }
 
   td input:focus {

@@ -4,6 +4,7 @@ import { stores, STORE_THEMES, type StoreTheme } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 import type { InferSelectModel } from 'drizzle-orm';
+import { findCurrency } from '$lib/server/currencies';
 
 type StoreUpdate = Partial<
 	Pick<
@@ -27,6 +28,7 @@ type StoreUpdate = Partial<
 		| 'freeShippingThreshold'
 		| 'taxRate'
 		| 'taxLabel'
+		| 'currencyCode'
 		| 'currencySymbol'
 		| 'seoTitle'
 		| 'seoDescription'
@@ -76,7 +78,13 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 	if ('freeShippingThreshold' in body) updates.freeShippingThreshold = body.freeShippingThreshold as string | null;
 	if (typeof body.taxRate === 'string') updates.taxRate = body.taxRate;
 	if ('taxLabel' in body) updates.taxLabel = body.taxLabel as string | null;
-	if (typeof body.currencySymbol === 'string') updates.currencySymbol = body.currencySymbol;
+	if ('currencyCode' in body) {
+		// The symbol is always derived from the currencies table, never trusted from the client
+		const currency = typeof body.currencyCode === 'string' ? await findCurrency(body.currencyCode) : undefined;
+		if (!currency) throw error(400, 'Unsupported currency');
+		updates.currencyCode = currency.code;
+		updates.currencySymbol = currency.symbol;
+	}
 	if ('seoTitle' in body) updates.seoTitle = body.seoTitle as string | null;
 	if ('seoDescription' in body) updates.seoDescription = body.seoDescription as string | null;
 

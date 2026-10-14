@@ -6,6 +6,9 @@ import { eq, and, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { checkoutSchema } from '$lib/schemas/storefront';
 import { sendEmail } from '$lib/server/email';
+import { matchLineVariants } from '$lib/server/cartStock';
+import { saleDiscount, applySale } from '$lib/utils/pricing';
+import { syncProductStock } from '$lib/server/productStock';
 
 /** Escape a string for safe interpolation into an HTML body. */
 function htmlEscape(str: string): string {
@@ -61,9 +64,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     .where(and(eq(products.storeId, storeId), inArray(products.id, productIds)));
 
   const priceMap = new Map(
-    dbProducts.map((p) => [p.id, Number(p.salePrice ?? p.basePrice)])
+    dbProducts.map((p) => [p.id, Number(p.basePrice) - saleDiscount(p.basePrice, p.salePrice)])
   );
   const stockMap = new Map(dbProducts.map((p) => [p.id, p.stockQty]));
+  // Amount a sale takes off each product; variants keep their modifier, so it applies to them too
+  const discountMap = new Map(dbProducts.map((p) => [p.id, saleDiscount(p.basePrice, p.salePrice)]));
 
   // Reject if any item is not found in this store's catalog
   for (const item of items) {
@@ -111,7 +116,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       if (match) {
         variantResolutionMap.set(key, {
           id: match.id,
-          price: match.price !== null ? Number(match.price) : (priceMap.get(item.productId) as number),
+          price:
+            match.price !== null
+              ? applySale(Number(match.price), discountMap.get(item.productId) ?? 0)
+              : (priceMap.get(item.productId) as number),
           label: match.label,
           stockQty: match.stockQty
         });
@@ -228,7 +236,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
           productId: item.productId,
           variantId: variant?.id ?? null,
           productTitle: item.title,
-          variantLabel: variant?.label ?? null,
+          variantLabel:
+            variant?.label ??
+            (hasVariant ? Object.values(item.variantSelections as Record<string, string>).join(' / ') : null),
           unitPrice: unitPrice.toFixed(2),
           quantity: item.quantity,
           subtotal: (unitPrice * item.quantity).toFixed(2)
@@ -257,22 +267,44 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   // ── Inventory decrement after order insert ────────────────────────────────
-  for (const item of items) {
-    await db
-      .update(products)
-      .set({ stockQty: sql`${products.stockQty} - ${item.quantity}` })
-      .where(eq(products.id, item.productId));
+  // Stock never drops below zero. Lines with variants draw down each selected option's own
+  // stock; the product's inventory figure is then re-synced to the combined variant stock.
+  const hasSelections = (i: (typeof items)[number]) =>
+    !!i.variantSelections && Object.keys(i.variantSelections).length > 0;
+  const variantProductIds = [...new Set(items.filter(hasSelections).map((i) => i.productId))];
+  const decrementRows = variantProductIds.length
+    ? await db
+        .select({ id: productVariants.id, productId: productVariants.productId, label: productVariants.label })
+        .from(productVariants)
+        .where(inArray(productVariants.productId, variantProductIds))
+    : [];
 
-    const hasVariant = item.variantSelections && Object.keys(item.variantSelections).length > 0;
-    if (hasVariant) {
-      const key = `${item.productId}_${JSON.stringify(item.variantSelections)}`;
-      const v = variantResolutionMap.get(key);
-      if (v) {
+  for (const item of items) {
+    const matched = hasSelections(item)
+      ? matchLineVariants(decrementRows, item.productId, item.variantSelections)
+      : [];
+    if (matched.length > 0) {
+      for (const v of matched) {
         await db
           .update(productVariants)
-          .set({ stockQty: sql`${productVariants.stockQty} - ${item.quantity}` })
+          .set({ stockQty: sql`GREATEST(${productVariants.stockQty} - ${item.quantity}, 0)` })
           .where(eq(productVariants.id, v.id));
       }
+    } else {
+      await db
+        .update(products)
+        .set({ stockQty: sql`GREATEST(${products.stockQty} - ${item.quantity}, 0)` })
+        .where(eq(products.id, item.productId));
+    }
+  }
+
+  for (const productId of variantProductIds) {
+    try {
+      await syncProductStock(productId);
+    } catch (err) {
+      // The order is already placed — a failed re-sync must not fail it; the next product
+      // save or order re-syncs.
+      console.error('syncProductStock failed', productId, err);
     }
   }
 

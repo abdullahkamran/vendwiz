@@ -9,7 +9,7 @@
   let categories = data.categories as Category[];
 
   type ImageRow = { id?: string; url: string; sortOrder: number };
-  type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string };
+  type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string; imageUrl?: string | null };
   type VariantRow = {
     id?: string;
     name: string;
@@ -26,7 +26,7 @@
 
   // Reconstruct variant rows from optionGroups (new format) when available,
   // falling back to the legacy DB variants shape for products saved before this change.
-  type RawOptionGroup = { id: string; name: string; sortOrder: number; values: { id: string; value: string; label?: string | null; sortOrder: number }[] };
+  type RawOptionGroup = { id: string; name: string; sortOrder: number; values: { id: string; value: string; label?: string | null; imageUrl?: string | null; sortOrder: number }[] };
   type RawVariant = typeof data.variants[number];
 
   const optionGroups: RawOptionGroup[] = (data as Record<string, unknown>).optionGroups as RawOptionGroup[] ?? [];
@@ -50,6 +50,7 @@
               label: val.label ?? val.value,
               price_modifier: priceModifier,
               stockQty: matchedVariant?.stockQty ?? 0,
+              imageUrl: val.imageUrl ?? '',
               ...(isColor ? { colorHex: val.value.startsWith('#') ? val.value : undefined } : {})
             } satisfies VariantOption;
           }),

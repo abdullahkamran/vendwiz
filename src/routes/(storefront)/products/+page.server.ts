@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { products, categories } from '$lib/server/db/schema';
+import { products, categories, productOptionGroups, productVariants } from '$lib/server/db/schema';
 import { eq, and, ilike, lte, asc, desc, gt, isNotNull, sql, inArray } from 'drizzle-orm';
 
 const PAGE_SIZE = 24;
@@ -67,9 +67,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   // Attach first image from JSONB
   type ProductImage = { url: string; alt?: string; order: number };
+  // Products with option groups or variants need a selection on the details page
+  const pageProductIds = rows.map((p) => p.id);
+  const [groupRows, variantRows] = pageProductIds.length
+    ? await Promise.all([
+        db
+          .selectDistinct({ productId: productOptionGroups.productId })
+          .from(productOptionGroups)
+          .where(inArray(productOptionGroups.productId, pageProductIds)),
+        db
+          .selectDistinct({ productId: productVariants.productId })
+          .from(productVariants)
+          .where(inArray(productVariants.productId, pageProductIds))
+      ])
+    : [[], []];
+  const needsSelection = new Set([...groupRows, ...variantRows].map((r) => r.productId));
+
   const items = rows.map((p) => {
     const imgs = (p.images as ProductImage[]) ?? [];
-    return { ...p, imageUrl: imgs[0]?.url ?? null };
+    return { ...p, imageUrl: imgs[0]?.url ?? null, hasVariants: needsSelection.has(p.id) };
   });
 
   // All store categories for filter sheet

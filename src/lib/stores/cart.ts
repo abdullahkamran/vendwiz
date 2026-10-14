@@ -7,6 +7,9 @@ const storeSlug = typeof window !== 'undefined'
 const CART_KEY = `vendwiz_cart_${storeSlug}`;
 const DISCOUNT_KEY = `vendwiz_discount_${storeSlug}`;
 
+/** Most units of a single product/option line a customer can hold in the cart. */
+export const MAX_CART_QTY = 50;
+
 export interface CartItem {
   productId: string;
   title: string;
@@ -33,10 +36,10 @@ function createCart() {
         let next: CartItem[];
         if (existing) {
           next = items.map((i) =>
-            i === existing ? { ...i, quantity: i.quantity + item.quantity } : i
+            i === existing ? { ...i, quantity: Math.min(i.quantity + item.quantity, MAX_CART_QTY) } : i
           );
         } else {
-          next = [...items, item];
+          next = [...items, { ...item, quantity: Math.min(item.quantity, MAX_CART_QTY) }];
         }
         if (browser) localStorage.setItem(CART_KEY, JSON.stringify(next));
         return next;
@@ -67,7 +70,7 @@ function createCart() {
             : items.map((i) =>
                 i.productId === productId &&
                 JSON.stringify(i.variantSelections ?? {}) === JSON.stringify(variantSelections ?? {})
-                  ? { ...i, quantity }
+                  ? { ...i, quantity: Math.min(quantity, MAX_CART_QTY) }
                   : i
               );
         if (browser) localStorage.setItem(CART_KEY, JSON.stringify(next));

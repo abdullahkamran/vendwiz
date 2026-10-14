@@ -74,6 +74,14 @@ export type StoreTheme = (typeof STORE_THEMES)[number];
 
 // ─── Stores (multi-tenant) ────────────────────────────────────────────────────
 
+// Currencies a store owner can pick from in store settings
+export const currencies = pgTable('currencies', {
+	code: text('code').primaryKey(), // ISO 4217, e.g. "PKR"
+	symbol: text('symbol').notNull(), // display symbol, e.g. "Rs."
+	name: text('name').notNull(), // e.g. "Pakistani Rupee"
+	sortOrder: integer('sort_order').notNull().default(0)
+});
+
 export const stores = pgTable('stores', {
 	id: text('id').primaryKey(),
 	ownerId: text('owner_id')
@@ -103,6 +111,8 @@ export const stores = pgTable('stores', {
 	freeShippingThreshold: numeric('free_shipping_threshold', { precision: 10, scale: 2 }),
 	taxRate: numeric('tax_rate', { precision: 5, scale: 4 }).notNull().default('0'), // 0.18 = 18%
 	taxLabel: text('tax_label').default('Tax'), // GST / VAT / Sales Tax
+	currencyCode: text('currency_code').notNull().default('PKR'), // references currencies.code
+	// Denormalised from currencies.symbol so every price display can read it directly
 	currencySymbol: text('currency_symbol').notNull().default('Rs.'),
 	// SEO
 	seoTitle: text('seo_title'),
@@ -207,6 +217,7 @@ export const productOptionValues = pgTable('product_option_values', {
 		.references(() => productOptionGroups.id, { onDelete: 'cascade' }),
 	value: text('value').notNull(), // "S" | "#FF0000" (hex for colour groups)
 	label: text('label'), // human-readable label e.g. "Red" — nullable for back-compat
+	imageUrl: text('image_url'), // optional product image shown when this (colour) option is selected
 	sortOrder: integer('sort_order').notNull().default(0)
 });
 

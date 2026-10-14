@@ -66,7 +66,7 @@
 <Seo {store} type="website" jsonLd={websiteLd} />
 
 <!-- ── Slideshow Hero ──────────────────────────────────────────────────────── -->
-<section class="sf-hero" style="background:var(--sf-primary); color:var(--sf-on-primary);">
+<section class="sf-hero" style="background:var(--sf-hero-bg, var(--sf-primary)); color:var(--sf-hero-fg, var(--sf-on-primary));">
   <div class="sf-hero-slides">
     {#each slides as slide, i}
       <div
@@ -256,8 +256,8 @@
   .sf-hero-cta {
     display: inline-block;
     padding: 10px 28px;
-    background: var(--sf-on-primary, #fff);
-    color: var(--sf-primary, #0d6efd);
+    background: var(--sf-hero-fg, var(--sf-on-primary, #fff));
+    color: var(--sf-hero-bg, var(--sf-primary, #0d6efd));
     font-weight: var(--sf-btn-weight, 600);
     border-radius: var(--sf-pill, 9999px);
     text-decoration: none;
@@ -273,7 +273,7 @@
     padding: 12px 0 8px;
     position: relative;
     z-index: 3;
-    background: var(--sf-primary, #0d6efd);
+    background: var(--sf-hero-bg, var(--sf-primary, #0d6efd));
   }
   .sf-hero-dot {
     width: 8px;
@@ -286,7 +286,7 @@
     transition: background 0.2s;
   }
   .sf-hero-dot--active {
-    background: #fff;
+    background: var(--sf-hero-fg, #fff);
   }
 
   /* ── Promo banner ── */

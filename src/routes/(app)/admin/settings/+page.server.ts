@@ -2,13 +2,14 @@ import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { stores, STORE_THEMES, type StoreTheme } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { listCurrencies, findCurrency } from '$lib/server/currencies';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const store = await db.query.stores.findFirst({
 		where: eq(stores.ownerId, locals.user!.id)
 	});
-	return { store: store! };
+	return { store: store!, currencies: await listCurrencies() };
 };
 
 export const actions: Actions = {
@@ -28,10 +29,15 @@ export const actions: Actions = {
 		const secondaryColor = (data.get('secondaryColor') as string)?.trim() || null;
 		const seoTitle = (data.get('seoTitle') as string)?.trim() || null;
 		const seoDescription = (data.get('seoDescription') as string)?.trim() || null;
-		const currencySymbol = (data.get('currencySymbol') as string)?.trim() || 'Rs.';
+		const currencyCode = (data.get('currencyCode') as string)?.trim() ?? '';
 
 		if (!name || name.length < 1) {
 			return fail(400, { error: 'Store name is required' });
+		}
+
+		const currency = await findCurrency(currencyCode);
+		if (!currency) {
+			return fail(400, { error: 'Please select a valid currency' });
 		}
 
 		const customTheme =
@@ -48,7 +54,8 @@ export const actions: Actions = {
 				faviconUrl,
 				theme,
 				customTheme,
-				currencySymbol,
+				currencyCode: currency.code,
+				currencySymbol: currency.symbol,
 				seoTitle,
 				seoDescription,
 				updatedAt: new Date()

@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { cart } from '$lib/stores/cart';
+  import { cart, MAX_CART_QTY } from '$lib/stores/cart';
   import { untrack } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import Seo from '$lib/components/storefront/Seo.svelte';
   import { productJsonLd, stripHtml } from '$lib/seo';
   import { checkAllGroupsSelected, findFirstMissingGroup } from '$lib/utils/product-selection';
+  import { combinedStockFromData } from '$lib/utils/stock';
+  import { saleDiscount, applySale } from '$lib/utils/pricing';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
@@ -13,7 +15,7 @@
   let images = $derived(data.images as { url: string; alt?: string; order: number }[]);
   let variants = $derived(data.variants);
   let attributes = $derived(data.attributes);
-  let optionGroups = $derived(data.optionGroups as { id: string; name: string; values: { id: string; value: string; label?: string | null }[] }[]);
+  let optionGroups = $derived(data.optionGroups as { id: string; name: string; values: { id: string; value: string; label?: string | null; imageUrl?: string | null }[] }[]);
   let approvedReviews = $derived(data.reviews);
   let related = $derived(data.related);
   let store = $derived(data.store);
@@ -21,9 +23,52 @@
 
   // Image gallery state (AC-8)
   let activeImageIdx = $state(0);
-  let activeImage = $derived(images[activeImageIdx]?.url ?? null);
-  function nextImage() { activeImageIdx = (activeImageIdx + 1) % Math.max(images.length, 1); }
-  function prevImage() { activeImageIdx = (activeImageIdx - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1); }
+  // Image tied to the currently selected colour. null = none selected, or the colour has
+  // no image of its own — in which case the default product image is shown.
+  let colorImageUrl = $state<string | null>(null);
+  let activeImage = $derived(colorImageUrl ?? images[activeImageIdx]?.url ?? null);
+  function nextImage() { colorImageUrl = null; activeImageIdx = (activeImageIdx + 1) % Math.max(images.length, 1); }
+  function prevImage() { colorImageUrl = null; activeImageIdx = (activeImageIdx - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1); }
+  function selectThumb(i: number) { colorImageUrl = null; activeImageIdx = i; }
+
+  // An option is sold out when its own variant row has no stock left.
+  // Options without a variant row fall back to product-level stock, so they stay selectable.
+  function isOptionSoldOut(valueId: string): boolean {
+    const v = variants.find((x) => Array.isArray(x.optionValueIds) && (x.optionValueIds as string[]).includes(valueId));
+    return !!v && v.stockQty === 0;
+  }
+
+  // Selecting a colour shows its image; a colour without one falls back to the default base image
+  // Image each option group's current selection contributes (null = none)
+  let optionImages = $state<Record<string, string | null>>({});
+  function selectOption(groupId: string, val: { id: string; imageUrl?: string | null }) {
+    if (isOptionSoldOut(val.id)) return;
+    selections[groupId] = val.id;
+    optionImages[groupId] = val.imageUrl || null;
+    // This option's own image wins; otherwise fall back to an image from another selected
+    // option, and finally to the default base image.
+    colorImageUrl = val.imageUrl || Object.values(optionImages).find((u) => !!u) || null;
+    activeImageIdx = 0;
+  }
+
+  // Preselect the first available (in-stock) colour whenever a product is opened
+  let preselectedFor = '';
+  $effect(() => {
+    const pid = product.id;
+    const groups = optionGroups;
+    if (preselectedFor === pid) return;
+    preselectedFor = pid;
+    untrack(() => {
+      selections = {};
+      optionImages = {};
+      colorImageUrl = null;
+      for (const group of groups) {
+        if (!isColorGroup(group.name)) continue;
+        const first = group.values.find((v) => !isOptionSoldOut(v.id));
+        if (first) selectOption(group.id, first);
+      }
+    });
+  });
 
   // Option group selections: { groupId: selectedValueId }
   let selections = $state<Record<string, string>>({});
@@ -42,19 +87,34 @@
     }) ?? null;
   })());
 
-  let finalPrice = $derived(
+  // Regular price for the current choice (variant price overrides the base price) and the
+  // sale-adjusted price the customer actually pays.
+  let regularPrice = $derived(
     matchedVariant?.price !== null && matchedVariant?.price !== undefined
       ? Number(matchedVariant.price)
       : Number(product.basePrice)
   );
+  let discount = $derived(saleDiscount(product.basePrice, product.salePrice));
+  let onSale = $derived(discount > 0);
+  let finalPrice = $derived(applySale(regularPrice, discount));
 
   // Quantity state
   let qty = $state(1);
-  let maxQty = $derived(
-    matchedVariant ? matchedVariant.stockQty : product.stockQty
+  // Stock for the current choice: the scarcest of the selected options; with nothing selected,
+  // the combined stock of all variants. Products without variants use their own stock.
+  let combinedStock = $derived(
+    combinedStockFromData(optionGroups, variants as { optionValueIds: unknown; stockQty: number }[])
   );
+  let maxQty = $derived.by(() => {
+    const picked = Object.values(selections)
+      .filter(Boolean)
+      .map((id) => variants.find((v) => Array.isArray(v.optionValueIds) && (v.optionValueIds as string[]).includes(id))?.stockQty)
+      .filter((n): n is number => typeof n === 'number');
+    if (picked.length > 0) return Math.min(...picked);
+    return combinedStock ?? product.stockQty;
+  });
   function decQty() { if (qty > 1) qty--; }
-  function incQty() { if (qty < Math.max(maxQty, 1)) qty++; }
+  function incQty() { if (qty < MAX_CART_QTY) qty++; }
 
   // Stock status
   let stockStatus = $derived(
@@ -83,7 +143,6 @@
   function addToCart() {
     if (stockStatus === 'out') return;
     if (!allGroupsSelected) return;
-    triggerPulse('atc');
     // Build human-readable variant selections: { groupName: label ?? value }
     // so the cart displays e.g. "Color: Red" rather than raw DB IDs.
     const variantSelections: Record<string, string> = {};
@@ -94,22 +153,41 @@
         if (val) variantSelections[group.name] = val.label ?? val.value;
       }
     }
+    // Customers may add more than is in stock (stock is verified on "Proceed to Checkout"),
+    // but a single line is limited to MAX_CART_QTY units.
+    const sameLine = (i: { productId: string; variantSelections?: Record<string, string> }) =>
+      i.productId === product.id &&
+      JSON.stringify(i.variantSelections ?? {}) === JSON.stringify(variantSelections);
+    const inCart = $cart.filter(sameLine).reduce((sum, i) => sum + i.quantity, 0);
+    const remaining = MAX_CART_QTY - inCart;
+    if (remaining <= 0) {
+      showToast(`You already have the maximum of ${MAX_CART_QTY} of this item in your cart`);
+      return false;
+    }
+    const addQty = Math.min(qty, remaining);
+    triggerPulse('atc');
     cart.addItem({
       productId: product.id,
       title: product.title,
       slug: product.slug,
-      imageUrl: images[0]?.url,
+      imageUrl: colorImageUrl ?? images[0]?.url,
       price: finalPrice,
-      quantity: qty,
+      quantity: addQty,
       variantSelections: Object.keys(variantSelections).length > 0 ? variantSelections : undefined
     });
-    showToast(`${product.title} added to cart`);
+    showToast(
+      addQty < qty
+        ? `Limit is ${MAX_CART_QTY} per item — added ${addQty} to your cart`
+        : `${product.title} added to cart`
+    );
+    return true;
   }
 
   function buyNow() {
     if (!allGroupsSelected) return;
     triggerPulse('buy');
-    addToCart();
+    // Stay on the page when nothing could be added (the toast explains why)
+    if (addToCart() === false) return;
     goto(`${basePath}/cart`);
   }
 
@@ -179,7 +257,7 @@
   let dimAttr = $derived(attributes.find((a) => /dimension|size|weight|measurement/i.test(a.name))?.value ?? null);
 
   // SEO: effective price for JSON-LD (sale price takes precedence)
-  let ldPrice = $derived(product.salePrice ? Number(product.salePrice) : finalPrice);
+  let ldPrice = $derived(finalPrice);
   // SEO: plain-text product description for meta / JSON-LD
   let ldDesc = $derived(
     product.seoDescription ||
@@ -197,7 +275,7 @@
       description: ldDesc,
       image: images[0]?.url || store.logoUrl || store.faviconUrl || '/favicon.svg',
       price: ldPrice,
-      currency: 'PKR',
+      currency: store.currencyCode ?? 'PKR',
       inStock: stockStatus !== 'out'
     })
   );
@@ -256,10 +334,10 @@
       {#each images as img, i}
         <button
           class="pdp-thumb"
-          class:pdp-thumb--active={i === activeImageIdx}
-          onclick={() => (activeImageIdx = i)}
+          class:pdp-thumb--active={!colorImageUrl && i === activeImageIdx}
+          onclick={() => selectThumb(i)}
           aria-label="View image {i + 1}"
-          style={i === activeImageIdx ? `border-color:var(--sf-primary);` : ''}
+          style={!colorImageUrl && i === activeImageIdx ? `border-color:var(--sf-primary);` : ''}
         >
           <img src={img.url} alt="" />
         </button>
@@ -274,9 +352,9 @@
 
   <!-- Price -->
   <div class="pdp-pricing">
-    {#if product.salePrice}
-      <span class="pdp-price-sale" style="color:var(--sf-primary);">{store.currencySymbol} {Number(product.salePrice).toLocaleString()}</span>
-      <span class="pdp-price-orig">{store.currencySymbol} {Number(product.basePrice).toLocaleString()}</span>
+    {#if onSale}
+      <span class="pdp-price-sale" style="color:var(--sf-primary);">{store.currencySymbol} {finalPrice.toLocaleString()}</span>
+      <span class="pdp-price-orig">{store.currencySymbol} {regularPrice.toLocaleString()}</span>
     {:else}
       <span class="pdp-price" style="color:var(--sf-primary);">{store.currencySymbol} {finalPrice.toLocaleString()}</span>
     {/if}
@@ -310,17 +388,19 @@
             <button
               class="pdp-swatch"
               class:pdp-swatch--active={selections[group.id] === val.id}
+              class:pdp-swatch--soldout={isOptionSoldOut(val.id)}
               style="background:{val.value}; border-color:{selections[group.id] === val.id ? 'var(--sf-primary)' : 'transparent'};"
-              onclick={() => (selections[group.id] = val.id)}
-              aria-label={val.label ?? val.value}
-              title={val.label ?? val.value}
+              onclick={() => selectOption(group.id, val)}
+              disabled={isOptionSoldOut(val.id)}
+              aria-label={isOptionSoldOut(val.id) ? `${val.label ?? val.value} (out of stock)` : (val.label ?? val.value)}
+              title={isOptionSoldOut(val.id) ? `${val.label ?? val.value} — out of stock` : (val.label ?? val.value)}
             ></button>
           {:else}
             <!-- Size button (AC-8) -->
             <button
               class="pdp-size-btn"
               class:pdp-size-btn--active={selections[group.id] === val.id}
-              onclick={() => (selections[group.id] = val.id)}
+              onclick={() => selectOption(group.id, val)}
               style={selections[group.id] === val.id ? `background:var(--sf-primary); color:var(--sf-on-primary); border-color:var(--sf-primary);` : ''}
             >
               {val.label ?? val.value}
@@ -353,38 +433,13 @@
     {/each}
   {/if}
 
-  <!-- Default selectors when product has no option groups or variants (AC-8) -->
-  <!-- These ensure the color swatch and size-button UI is always present in the DOM -->
-  {#if optionGroups.length === 0 && variants.length === 0}
-    <div class="pdp-option-group">
-      <p class="pdp-option-label">Color: <span class="pdp-option-selected">Default</span></p>
-      <div class="pdp-options">
-        <button
-          class="pdp-swatch pdp-swatch--active"
-          style="background:#374151; outline:2px solid var(--sf-primary); outline-offset:2px;"
-          aria-label="Default"
-          title="Default"
-        ></button>
-      </div>
-    </div>
-    <div class="pdp-option-group">
-      <p class="pdp-option-label">Size</p>
-      <div class="pdp-options">
-        <button
-          class="pdp-size-btn"
-          style="background:var(--sf-primary); color:var(--sf-on-primary); border-color:var(--sf-primary);"
-        >One Size</button>
-      </div>
-    </div>
-  {/if}
-
   <!-- Quantity stepper (AC-8) -->
   <div class="pdp-qty">
     <span class="pdp-qty-label">Qty</span>
     <div class="pdp-qty-stepper">
       <button class="pdp-qty-btn" onclick={decQty} disabled={qty <= 1} aria-label="Decrease quantity">−</button>
       <span class="pdp-qty-val">{qty}</span>
-      <button class="pdp-qty-btn" onclick={incQty} disabled={qty >= maxQty} aria-label="Increase quantity">+</button>
+      <button class="pdp-qty-btn" onclick={incQty} disabled={qty >= MAX_CART_QTY} aria-label="Increase quantity">+</button>
     </div>
   </div>
 
@@ -717,6 +772,33 @@
     cursor: pointer;
     outline: 2px solid transparent;
     transition: outline 0.15s;
+  }
+  /* Sold-out colour: faded toward the page background so it reads as unavailable,
+     crossed out, and not selectable. The overlay adapts to light/dark themes. */
+  .pdp-swatch--soldout {
+    position: relative;
+    cursor: not-allowed;
+    filter: grayscale(0.15);
+    overflow: hidden;
+  }
+  .pdp-swatch--soldout::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--sf-bg, #fff) 30%, transparent);
+  }
+  .pdp-swatch--soldout::after {
+    content: '✕';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sf-text, #212529);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
   }
   .pdp-swatch--active { outline: 2px solid var(--sf-primary, #0d6efd); outline-offset: 2px; }
   .pdp-size-btn {
