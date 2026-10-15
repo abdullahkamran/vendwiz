@@ -58,3 +58,70 @@ describe('sendEmail — missing SMTP config guard', () => {
 		expect(warnSpy).toHaveBeenCalled();
 	});
 });
+
+describe('buildFrom / cleanReplyTo — per-store sender identity', () => {
+	it('uses the store name with the platform address', async () => {
+		const { buildFrom } = await import('./email');
+		expect(buildFrom('VendWiz <orders@vendwiz.com>', 'Demo Store')).toEqual({
+			name: 'Demo Store',
+			address: 'orders@vendwiz.com'
+		});
+	});
+
+	it('strips characters that could break the header', async () => {
+		const { buildFrom } = await import('./email');
+		expect(buildFrom('orders@vendwiz.com', 'Evil"\r\nBcc: x <y>')).toEqual({
+			name: 'Evil Bcc: x y',
+			address: 'orders@vendwiz.com'
+		});
+	});
+
+	it('falls back to the configured From when no store name is given', async () => {
+		const { buildFrom } = await import('./email');
+		expect(buildFrom('VendWiz <orders@vendwiz.com>')).toBe('VendWiz <orders@vendwiz.com>');
+	});
+
+	it('accepts a valid reply-to and rejects junk', async () => {
+		const { cleanReplyTo } = await import('./email');
+		expect(cleanReplyTo(' hi@store.com ')).toBe('hi@store.com');
+		expect(cleanReplyTo('not an email')).toBeUndefined();
+		expect(cleanReplyTo(null)).toBeUndefined();
+	});
+});
+
+describe('EMAIL_ENABLED kill switch', () => {
+	afterEach(() => {
+		delete process.env.EMAIL_ENABLED;
+		clearSmtpEnv();
+		vi.restoreAllMocks();
+	});
+
+	it('is on by default and for truthy values', async () => {
+		const { emailEnabled } = await import('./email');
+		delete process.env.EMAIL_ENABLED;
+		expect(emailEnabled()).toBe(true);
+		process.env.EMAIL_ENABLED = 'true';
+		expect(emailEnabled()).toBe(true);
+	});
+
+	it('is off for false/0/off/no (any case)', async () => {
+		const { emailEnabled } = await import('./email');
+		for (const v of ['false', 'FALSE', '0', 'off', 'No']) {
+			process.env.EMAIL_ENABLED = v;
+			expect(emailEnabled()).toBe(false);
+		}
+	});
+
+	it('skips sending and reports disabled, even with SMTP configured', async () => {
+		process.env.EMAIL_ENABLED = 'false';
+		process.env.SMTP_HOST = 'smtp.example.com';
+		process.env.SMTP_PORT = '587';
+		process.env.SMTP_USER = 'u';
+		process.env.SMTP_PASS = 'p';
+		process.env.SMTP_FROM = 'a@b.com';
+		vi.spyOn(console, 'info').mockImplementation(() => {});
+		const { sendEmailChecked } = await import('./email');
+		const res = await sendEmailChecked({ to: 'x@y.com', subject: 's', html: '<p>x</p>' });
+		expect(res).toEqual({ ok: false, error: 'Email sending is disabled' });
+	});
+});

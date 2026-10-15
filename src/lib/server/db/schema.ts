@@ -312,6 +312,23 @@ export const orders = pgTable('orders', {
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
+// History of customer notifications sent from the admin panel (one row per attempt)
+export const orderNotifications = pgTable('order_notifications', {
+	id: text('id').primaryKey(),
+	orderId: text('order_id')
+		.notNull()
+		.references(() => orders.id, { onDelete: 'cascade' }),
+	channel: text('channel').notNull().default('email'),
+	// The order status the message described
+	status: text('status').notNull(),
+	recipient: text('recipient').notNull(),
+	// 'sent' or 'failed'
+	result: text('result').notNull(),
+	error: text('error'),
+	sentByUserId: text('sent_by_user_id'),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
 export const orderItems = pgTable('order_items', {
 	id: text('id').primaryKey(),
 	orderId: text('order_id')

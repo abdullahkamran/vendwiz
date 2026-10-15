@@ -56,7 +56,11 @@
 			{form.error}
 		</div>
 	{/if}
-	{#if form?.success}
+	{#if form && 'emailed' in form && form.emailed}
+		<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">
+			Email sent to the customer.
+		</div>
+	{:else if form?.success}
 		<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">
 			Updated successfully.
 		</div>
@@ -175,6 +179,36 @@
 					</a>
 				</div>
 			{/if}
+
+			<!-- Email customer (manual; the owner decides if and when) -->
+			<div class="bg-white shadow rounded-lg p-6">
+				<h2 class="text-lg font-semibold text-gray-900 mb-1">Email Customer</h2>
+				{#if data.order.customerEmail}
+					<p class="text-xs text-gray-500 mb-3">
+						Sends the current status (<strong>{data.order.status}</strong>) to {data.order.customerEmail}.
+						Nothing is sent automatically when you change the status.
+					</p>
+					<form method="POST" action="?/emailCustomer" use:enhance>
+						<button type="submit" class="btn btn-primary w-full">✉️ Email current status</button>
+					</form>
+					{#if data.notifications.length}
+						<ul class="mt-4 space-y-1 text-xs text-gray-600">
+							{#each data.notifications as n (n.id)}
+								<li>
+									{new Date(n.createdAt).toLocaleString()} · {n.status} ·
+									{#if n.result === 'sent'}
+										<span class="text-green-700">sent</span>
+									{:else}
+										<span class="text-red-700" title={n.error ?? ''}>failed</span>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				{:else}
+					<p class="text-xs text-gray-500">The customer didn't provide an email address for this order.</p>
+				{/if}
+			</div>
 
 			<!-- Status + Notes (merged into one form so a single Update button saves both) -->
 			<div class="bg-white shadow rounded-lg p-6">

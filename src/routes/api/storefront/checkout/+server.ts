@@ -6,6 +6,7 @@ import { eq, and, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { checkoutSchema } from '$lib/schemas/storefront';
 import { sendEmail } from '$lib/server/email';
+import { buildOrderPlacedEmail, type EmailLine } from '$lib/server/orderEmail';
 import { matchLineVariants } from '$lib/server/cartStock';
 import { saleDiscount, applySale } from '$lib/utils/pricing';
 import { pickItemImage } from '$lib/utils/orderItemImage';
@@ -13,15 +14,6 @@ import { hasBankDetails } from '$lib/paymentInfo';
 import { loadOptionImageRows } from '$lib/server/orderImages';
 import { syncProductStock } from '$lib/server/productStock';
 
-/** Escape a string for safe interpolation into an HTML body. */
-function htmlEscape(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   if (!locals.isStorefront || !locals.store) {
@@ -239,8 +231,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   // Insert order items — unit price comes from DB-sourced prices; variantId stored
+  let emailLines: EmailLine[] = [];
   if (items.length > 0) {
-    await db.insert(orderItems).values(
+    const itemRows = (
       items.map((item) => {
         const hasVariant = item.variantSelections && Object.keys(item.variantSelections).length > 0;
         const variantKey = hasVariant
@@ -265,24 +258,36 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         };
       })
     );
+    await db.insert(orderItems).values(itemRows);
+    emailLines = itemRows.map((r) => ({
+      title: r.productTitle,
+      variantLabel: r.variantLabel,
+      quantity: r.quantity,
+      unitPrice: r.unitPrice,
+      imageUrl: r.imageUrl
+    }));
   }
 
   // ── Confirmation email (fire-and-forget; failure must never fail the order) ─
   if (customerEmail) {
-    const storeName = locals.store.name ?? 'Store';
-    const itemSummary = items
-      .map((i) => `<li>${htmlEscape(i.title)} × ${i.quantity}</li>`)
-      .join('');
-    sendEmail({
-      to: customerEmail,
-      subject: `Order confirmed – #${orderNumber}`,
-      html: `<p>Hi ${htmlEscape(customerName)},</p>
-<p>Thank you for your order at <strong>${htmlEscape(storeName)}</strong>.</p>
-<p>Order number: <strong>#${orderNumber}</strong></p>
-<ul>${itemSummary}</ul>
-<p>Total: ${locals.store.currencySymbol ?? ''} ${total.toFixed(2)}</p>
-<p>Payment: ${paymentMethod === 'bank_transfer' ? 'Bank transfer — please send your payment screenshot to our WhatsApp so we can confirm it.' : 'Cash on delivery'}</p>`
-    }).catch(() => {
+    const { subject, html, text } = buildOrderPlacedEmail(
+      locals.store,
+      {
+        orderNumber,
+        customerName,
+        customerPhone,
+        shippingAddress,
+        paymentMethod,
+        status: 'pending',
+        subtotal,
+        discountAmount,
+        shippingFee,
+        taxAmount,
+        total
+      },
+      emailLines
+    );
+    sendEmail({ to: customerEmail, subject, html, text, fromName: locals.store.name, replyTo: locals.store.contactEmail }).catch(() => {
       // intentionally swallowed — email is best-effort
     });
   }

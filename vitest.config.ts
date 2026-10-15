@@ -8,7 +8,8 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: {
-			$lib: path.resolve('./src/lib')
+			$lib: path.resolve('./src/lib'),
+			'$env/dynamic/private': path.resolve('./src/test/env-dynamic-private.ts')
 		}
 	}
 });

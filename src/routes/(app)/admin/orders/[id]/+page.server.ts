@@ -1,8 +1,11 @@
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { orders, orderItems, products, productOptionGroups, productOptionValues } from '$lib/server/db/schema';
-import { eq, and, inArray, isNotNull } from 'drizzle-orm';
+import { orders, orderItems, orderNotifications, products, productOptionGroups, productOptionValues } from '$lib/server/db/schema';
+import { eq, and, inArray, isNotNull, desc } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+import { emailEnabled, sendEmailChecked } from '$lib/server/email';
+import { buildStatusEmail } from '$lib/server/orderEmail';
 import { pickItemImage } from '$lib/utils/orderItemImage';
 import { buildWhatsAppUrl } from '$lib/utils/whatsapp';
 import { whatsappDigits } from '$lib/utils/phone';
@@ -66,7 +69,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		`We'll keep you posted on its progress.`;
 	const waUrl = buyerDigits ? buildWhatsAppUrl(buyerDigits, waMessage) : null;
 
-	return { order, items, allowedNext, waUrl, storeWhatsapp: store.whatsapp, store };
+	const notifications = await db
+		.select()
+		.from(orderNotifications)
+		.where(eq(orderNotifications.orderId, order.id))
+		.orderBy(desc(orderNotifications.createdAt))
+		.limit(10);
+
+	return { order, items, allowedNext, waUrl, storeWhatsapp: store.whatsapp, store, notifications };
 };
 
 export const actions: Actions = {
@@ -113,6 +123,57 @@ export const actions: Actions = {
 		}
 
 		return { success: true, status: newStatus };
+	},
+
+	// Manual, owner-initiated: emails the customer the order's CURRENT status.
+	emailCustomer: async ({ params, locals }) => {
+		if (!locals.user) return fail(401, { error: 'Unauthorized' });
+		const store = locals.store;
+		if (!store) return fail(400, { error: 'No store context' });
+
+		const order = await db
+			.select()
+			.from(orders)
+			.where(and(eq(orders.id, params.id), eq(orders.storeId, store.id)))
+			.limit(1)
+			.then((r) => r[0] ?? null);
+
+		if (!order) return fail(404, { error: 'Order not found' });
+		if (!emailEnabled()) return fail(503, { error: 'Email sending is turned off on this server.' });
+		if (!order.customerEmail) {
+			return fail(422, { error: 'This order has no customer email address.' });
+		}
+
+		const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+		const { subject, html, text } = buildStatusEmail(store, order, lines.map((l) => ({
+			title: l.productTitle,
+			variantLabel: l.variantLabel,
+			quantity: l.quantity,
+			unitPrice: l.unitPrice,
+			imageUrl: l.imageUrl
+		})));
+		const result = await sendEmailChecked({
+			to: order.customerEmail,
+			subject,
+			html,
+			text,
+			fromName: store.name,
+			replyTo: store.contactEmail
+		});
+
+		await db.insert(orderNotifications).values({
+			id: nanoid(),
+			orderId: order.id,
+			channel: 'email',
+			status: order.status,
+			recipient: order.customerEmail,
+			result: result.ok ? 'sent' : 'failed',
+			error: result.ok ? null : result.error,
+			sentByUserId: locals.user.id
+		});
+
+		if (!result.ok) return fail(502, { error: `Could not send email: ${result.error}` });
+		return { emailed: true };
 	},
 
 	saveNotes: async ({ params, request, locals }) => {

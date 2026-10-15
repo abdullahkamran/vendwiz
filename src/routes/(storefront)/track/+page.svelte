@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { getRecentOrders, type RecentOrder } from '$lib/stores/recentOrders';
   let { data }: { data: import('./$types').PageData } = $props();
   let store = $derived(data.store);
   let basePath = $derived(data.basePath ?? '');
@@ -9,6 +11,10 @@
     createdAt: string;
     items: { title: string; quantity: number }[];
   }
+
+  // Orders placed from this browser, so customers who forgot to copy the reference can pick it
+  let recentOrders = $state<RecentOrder[]>([]);
+  onMount(() => { recentOrders = getRecentOrders(store.id); });
 
   let ref = $state('');
   let loading = $state(false);
@@ -21,6 +27,11 @@
     dispatched: 'Dispatched',
     completed: 'Delivered'
   };
+
+  function trackRecent(orderRef: string) {
+    ref = orderRef;
+    trackOrder();
+  }
 
   async function trackOrder() {
     if (!ref.trim()) return;
@@ -71,6 +82,19 @@
       {loading ? 'Looking up…' : 'Track Order'}
     </button>
   </form>
+
+  {#if recentOrders.length > 0}
+    <div data-testid="recent-orders" style="border:1px solid var(--sf-border); border-radius:12px; padding:20px 24px; margin-bottom:32px;">
+      <p style="font-size:0.8rem; font-weight:600; color:var(--sf-text); text-transform:uppercase; letter-spacing:0.05em; margin:0 0 12px;">Your recent orders</p>
+      {#each recentOrders as order}
+        <button type="button" onclick={() => trackRecent(order.ref)}
+          style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:10px 0; background:none; border:none; border-bottom:1px solid var(--sf-border); cursor:pointer; text-align:left; color:var(--sf-text);">
+          <span style="font-family:monospace; font-weight:700;">#{order.ref}</span>
+          <span style="font-size:0.8rem; color:var(--sf-muted);">{new Date(order.placedAt).toLocaleDateString()} · Track →</span>
+        </button>
+      {/each}
+    </div>
+  {/if}
 
   {#if result === 'not_found'}
     <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:10px; padding:20px; text-align:center; color:#dc2626;">

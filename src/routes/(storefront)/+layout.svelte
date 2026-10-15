@@ -91,16 +91,19 @@
     window.addEventListener('resize', onResize);
 
     // Capture the browser install prompt for the Install button (Chrome/Android)
-    function onBeforeInstall(e: Event) {
-      e.preventDefault();
+    // The event is captured by an inline script in app.html (it can fire before hydration).
+    function pickUpPrompt() {
+      const e = (window as any).__installPrompt;
+      if (!e) return;
       deferredPrompt = e;
       if (!installDismissed) showInstall = true;
     }
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    pickUpPrompt();
+    window.addEventListener('vendwiz:installprompt', pickUpPrompt);
 
     return () => {
       window.removeEventListener('resize', onResize);
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('vendwiz:installprompt', pickUpPrompt);
     };
   });
   function dismissInstall() {
@@ -113,6 +116,7 @@
       await deferredPrompt.prompt();
       await deferredPrompt.userChoice;
       deferredPrompt = null;
+      (window as any).__installPrompt = null;
       dismissInstall();
     } catch (_) {}
   }

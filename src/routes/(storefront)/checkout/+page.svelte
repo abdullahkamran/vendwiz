@@ -1,5 +1,6 @@
 <script lang="ts">
   import { cart, cartDiscount } from '$lib/stores/cart';
+  import { saveRecentOrder } from '$lib/stores/recentOrders';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { checkoutSchema } from '$lib/schemas/storefront';
@@ -143,6 +144,7 @@
       });
       const json = await res.json().catch(() => ({}));
       if (res.ok && (json as { orderRef?: string }).orderRef) {
+        saveRecentOrder(store.id, (json as { orderRef: string }).orderRef);
         cart.clear();
         cartDiscount.clear();
         goto(`${basePath}/checkout/confirmation?ref=${(json as { orderRef: string }).orderRef}&pay=${paymentMethod}`);

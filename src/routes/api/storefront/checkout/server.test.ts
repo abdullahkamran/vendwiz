@@ -225,7 +225,7 @@ describe('POST /api/storefront/checkout — confirmation email', () => {
 		expect(sendEmail).toHaveBeenCalledOnce();
 		const call = vi.mocked(sendEmail).mock.calls[0][0];
 		expect(call.to).toBe('bob@example.com');
-		expect(call.subject).toMatch(/Order confirmed/);
+		expect(call.subject).toMatch(/Order placed/);
 		// Subject must include the generated order number
 		expect(call.subject).toMatch(/ORD-ABCD1234/);
 	});

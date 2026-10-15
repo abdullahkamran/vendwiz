@@ -36,6 +36,24 @@ export const auth = betterAuth({
 	}),
 	baseURL: PUBLIC_APP_URL,
 	secret: BETTER_AUTH_SECRET,
+	// better-auth rejects sign-in POSTs whose Origin isn't baseURL (INVALID_ORIGIN, 403).
+	// In dev the app is opened via localhost, *.localhost and whatever LAN IP the machine
+	// currently has, which rarely matches PUBLIC_APP_URL — so trust those request origins.
+	trustedOrigins: (request) => {
+		if (!import.meta.env.DEV || !request) return [];
+		const origin = request.headers.get('origin');
+		if (!origin) return [];
+		try {
+			const host = new URL(origin).hostname;
+			const local =
+				host === 'localhost' ||
+				host.endsWith('.localhost') ||
+				/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
+			return local ? [origin] : [];
+		} catch {
+			return [];
+		}
+	},
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: false,
