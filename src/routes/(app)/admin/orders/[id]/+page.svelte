@@ -140,7 +140,7 @@
 						<dd>{data.store.currencySymbol} {data.order.shippingFee}</dd>
 					</div>
 					<div class="flex justify-between">
-						<dt class="text-gray-500">Tax</dt>
+						<dt class="text-gray-500">{data.store.taxLabel || 'Tax'}</dt>
 						<dd>{data.store.currencySymbol} {data.order.taxAmount}</dd>
 					</div>
 					{#if parseFloat(data.order.discountAmount) > 0}

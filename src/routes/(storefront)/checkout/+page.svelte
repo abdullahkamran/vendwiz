@@ -360,7 +360,7 @@
         </div>
         {#if taxAmount > 0}
           <div style="display:flex; justify-content:space-between; font-size:0.875rem; margin-bottom:6px;">
-            <span style="color:var(--sf-muted);">Tax ({(taxRate * 100).toFixed(1)}%)</span>
+            <span style="color:var(--sf-muted);">{store.taxLabel || 'Tax'} ({(taxRate * 100).toFixed(1)}%)</span>
             <span style="color:var(--sf-text);">{store.currencySymbol} {taxAmount.toLocaleString()}</span>
           </div>
         {/if}

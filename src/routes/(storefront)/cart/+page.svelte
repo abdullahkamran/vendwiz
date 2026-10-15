@@ -254,7 +254,7 @@
             </div>
             {#if taxAmount > 0}
               <div class="cart-summary-line">
-                <span class="cart-line-label">Tax ({(taxRate * 100).toFixed(1)}%)</span>
+                <span class="cart-line-label">{store.taxLabel || 'Tax'} ({(taxRate * 100).toFixed(1)}%)</span>
                 <span class="cart-line-val">{store.currencySymbol} {taxAmount.toLocaleString()}</span>
               </div>
             {/if}

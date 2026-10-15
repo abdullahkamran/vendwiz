@@ -19,6 +19,21 @@
   let inStockOnly = $state(data.filters.inStockOnly);
   let onSaleOnly = $state(data.filters.onSaleOnly);
   let sort = $state(data.filters.sort);
+  let searchInput = $state<HTMLInputElement | null>(null);
+
+  // This page stays mounted when the address changes (nav link, category link, back button), so the
+  // controls must follow the filters in the URL. Without this the last category you picked stayed
+  // highlighted after going back to "All Products", while the list showed everything.
+  $effect(() => {
+    const f = data.filters;
+    // Don't overwrite what someone is still typing while their search results load
+    if (document.activeElement !== searchInput) q = f.q;
+    categoryId = f.categoryId;
+    maxPrice = f.maxPrice;
+    inStockOnly = f.inStockOnly;
+    onSaleOnly = f.onSaleOnly;
+    sort = f.sort;
+  });
 
   // Filter bottom sheet state (AC-6)
   let filterOpen = $state(false);
@@ -254,6 +269,7 @@
     <div class="products-topbar">
       <input
         type="search"
+        bind:this={searchInput}
         bind:value={q}
         oninput={onSearchInput}
         placeholder="Search products…"

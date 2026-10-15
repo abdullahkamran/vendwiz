@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
+  import { IMAGE_REF } from '$lib/schemas/catalog';
   import { slugify } from '$lib/utils/slug';
 
   let { data }: { data: PageData } = $props();
@@ -29,6 +30,9 @@
   let formParentId = $state<string>('');
   let formSortOrder = $state(0);
   let formImageUrl = $state('');
+  let fileInput = $state<HTMLInputElement | null>(null);
+  let uploadingImage = $state(false);
+  let imageError = $state('');
   let formError = $state('');
   // Per-field validation messages, shown once a save has been attempted
   let nameError = $state('');
@@ -46,6 +50,7 @@
     formParentId = '';
     formSortOrder = categories.length;
     formImageUrl = '';
+    imageError = '';
     formError = '';
     nameError = '';
     slugError = '';
@@ -60,6 +65,7 @@
     formParentId = cat.parentId ?? '';
     formSortOrder = cat.sortOrder;
     formImageUrl = cat.imageUrl ?? '';
+    imageError = '';
     formError = '';
     nameError = '';
     slugError = '';
@@ -89,6 +95,33 @@
     if (slugError) slugError = '';
   }
 
+  /** Uploads a picture from the owner's computer and fills the field with its address */
+  async function uploadImage(file: File | undefined) {
+    if (!file) return;
+    imageError = '';
+    if (!file.type.startsWith('image/')) {
+      imageError = 'Please choose an image file.';
+      return;
+    }
+    uploadingImage = true;
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/admin/upload', { method: 'POST', body });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        imageError = err?.message ?? 'Image upload failed.';
+        return;
+      }
+      formImageUrl = (await res.json()).url;
+    } catch {
+      imageError = 'Network error while uploading the image.';
+    } finally {
+      uploadingImage = false;
+      if (fileInput) fileInput.value = '';
+    }
+  }
+
   async function saveCategory() {
     nameError = formName.trim() ? '' : 'Name is required';
     slugError = !formSlug.trim()
@@ -98,6 +131,14 @@
         : 'Use lowercase letters, numbers and hyphens only';
     if (nameError || slugError) {
       formError = 'Please fix the fields highlighted in red.';
+      return;
+    }
+    if (uploadingImage) {
+      formError = 'Please wait for the image to finish uploading.';
+      return;
+    }
+    if (formImageUrl.trim() && !IMAGE_REF.test(formImageUrl.trim())) {
+      formError = 'Use an https:// image link, or upload an image.';
       return;
     }
 
@@ -287,15 +328,28 @@
         </div>
 
         <div class="form-field">
-          <label for="cat-image">Image URL (optional)</label>
-          <input
-            id="cat-image"
-            type="url"
-            bind:value={formImageUrl}
-            placeholder="https://example.com/category.jpg"
-          />
+          <label for="cat-image">Image (optional)</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input
+              id="cat-image"
+              type="text"
+              style="flex:1; min-width:0;"
+              bind:value={formImageUrl}
+              placeholder="Paste an image link, or upload one"
+            />
+            <button type="button" class="btn btn-secondary btn-sm" disabled={uploadingImage} onclick={() => fileInput?.click()}>
+              {uploadingImage ? 'Uploading…' : 'Upload'}
+            </button>
+            <input bind:this={fileInput} type="file" accept="image/*" hidden onchange={(e) => uploadImage(e.currentTarget.files?.[0])} />
+          </div>
+          {#if imageError}
+            <span class="field-error-msg">{imageError}</span>
+          {/if}
           {#if formImageUrl}
-            <img src={formImageUrl} alt="Category thumbnail preview" style="max-width:80px; max-height:80px; object-fit:cover; border-radius:4px; margin-top:4px; border:1px solid #e5e5e5;" />
+            <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+              <img src={formImageUrl} alt="Category thumbnail preview" style="max-width:80px; max-height:80px; object-fit:cover; border-radius:4px; border:1px solid #e5e5e5;" />
+              <button type="button" class="btn btn-delete btn-sm" onclick={() => { formImageUrl = ''; imageError = ''; }}>Remove</button>
+            </div>
           {/if}
         </div>
 

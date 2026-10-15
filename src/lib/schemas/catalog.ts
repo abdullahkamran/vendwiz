@@ -1,11 +1,18 @@
 import { z } from 'zod';
 
+/** An image reference: a full https/http link, or a file uploaded through the admin (/uploads/…). */
+export const IMAGE_REF = /^(https?:\/\/\S+|\/uploads\/(?!.*\.\.)[\w\-./]+)$/;
+
 export const categorySchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
   sortOrder: z.number().int().default(0),
   parentId: z.string().nullable().optional(),
-  imageUrl: z.string().url().nullable().optional()
+  imageUrl: z
+    .string()
+    .regex(IMAGE_REF, 'Use an https:// image link or upload an image')
+    .nullable()
+    .optional()
 });
 
 export const variantOptionSchema = z.object({

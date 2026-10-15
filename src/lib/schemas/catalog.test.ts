@@ -14,3 +14,20 @@ describe('variantSchema option images', () => {
 		expect(variantSchema.parse({ name: 'Size', options: [{ label: 'M', price_modifier: 0 }] }).options[0].imageUrl).toBeUndefined();
 	});
 });
+
+import { categorySchema } from './catalog';
+
+describe('categorySchema image', () => {
+	const base = { name: 'Plates', slug: 'plates' };
+	it('accepts an https link, an uploaded image path, or no image', () => {
+		expect(categorySchema.safeParse({ ...base, imageUrl: 'https://example.com/a.jpg' }).success).toBe(true);
+		expect(categorySchema.safeParse({ ...base, imageUrl: '/uploads/AbC_123-x.webp' }).success).toBe(true);
+		expect(categorySchema.safeParse({ ...base, imageUrl: null }).success).toBe(true);
+		expect(categorySchema.safeParse(base).success).toBe(true);
+	});
+	it('rejects anything else, including script links and paths outside /uploads', () => {
+		for (const bad of ['javascript:alert(1)', 'ftp://x/y.png', '/etc/passwd', 'not a link', '/uploads/../secret']) {
+			expect(categorySchema.safeParse({ ...base, imageUrl: bad }).success, bad).toBe(false);
+		}
+	});
+});
