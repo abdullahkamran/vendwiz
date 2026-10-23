@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import { cart, cartDiscount, MAX_CART_QTY } from '$lib/stores/cart';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
@@ -143,7 +144,7 @@
             <!-- Thumb: 72 × 82 -->
             <div class="cart-item-thumb">
               {#if item.imageUrl}
-                <img src={item.imageUrl} alt={item.title} class="cart-item-img" />
+                <img src={mediaUrl(item.imageUrl)} alt={item.title} class="cart-item-img" />
               {:else}
                 <div class="cart-item-ph">📦</div>
               {/if}

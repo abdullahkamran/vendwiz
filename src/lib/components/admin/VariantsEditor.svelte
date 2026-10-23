@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import { isValidSizeChartUrl } from './productFormValidation';
   import { addOption as addOptionUtil, updateOptionStock as updateOptionStockUtil, updateOptionColorHex as updateOptionColorHexUtil } from './variantsEditorUtils';
   type VariantOption = { label: string; price_modifier: number; stockQty?: number; colorHex?: string; imageUrl?: string | null };
@@ -120,6 +121,7 @@
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('folder', 'variants');
       const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -212,7 +214,7 @@
                 {/if}
                 <td class="option-image-cell">
                   {#if option.imageUrl}
-                    <img class="option-image-thumb" src={option.imageUrl} alt="{option.label || 'Option'} image" />
+                    <img class="option-image-thumb" src={mediaUrl(option.imageUrl)} alt="{option.label || 'Option'} image" />
                   {/if}
                   <button
                     type="button"
@@ -243,7 +245,7 @@
                               class:image-picker-item--active={option.imageUrl === img.url}
                               onclick={() => { updateOptionImage(vi, oi, img.url); pickerKey = null; }}
                             >
-                              <img src={img.url} alt="" />
+                              <img src={mediaUrl(img.url)} alt="" />
                             </button>
                           {/each}
                         </div>
@@ -325,7 +327,7 @@
           {#if variant.sizeChartUrl}
             <img
               class="size-chart-preview"
-              src={variant.sizeChartUrl}
+              src={mediaUrl(variant.sizeChartUrl)}
               alt="Size chart preview"
             />
           {/if}

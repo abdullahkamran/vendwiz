@@ -9,8 +9,10 @@
  * linkify: true — auto-link bare URLs in policy content.
  */
 import MarkdownIt from 'markdown-it';
+import { resolveMarkdownImages } from '$lib/media';
 
-const md = new MarkdownIt({ html: false, linkify: true });
+// Uploaded images are stored as paths relative to the media base; resolve them when rendering
+const md = resolveMarkdownImages(new MarkdownIt({ html: false, linkify: true }));
 
 /**
  * Render a markdown (or HTML) string to an HTML string.

@@ -65,6 +65,9 @@ export const actions: Actions = {
 			return fail(400, { error: 'That subdomain is no longer available' });
 		}
 
+		// Generated up front so uploads land in this store's folder
+		const storeId = nanoid();
+
 		// Handle optional file uploads
 		let logoUrl: string | null = null;
 		let faviconUrl: string | null = null;
@@ -73,7 +76,7 @@ export const actions: Actions = {
 		if (logoFile && logoFile.size > 0) {
 			try {
 				const buffer = Buffer.from(await logoFile.arrayBuffer());
-				logoUrl = await saveImage(buffer, 'logos', { width: 400, height: 400 });
+				logoUrl = await saveImage(buffer, { storeId, folder: 'branding' }, { width: 400, height: 400 });
 			} catch {
 				// Non-fatal: proceed without logo
 			}
@@ -83,15 +86,13 @@ export const actions: Actions = {
 		if (faviconFile && faviconFile.size > 0) {
 			try {
 				const buffer = Buffer.from(await faviconFile.arrayBuffer());
-				faviconUrl = await saveImage(buffer, 'favicons', { width: 64, height: 64 });
+				faviconUrl = await saveImage(buffer, { storeId, folder: 'branding' }, { width: 64, height: 64 });
 			} catch {
 				// Non-fatal: proceed without favicon
 			}
 		}
 
 		// Create store
-		const storeId = nanoid();
-
 		await db.insert(stores).values({
 			id: storeId,
 			ownerId: locals.user.id,

@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import { cart } from '$lib/stores/cart';
   import { darkMode } from '$lib/stores/darkMode';
   import { themeRootCSS, themeDarkCSS } from '$lib/theme/tokens';
   import { themeColorFor } from '$lib/seo';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { buildCategoryTree } from '$lib/utils/category-tree';
 
   // Strict allow-list guard for CSS color values injected via the html style tag
@@ -65,6 +67,20 @@
     expanded[id] = !expanded[id];
   }
 
+  // Mobile search panel (opened from the header or bottom nav search icons)
+  let searchOpen = $state(false);
+  let searchInput = $state<HTMLInputElement | null>(null);
+  function openSearch() {
+    searchOpen = true;
+    drawerOpen = false;
+    // Focus after the panel renders
+    setTimeout(() => searchInput?.focus(), 0);
+  }
+  function toggleSearch() {
+    if (searchOpen) searchOpen = false;
+    else openSearch();
+  }
+
   // Dark mode
   let isDark = $derived($darkMode);
   function toggleDark() { darkMode.toggle(); }
@@ -80,6 +96,24 @@
     basePath && pathname.startsWith(basePath) ? pathname.slice(basePath.length) || '/' : pathname
   );
 
+  // Installed app (PWA launched from the home screen) vs. regular browser tab.
+  // In the app Reels is the landing page and comes first in every menu; on the web Home comes first.
+  let isApp = $state(false);
+  // Without any reels the Reels item is hidden everywhere and Home is the landing page.
+  let hasReels = $derived(data.hasReels ?? false);
+  let primaryOrder = $derived<readonly ('home' | 'reels')[]>(
+    !hasReels ? ['home'] : isApp ? ['reels', 'home'] : ['home', 'reels']
+  );
+  let onReels = $derived(localPathname === '/reels');
+  // Reels is immersive (mobile and desktop): black header, banners, bottom nav and page; logo hidden
+  let immersive = $derived(onReels);
+
+  // Close the mobile search panel whenever the route changes
+  $effect(() => {
+    void $page.url.href;
+    searchOpen = false;
+  });
+
   // Install banner (AC-11)
   let showInstall = $state(false);
   let installDismissed = $state(false);
@@ -87,6 +121,23 @@
   onMount(() => {
     // Desktop detection
     isDesktop = window.innerWidth >= 1024;
+
+    isApp =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    // The app opens on Reels. The manifest's start_url already points there; this also covers
+    // installs made before that change. Only on launch, so tapping Home later still works.
+    if (isApp && hasReels && localPathname === '/') {
+      try {
+        if (!sessionStorage.getItem('vw-app-launched')) {
+          sessionStorage.setItem('vw-app-launched', '1');
+          goto(`${basePath}/reels`, { replaceState: true });
+        }
+      } catch (_) {}
+    } else if (isApp) {
+      try { sessionStorage.setItem('vw-app-launched', '1'); } catch (_) {}
+    }
+
     function onResize() { isDesktop = window.innerWidth >= 1024; }
     window.addEventListener('resize', onResize);
 
@@ -131,6 +182,12 @@
       }
     }
   });
+
+  // Reels: black page background behind everything (incl. the overscroll / bounce area)
+  $effect(() => {
+    document.documentElement.toggleAttribute('data-reels', immersive);
+    return () => document.documentElement.removeAttribute('data-reels');
+  });
 </script>
 
 <!-- Inject all --sf-* theme CSS variables + dark override into :root.
@@ -138,7 +195,7 @@
      output are identical — avoiding a head hydration mismatch. -->
 <svelte:head>
   {@html `<style>${themeRootCSS(store.theme)}${themeDarkCSS(store.theme)}${customThemeCSS(store.theme, store.customTheme)}</style>`}
-  <meta name="theme-color" content={themeColorFor(store)} />
+  <meta name="theme-color" content={immersive ? '#000000' : themeColorFor(store)} />
   <link rel="manifest" href="/manifest.json{basePath ? `?base=${encodeURIComponent(basePath)}` : ''}">
   <script>
     if ('serviceWorker' in navigator) {
@@ -147,19 +204,65 @@
   </script>
 </svelte:head>
 
+<!-- Minimal outline icons shared by the header and the mobile bottom nav -->
+{#snippet iconSearch()}
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/>
+  </svg>
+{/snippet}
+{#snippet iconBag()}
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>
+  </svg>
+{/snippet}
+{#snippet iconHome()}
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>
+  </svg>
+{/snippet}
+{#snippet iconShop()}
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/>
+    <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>
+  </svg>
+{/snippet}
+{#snippet iconReels()}
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 8h18"/><path d="m8 3 2.5 5M13.5 3 16 8"/><path d="M10 12v5l4.5-2.5z"/>
+  </svg>
+{/snippet}
+<!-- Home + Reels for the desktop header, ordered by app/web (see primaryOrder) -->
+{#snippet desktopPrimaryLinks()}
+  {#each primaryOrder as key}
+    {#if key === 'home'}
+      <a href="{basePath || '/'}" class="sf-dh-navlink" class:sf-dh-navlink--active={localPathname === '/'}>Home</a>
+    {:else}
+      <a href="{basePath}/reels" class="sf-dh-navlink" class:sf-dh-navlink--active={onReels}>Reels</a>
+    {/if}
+  {/each}
+{/snippet}
+{#snippet iconMoon()}
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>
+  </svg>
+{/snippet}
+{#snippet iconSun()}
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+  </svg>
+{/snippet}
+
 <!-- Announcement bar -->
 {#if store.announcementEnabled && store.announcementText}
-  <div
-    class="sf-announce"
-    style="background:var(--sf-announce-bg); color:var(--sf-announce-text);"
-  >
+  <div class="sf-announce" class:sf-announce--immersive={immersive}>
     {store.announcementText}
   </div>
 {/if}
 
 <!-- PWA install banner (AC-11) -->
 {#if showInstall}
-  <div class="sf-install-banner" role="banner">
+  <div class="sf-install-banner" class:sf-install-banner--immersive={immersive} role="banner">
     <span>📲 Add to Home Screen for a faster experience</span>
     {#if deferredPrompt}
       <button class="sf-install-btn" onclick={installApp}>Install</button>
@@ -182,6 +285,13 @@
     <button class="sf-drawer-close" onclick={closeDrawer} aria-label="Close menu">✕</button>
   </div>
   <div class="sf-drawer-body">
+    {#each primaryOrder as key}
+      {#if key === 'home'}
+        <a href="{basePath || '/'}" onclick={closeDrawer} class="sf-drawer-link">Home</a>
+      {:else}
+        <a href="{basePath}/reels" onclick={closeDrawer} class="sf-drawer-link">Reels</a>
+      {/if}
+    {/each}
     <a href="{basePath}/products" onclick={closeDrawer} class="sf-drawer-link">All Products</a>
     {#each categoryTree as cat}
       <div class="sf-drawer-cat-row">
@@ -215,11 +325,15 @@
     <hr class="sf-drawer-sep" />
     <a href="{basePath}/track" onclick={closeDrawer} class="sf-drawer-link">Track Order</a>
     <a href="{basePath}/contact" onclick={closeDrawer} class="sf-drawer-link">Contact Us</a>
+    <hr class="sf-drawer-sep" />
+    <button class="sf-drawer-link sf-drawer-theme" onclick={toggleDark}>
+      {#if isDark}{@render iconSun()} Light mode{:else}{@render iconMoon()} Dark mode{/if}
+    </button>
   </div>
 </nav>
 
 <!-- Header: mobile (hamburger) or desktop (3-column grid) -->
-<header class="sf-header">
+<header class="sf-header" class:sf-header--immersive={immersive}>
   {#if isDesktop}
     <!-- Desktop: 3-col grid — logo+nav left / brand centre / search+actions right.
          When theme===minimal the dhCentered variant puts search in the left column. -->
@@ -229,10 +343,7 @@
         <!-- dhCentered: Home left (also keeps the brand centred) / brand centre / search + actions right -->
         <div class="sf-dh-col sf-dh-left">
           <nav class="sf-dh-nav" aria-label="Main navigation">
-            <a href="{basePath || '/'}"
-              class="sf-dh-navlink"
-              class:sf-dh-navlink--active={localPathname === '/'}
-            >Home</a>
+            {@render desktopPrimaryLinks()}
             <a href="{basePath}/about"
               class="sf-dh-navlink"
               class:sf-dh-navlink--active={localPathname === '/about'}
@@ -242,7 +353,7 @@
         <div class="sf-dh-col sf-dh-center">
           <a href="{basePath || '/'}" class="sf-logo">
             {#if store.logoUrl}
-              <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+              <img src={mediaUrl(store.logoUrl)} alt={store.name} class="sf-logo-img" />
             {:else}
               <span class="sf-logo-text">{store.name}</span>
             {/if}
@@ -255,10 +366,10 @@
           </form>
           <button class="sf-icon-btn" onclick={toggleDark}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
-            {isDark ? '☀️' : '🌙'}
+            {#if isDark}{@render iconSun()}{:else}{@render iconMoon()}{/if}
           </button>
           <a href="{basePath}/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
-            🛒
+            {@render iconBag()}
             {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
           </a>
         </div>
@@ -267,16 +378,13 @@
         <div class="sf-dh-col sf-dh-left">
           <a href="{basePath || '/'}" class="sf-logo sf-dh-logo">
             {#if store.logoUrl}
-              <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+              <img src={mediaUrl(store.logoUrl)} alt={store.name} class="sf-logo-img" />
             {:else}
               <span class="sf-logo-text">{store.name}</span>
             {/if}
           </a>
           <nav class="sf-dh-nav" aria-label="Main navigation">
-            <a href="{basePath || '/'}"
-              class="sf-dh-navlink"
-              class:sf-dh-navlink--active={localPathname === '/'}
-            >Home</a>
+            {@render desktopPrimaryLinks()}
             <a href="{basePath}/about"
               class="sf-dh-navlink"
               class:sf-dh-navlink--active={localPathname === '/about'}
@@ -310,7 +418,7 @@
         <div class="sf-dh-col sf-dh-center">
           <a href="{basePath || '/'}" class="sf-dh-brand-link">
             {#if store.logoUrl}
-              <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+              <img src={mediaUrl(store.logoUrl)} alt={store.name} class="sf-logo-img" />
             {:else}
               <span class="sf-logo-text">{store.name}</span>
             {/if}
@@ -323,63 +431,70 @@
           </form>
           <button class="sf-icon-btn" onclick={toggleDark}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
-            {isDark ? '☀️' : '🌙'}
+            {#if isDark}{@render iconSun()}{:else}{@render iconMoon()}{/if}
           </button>
           <a href="{basePath}/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
-            🛒
+            {@render iconBag()}
             {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
           </a>
         </div>
       {/if}
     </div>
   {:else}
-    <!-- Mobile: hamburger / logo / actions -->
-    <div class="sf-container sf-header-inner">
+    <!-- Mobile: hamburger / centred logo / search + cart -->
+    <div class="sf-container sf-header-inner sf-header-mobile">
       <button class="sf-hamburger" onclick={openDrawer} aria-label="Open menu" aria-expanded={drawerOpen}>
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <line x1="2" y1="5" x2="20" y2="5"/>
-          <line x1="2" y1="11" x2="20" y2="11"/>
-          <line x1="2" y1="17" x2="20" y2="17"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="15" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
       </button>
-      <a href="{basePath || '/'}" class="sf-logo">
+      <a href="{basePath || '/'}" class="sf-logo sf-logo-mobile">
         {#if store.logoUrl}
-          <img src={store.logoUrl} alt={store.name} class="sf-logo-img" />
+          <img src={mediaUrl(store.logoUrl)} alt={store.name} class="sf-logo-img" />
         {:else}
           <span class="sf-logo-text">{store.name}</span>
         {/if}
       </a>
       <div class="sf-header-actions">
-        <a href="{basePath || '/'}" class="sf-icon-btn" aria-label="Home" title="Home">🏠</a>
-        <a href="{basePath}/about" class="sf-icon-btn" aria-label="About Us" title="About Us">ℹ️</a>
         <button class="sf-icon-btn" onclick={toggleDark}
           aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
-          {isDark ? '☀️' : '🌙'}
+          {#if isDark}{@render iconSun()}{:else}{@render iconMoon()}{/if}
+        </button>
+        <button class="sf-icon-btn" onclick={toggleSearch} aria-label="Search" aria-expanded={searchOpen}>
+          {@render iconSearch()}
         </button>
         <a href="{basePath}/cart" class="sf-cart-btn" aria-label="Cart ({itemCount} items)">
-          🛒
+          {@render iconBag()}
           {#if itemCount > 0}<span class="sf-cart-badge">{itemCount}</span>{/if}
         </a>
       </div>
     </div>
+    {#if searchOpen}
+      <form method="GET" action="{basePath}/products" class="sf-container sf-mobile-search">
+        <input bind:this={searchInput} type="search" name="q" placeholder="Search products…"
+          class="sf-mobile-search-input" aria-label="Search products" />
+      </form>
+    {/if}
   {/if}
 </header>
 
 <!-- Main content -->
-<main class="sf-main">
+<main class="sf-main" class:sf-main--reels={onReels} class:sf-main--immersive={immersive}>
   <div class="sf-container">
     {@render children()}
   </div>
 </main>
 
 <!-- Footer -->
-<footer class="sf-footer">
+<footer class="sf-footer" class:sf-footer--reels={onReels}>
   <div class="sf-container sf-footer-inner">
     <!-- Brand column: hidden on mobile, first of 4 cols on desktop -->
     <div class="sf-footer-col sf-footer-brand-col">
       <a href="{basePath || '/'}" class="sf-footer-brand-link">
         {#if store.logoUrl}
-          <img src={store.logoUrl} alt={store.name} class="sf-footer-brand-logo" />
+          <img src={mediaUrl(store.logoUrl)} alt={store.name} class="sf-footer-brand-logo" />
         {:else}
           <span class="sf-footer-brand-name">{store.name}</span>
         {/if}
@@ -426,13 +541,45 @@
   <p class="sf-footer-credit">Powered by <a href="https://vendwiz.com" class="sf-footer-credit-link">VendWiz</a></p>
 </footer>
 
+<!-- Mobile bottom navigation bar (hidden on desktop) -->
+{#if !isDesktop}
+  <nav class="sf-bottom-nav" class:sf-bottom-nav--immersive={immersive} aria-label="Quick navigation">
+    {#each primaryOrder as key}
+      {#if key === 'home'}
+        <a href="{basePath || '/'}" class="sf-bn-item" class:sf-bn-item--active={localPathname === '/' && !searchOpen}>
+          {@render iconHome()}<span>Home</span>
+        </a>
+      {:else}
+        <a href="{basePath}/reels" class="sf-bn-item" class:sf-bn-item--active={onReels && !searchOpen}>
+          {@render iconReels()}<span>Reels</span>
+        </a>
+      {/if}
+    {/each}
+    <a href="{basePath}/products" class="sf-bn-item"
+      class:sf-bn-item--active={localPathname.startsWith('/products') && !searchOpen}>
+      {@render iconShop()}<span>Shop</span>
+    </a>
+    <a href="{basePath}/cart" class="sf-bn-item" class:sf-bn-item--active={localPathname === '/cart' && !searchOpen}
+      aria-label="Cart ({itemCount} items)">
+      <span class="sf-bn-icon">
+        {@render iconBag()}
+        {#if itemCount > 0}<span class="sf-cart-badge sf-bn-badge">{itemCount}</span>{/if}
+      </span>
+      <span>Cart</span>
+    </a>
+    <button class="sf-bn-item" class:sf-bn-item--active={searchOpen} onclick={openSearch}>
+      {@render iconSearch()}<span>Search</span>
+    </button>
+  </nav>
+{/if}
+
 <!-- Theme switcher: fixed bottom-right on desktop only. -->
 <button
   class="sf-theme-switcher"
   onclick={toggleDark}
   aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
 >
-  {isDark ? '☀️' : '🌙'}
+  {#if isDark}{@render iconSun()}{:else}{@render iconMoon()}{/if}
 </button>
 
 <style>
@@ -460,7 +607,11 @@
     padding: 8px 16px;
     font-size: 0.8125rem;
     font-weight: 500;
+    background: var(--sf-announce-bg);
+    color: var(--sf-announce-text);
+    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
   }
+  .sf-announce--immersive { background: #000; color: #fff; }
 
   /* ── Install banner ── */
   .sf-install-banner {
@@ -473,7 +624,14 @@
     border-bottom: 1px solid var(--sf-border, #dee2e6);
     font-size: 0.875rem;
     color: var(--sf-text, #212529);
+    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
   }
+  .sf-install-banner--immersive {
+    background: #000;
+    border-bottom-color: #222;
+    color: #fff;
+  }
+  .sf-install-banner--immersive .sf-install-dismiss { color: rgba(255, 255, 255, 0.7); }
   .sf-install-dismiss {
     background: none;
     border: none;
@@ -593,6 +751,18 @@
   .sf-drawer-sublink:hover {
     color: var(--sf-primary, #0d6efd);
   }
+  .sf-drawer-theme {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    font-size: 0.9375rem;
+  }
   .sf-drawer-sep {
     border: none;
     border-top: 1px solid var(--sf-border, #dee2e6);
@@ -606,6 +776,7 @@
     z-index: 20;
     background: var(--sf-surface, #fff);
     border-bottom: 1px solid var(--sf-border, #dee2e6);
+    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
   }
 
   /* Mobile header inner.
@@ -738,6 +909,7 @@
     background: var(--sf-bg, #fff);
     color: var(--sf-text, #212529);
     outline: none;
+    transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
   }
   .sf-dh-search:focus { border-color: var(--sf-primary, #0d6efd); }
 
@@ -746,6 +918,67 @@
     text-decoration: none;
     display: flex;
     align-items: center;
+  }
+
+  /* ── Mobile header: hamburger left / logo centred / icons right ── */
+  .sf-header-mobile {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+  }
+  .sf-header-mobile .sf-hamburger { justify-self: start; }
+  .sf-header-mobile .sf-header-actions { justify-self: end; }
+  .sf-logo-mobile {
+    flex: none;
+    justify-content: center;
+    max-width: 60vw;
+  }
+  .sf-logo-mobile .sf-logo-img { height: 40px; max-width: 100%; }
+
+  .sf-mobile-search {
+    display: block;
+    padding-bottom: 12px;
+  }
+  .sf-mobile-search-input {
+    width: 100%;
+    border: 1px solid var(--sf-border, #dee2e6);
+    border-radius: var(--sf-radius, 6px);
+    padding: 10px 14px;
+    font-size: 1rem; /* >=16px avoids iOS zoom-on-focus */
+    background: var(--sf-bg, #fff);
+    color: var(--sf-text, #212529);
+    outline: none;
+  }
+  .sf-mobile-search-input:focus { border-color: var(--sf-primary, #0d6efd); }
+
+  /* ── Reels (mobile): black header, white icons, no logo ── */
+  .sf-header--immersive {
+    background: #000;
+    border-bottom-color: #000;
+  }
+  .sf-header--immersive .sf-hamburger,
+  .sf-header--immersive .sf-icon-btn,
+  .sf-header--immersive .sf-cart-btn { color: #fff; }
+  .sf-logo-mobile { transition: opacity 0.35s ease, visibility 0.35s; }
+  .sf-header--immersive .sf-logo-mobile { opacity: 0; visibility: hidden; } /* keeps the icons in place */
+  .sf-dh-logo,
+  .sf-dh-brand-link,
+  .sf-dh-center .sf-logo { transition: opacity 0.35s ease, visibility 0.35s; }
+  .sf-header--immersive .sf-dh-logo,
+  .sf-header--immersive .sf-dh-brand-link,
+  .sf-header--immersive .sf-dh-center .sf-logo { opacity: 0; visibility: hidden; }
+  .sf-header--immersive .sf-dh-navlink { color: rgba(255, 255, 255, 0.8); }
+  .sf-header--immersive .sf-dh-navlink:hover,
+  .sf-header--immersive .sf-dh-navlink--active { color: #fff; border-bottom-color: #fff; }
+  .sf-header--immersive .sf-dh-search {
+    background: #1a1a1a;
+    border-color: #333;
+    color: #fff;
+  }
+  .sf-header--immersive .sf-mobile-search-input {
+    background: #1a1a1a;
+    border-color: #333;
+    color: #fff;
   }
 
   /* ── Mobile header elements ── */
@@ -759,6 +992,7 @@
     flex-shrink: 0;
     display: flex;
     align-items: center;
+    transition: color 0.35s ease;
   }
   .sf-logo {
     flex: 1;
@@ -805,6 +1039,7 @@
     color: var(--sf-text, #212529);
     display: flex;
     align-items: center;
+    transition: color 0.35s ease;
   }
   .sf-cart-btn {
     position: relative;
@@ -814,6 +1049,7 @@
     padding: 6px;
     display: flex;
     align-items: center;
+    transition: color 0.35s ease;
   }
   .sf-cart-badge {
     position: absolute;
@@ -838,10 +1074,19 @@
     min-height: 60vh;
     color: var(--sf-text, #212529);
     padding-bottom: 84px;
+    transition: background-color 0.35s ease, color 0.35s ease;
   }
+  .sf-main--immersive { background: #000; color: #fff; }
   @media (min-width: 1024px) {
     .sf-main { padding-bottom: 0; }
   }
+  /* Reels: the feed fills the screen (above the bottom nav on mobile), so no gap and no footer */
+  @media (max-width: 1023px) {
+    .sf-main--reels { padding-bottom: 0; }
+  }
+  .sf-footer--reels { display: none; }
+  :global(html[data-reels]),
+  :global(html[data-reels] body) { background: #000; }
 
   /* ── Footer ── */
   .sf-footer {
@@ -926,6 +1171,76 @@
   }
   .sf-footer-credit-link { color: var(--sf-muted, #6c757d); text-decoration: none; }
   .sf-footer-credit-link:hover { color: var(--sf-primary, #0d6efd); }
+
+  /* ── Mobile bottom nav ── */
+  .sf-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30; /* above content, below drawer overlay (40) and filter sheet (50) */
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr; /* 4 or 5 items depending on whether the store has reels */
+    background: var(--sf-surface, #fff);
+    border-top: 1px solid var(--sf-border, #dee2e6);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+  }
+  .sf-bn-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 60px;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--sf-text, #212529);
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.35s ease;
+  }
+  .sf-bn-item::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .sf-bn-item--active { color: var(--sf-primary, #0d6efd); }
+  .sf-bn-item--active::before { background: var(--sf-primary, #0d6efd); }
+  .sf-bn-icon {
+    position: relative;
+    display: flex;
+  }
+  .sf-bn-badge {
+    top: -6px;
+    right: -9px;
+  }
+  /* Reels (mobile): black bar, white items */
+  .sf-bottom-nav--immersive {
+    background: #000;
+    border-top-color: #000;
+    box-shadow: none;
+  }
+  .sf-bottom-nav--immersive .sf-bn-item { color: rgba(255, 255, 255, 0.7); }
+  .sf-bottom-nav--immersive .sf-bn-item--active { color: #fff; }
+  .sf-bottom-nav--immersive .sf-bn-item--active::before { background: #fff; }
+
+  @media (min-width: 1024px) {
+    .sf-bottom-nav { display: none; }
+  }
 
   /* ── Theme switcher: fixed bottom-right on desktop only ── */
   .sf-theme-switcher {

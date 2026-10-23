@@ -2,8 +2,15 @@ import { auth } from '$lib/server/auth/auth';
 import { db } from '$lib/server/db';
 import { stores } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, ServerInit } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import { setMediaBase } from '$lib/media';
+import { mediaBaseUrl } from '$lib/server/storage/upload';
+
+// Stored upload paths resolve against this everywhere on the server (emails, SEO, manifest, …)
+export const init: ServerInit = () => {
+	setMediaBase(mediaBaseUrl());
+};
 
 // ── Auth hook ──────────────────────────────────────────────────────────────────
 const authHook: Handle = async ({ event, resolve }) => {

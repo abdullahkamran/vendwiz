@@ -1,6 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { THEME_HEX } from '$lib/theme/tokens';
 import { normaliseBase, resolvePwaStore } from '$lib/server/pwaStore';
+import { storeHasReels } from '$lib/server/productReels';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
   const base = normaliseBase(url.searchParams.get('base') ?? '');
@@ -23,7 +24,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     short_name: name.slice(0, 12),
     description: store?.description ?? `Shop at ${name}`,
     id: scopePath,
-    start_url: scopePath,
+    // The installed app opens on the Reels feed when there is one, otherwise on Home
+    start_url: store && (await storeHasReels(store.id)) ? `${scopePath}reels` : scopePath,
     scope: scopePath,
     display: 'standalone',
     background_color: '#ffffff',

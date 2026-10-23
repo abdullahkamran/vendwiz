@@ -6,7 +6,8 @@ import {
   productAttributes,
   reviews,
   productOptionGroups,
-  productOptionValues
+  productOptionValues,
+  productReels
 } from '$lib/server/db/schema';
 import { eq, and, ne, desc, asc } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
@@ -76,8 +77,18 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     });
   }
 
+  // Product video: the product's first published reel, else a YouTube link saved on the product
+  // before videos moved to Reels
+  const [reel] = await db
+    .select({ videoUrl: productReels.videoUrl })
+    .from(productReels)
+    .where(and(eq(productReels.productId, product.id), eq(productReels.isPublished, true)))
+    .orderBy(asc(productReels.sortOrder), desc(productReels.createdAt))
+    .limit(1);
+  const videoUrl = reel?.videoUrl ?? product.youtubeUrl ?? null;
+
   // Render description markdown server-side so the PDP can safely use {@html}
   const descriptionHtml = product.description ? renderMarkdown(product.description) : null;
 
-  return { product: { ...product, descriptionHtml }, images, variants, attributes, optionGroups: groupsWithValues, reviews: approvedReviews, related };
+  return { product: { ...product, descriptionHtml }, images, variants, attributes, optionGroups: groupsWithValues, reviews: approvedReviews, related, videoUrl };
 };

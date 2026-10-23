@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mediaUrl } from '$lib/media';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData, ActionData } from './$types';
@@ -220,7 +221,7 @@
 				<label class="block text-sm font-medium text-[--color-text] mb-1">Store Logo</label>
 				<div class="flex items-center gap-4">
 					{#if logoUrl}
-						<img src={logoUrl} alt="Store logo" class="h-16 w-auto rounded-lg border border-[--color-border] object-contain bg-white p-1" />
+						<img src={mediaUrl(logoUrl)} alt="Store logo" class="h-16 w-auto rounded-lg border border-[--color-border] object-contain bg-white p-1" />
 					{:else}
 						<div class="h-16 w-16 rounded-lg border border-dashed border-[--color-border] flex items-center justify-center text-[--color-text-muted] text-xs">
 							No logo
@@ -248,7 +249,7 @@
 				<label class="block text-sm font-medium text-[--color-text] mb-1">Favicon</label>
 				<div class="flex items-center gap-4">
 					{#if faviconUrl}
-						<img src={faviconUrl} alt="Favicon" class="h-8 w-8 rounded border border-[--color-border] object-contain bg-white p-0.5" />
+						<img src={mediaUrl(faviconUrl)} alt="Favicon" class="h-8 w-8 rounded border border-[--color-border] object-contain bg-white p-0.5" />
 					{:else}
 						<div class="h-8 w-8 rounded border border-dashed border-[--color-border] flex items-center justify-center text-[--color-text-muted] text-xs">
 							–

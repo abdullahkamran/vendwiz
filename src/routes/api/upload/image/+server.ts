@@ -9,6 +9,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) {
 		throw error(401, 'Unauthorized');
 	}
+	if (!locals.store) {
+		throw error(403, 'No store found for this account');
+	}
 
 	const contentType = request.headers.get('content-type') ?? '';
 	if (!contentType.includes('multipart/form-data')) {
@@ -51,7 +54,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		options = { width: 1200, quality: 85 };
 	}
 
-	const url = await saveImage(buffer, type, options);
+	let url: string;
+	try {
+		url = await saveImage(buffer, { storeId: locals.store.id, folder: 'branding' }, options);
+	} catch (err) {
+		console.error('Image upload failed', err);
+		throw error(400, 'Could not process this image');
+	}
 
 	return json({ url });
 };

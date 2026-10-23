@@ -9,6 +9,7 @@
 
 import { env } from '$env/dynamic/private';
 import { themeColorFor } from '$lib/seo';
+import { mediaUrl } from '$lib/media';
 import { bankDetailRows, hasBankDetails, paymentLabel, type BankFields } from '$lib/paymentInfo';
 
 export function htmlEscape(str: string): string {
@@ -84,8 +85,9 @@ export function storeBaseUrl(subdomain: string): string {
 	return `${app.protocol}//${subdomain}.${root}`;
 }
 
-/** Makes an uploaded-file path ("/uploads/x.png") absolute so mail clients can load it. */
-function absoluteUrl(url: string | null | undefined): string | null {
+/** Makes a stored image (upload path, or legacy "/uploads/x.png") absolute so mail clients can load it. */
+function absoluteUrl(ref: string | null | undefined): string | null {
+	const url = mediaUrl(ref);
 	if (!url) return null;
 	if (/^https?:\/\//i.test(url)) return url;
 	if (url.startsWith('/')) return `${appUrl().origin}${url}`;

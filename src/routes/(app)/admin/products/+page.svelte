@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import type { PageData } from './$types';
   import type { Category } from '$lib/server/db/schema';
 
@@ -192,7 +193,7 @@
             <tr>
               <td class="img-cell">
                 {#if product.primaryImage}
-                  <img src={product.primaryImage} alt={product.title} class="thumb" />
+                  <img src={mediaUrl(product.primaryImage)} alt={product.title} class="thumb" />
                 {:else}
                   <div class="thumb-placeholder">No img</div>
                 {/if}

@@ -5,6 +5,7 @@
    * tables, links, quotes and picture upload.
    */
   import MarkdownIt from 'markdown-it';
+  import { resolveMarkdownImages } from '$lib/media';
   import { insertBlankLine, type EditResult } from '$lib/utils/markdownEdit';
 
   let {
@@ -85,7 +86,7 @@
   }
 
   // Same configuration as the server: raw HTML is escaped, bare URLs become links
-  const md = new MarkdownIt({ html: false, linkify: true });
+  const md = resolveMarkdownImages(new MarkdownIt({ html: false, linkify: true }));
 
   const TABLE_TEMPLATE =
     '\n| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Cell     | Cell     | Cell     |\n\n';
@@ -151,6 +152,7 @@
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('folder', 'content');
       const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

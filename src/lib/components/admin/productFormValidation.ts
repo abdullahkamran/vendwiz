@@ -3,20 +3,22 @@
  * (lib/schemas/catalog.ts) so people see which field to fix instead of a raw
  * validation error from the API.
  */
-export type ProductTab = 'basic' | 'images' | 'variants' | 'attributes' | 'inventory' | 'seo';
+import { parseVideoSource } from '$lib/utils/video';
+
+export type ProductTab = 'basic' | 'images' | 'variants' | 'attributes' | 'inventory' | 'seo' | 'reels';
 
 export type ProductFormInput = {
 	title: string;
 	slug: string;
 	basePrice: number | null | undefined;
 	salePrice?: number | null | undefined;
-	youtubeUrl: string;
 	stockQty: number | null | undefined;
 	lowStockThreshold: number | null | undefined;
 	seoTitle: string;
 	seoDescription: string;
 	variants: Array<{ name: string; sizeChartUrl?: string }>;
 	attributes: Array<{ name: string; value: string }>;
+	reels?: Array<{ videoUrl: string }>;
 };
 
 const SLUG_RE = /^[a-z0-9-]+$/;
@@ -33,17 +35,8 @@ export function isValidSizeChartUrl(url: string | undefined): boolean {
 	}
 }
 
-function isValidUrl(url: string): boolean {
-	try {
-		new URL(url);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
 export function validateProductForm(input: ProductFormInput) {
-	const fields: Partial<Record<'title' | 'slug' | 'basePrice' | 'salePrice' | 'youtubeUrl' | 'stockQty' | 'lowStockThreshold' | 'seoTitle' | 'seoDescription', string>> = {};
+	const fields: Partial<Record<'title' | 'slug' | 'basePrice' | 'salePrice' | 'stockQty' | 'lowStockThreshold' | 'seoTitle' | 'seoDescription', string>> = {};
 
 	if (isBlank(input.title)) fields.title = 'Title is required';
 	if (isBlank(input.slug)) fields.slug = 'Slug is required';
@@ -53,7 +46,6 @@ export function validateProductForm(input: ProductFormInput) {
 		if (Number.isNaN(input.salePrice) || input.salePrice < 0) fields.salePrice = 'Enter a valid sale price (0 or more)';
 		else if (!fields.basePrice && input.salePrice >= (input.basePrice as number)) fields.salePrice = 'Sale price must be lower than the regular price';
 	}
-	if (!isBlank(input.youtubeUrl) && !isValidUrl(input.youtubeUrl.trim())) fields.youtubeUrl = 'Enter a valid URL, e.g. https://www.youtube.com/watch?v=…';
 	if (isBadNumber(input.stockQty)) fields.stockQty = 'Enter a valid quantity (0 or more)';
 	if (isBadNumber(input.lowStockThreshold)) fields.lowStockThreshold = 'Enter a valid number (0 or more)';
 	if (input.seoTitle.length > 60) fields.seoTitle = 'Meta title must be 60 characters or fewer';
@@ -61,11 +53,13 @@ export function validateProductForm(input: ProductFormInput) {
 
 	const variantsInvalid = input.variants.some((v) => isBlank(v.name) || !isValidSizeChartUrl(v.sizeChartUrl));
 	const attributesInvalid = input.attributes.some((a) => isBlank(a.name) || isBlank(a.value));
+	const reelsInvalid = (input.reels ?? []).some((r) => !parseVideoSource(r.videoUrl));
 
 	const tabs = new Set<ProductTab>();
-	if (fields.title || fields.slug || fields.basePrice || fields.salePrice || fields.youtubeUrl) tabs.add('basic');
+	if (fields.title || fields.slug || fields.basePrice || fields.salePrice) tabs.add('basic');
 	if (variantsInvalid) tabs.add('variants');
 	if (attributesInvalid) tabs.add('attributes');
+	if (reelsInvalid) tabs.add('reels');
 	if (fields.stockQty || fields.lowStockThreshold) tabs.add('inventory');
 	if (fields.seoTitle || fields.seoDescription) tabs.add('seo');
 
@@ -73,4 +67,4 @@ export function validateProductForm(input: ProductFormInput) {
 }
 
 /** Tabs in display order, used to jump to the first one with a problem. */
-export const TAB_ORDER: ProductTab[] = ['basic', 'images', 'variants', 'attributes', 'inventory', 'seo'];
+export const TAB_ORDER: ProductTab[] = ['basic', 'images', 'variants', 'attributes', 'inventory', 'seo', 'reels'];

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import { cart, MAX_CART_QTY } from '$lib/stores/cart';
   import { untrack } from 'svelte';
   import { page } from '$app/stores';
@@ -8,6 +9,9 @@
   import { checkAllGroupsSelected, findFirstMissingGroup } from '$lib/utils/product-selection';
   import { combinedStockFromData } from '$lib/utils/stock';
   import { saleDiscount, applySale } from '$lib/utils/pricing';
+  import { parseVideoSource } from '$lib/utils/video';
+  import { nativeShare } from '$lib/utils/share';
+  import VideoPlayer from '$lib/components/storefront/VideoPlayer.svelte';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
@@ -132,6 +136,24 @@
     toastTimeout = setTimeout(() => (toastMsg = ''), 3000);
   }
 
+  // ── Product video: our own controls on the YouTube player (muted autoplay, like Reels) ──
+  let videoSource = $derived(parseVideoSource(data.videoUrl));
+  let videoMuted = $state(true);
+  let videoPaused = $state(false);
+  let videoProgress = $state(0);
+  let videoPlayer = $state<VideoPlayer | undefined>();
+  function onVideoProgress(t: number, d: number) {
+    videoProgress = d > 0 ? Math.min(1, t / d) : 0;
+  }
+  function seekVideo(e: MouseEvent) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    videoPlayer?.seek((e.clientX - rect.left) / rect.width);
+  }
+  async function shareProduct() {
+    const result = await nativeShare({ title: product.title, text: `${product.title} at ${store.name}`, url: location.href });
+    if (result === 'copied') showToast('Link copied');
+  }
+
   // Pulse animation: short-lived class added on CTA click (AC-12)
   let atcPulse = $state(false);
   let buyPulse = $state(false);
@@ -247,10 +269,6 @@
     return /colou?r/i.test(name);
   }
 
-  function extractYoutubeId(url: string): string | null {
-    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
-    return m ? m[1] : null;
-  }
 
   // Find material & dimensions from attributes
   let materialAttrRow = $derived(attributes.find((a) => /material/i.test(a.name)) ?? null);
@@ -325,7 +343,7 @@
     aria-label="Next image"
   >
     {#if activeImage}
-      <img src={activeImage} alt={product.title} class="pdp-main-img" />
+      <img src={mediaUrl(activeImage)} alt={product.title} class="pdp-main-img" />
     {:else}
       <div class="pdp-img-ph">📦</div>
     {/if}
@@ -344,7 +362,7 @@
           aria-label="View image {i + 1}"
           style={!colorImageUrl && i === activeImageIdx ? `border-color:var(--sf-primary);` : ''}
         >
-          <img src={img.url} alt="" />
+          <img src={mediaUrl(img.url)} alt="" />
         </button>
       {/each}
     </div>
@@ -524,21 +542,46 @@
   </div>
 </section>
 
-<!-- YouTube video -->
-{#if product.youtubeUrl}
-  {@const vid = extractYoutubeId(product.youtubeUrl)}
-  {#if vid}
-    <section class="pdp-video">
-      <div class="video-wrap">
-        <iframe
-          src="https://www.youtube.com/embed/{vid}"
-          title="Product video"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen
-        ></iframe>
+<!-- Product video (from Reels, or a legacy YouTube link) -->
+{#if videoSource}
+  <section class="pdp-video">
+    <div class="video-wrap" class:video-short={videoSource.isShort}>
+      <VideoPlayer
+        bind:this={videoPlayer}
+        source={videoSource}
+        title="{product.title} video"
+        muted={videoMuted}
+        paused={videoPaused}
+        onTogglePause={() => (videoPaused = !videoPaused)}
+        onProgress={onVideoProgress}
+      />
+
+      <div class="video-actions">
+        <button class="video-btn" onclick={() => (videoMuted = !videoMuted)} aria-label={videoMuted ? 'Unmute' : 'Mute'}>
+          {#if videoMuted}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5 6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+            </svg>
+          {:else}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>
+            </svg>
+          {/if}
+        </button>
+        <button class="video-btn" onclick={shareProduct} aria-label="Share">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+        </button>
       </div>
-    </section>
-  {/if}
+
+      <button class="video-progress" onclick={seekVideo} aria-label="Seek video" tabindex="-1">
+        <span class="video-progress-track">
+          <span class="video-progress-fill" style="width:{videoProgress * 100}%"></span>
+        </span>
+      </button>
+    </div>
+  </section>
 {/if}
 
 <!-- Reviews (AC-8) -->
@@ -618,7 +661,7 @@
         <a href="{basePath}/products/{rp.slug}" class="related-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg);">
           <div class="related-img-wrap">
             {#if rp.imageUrl}
-              <img src={rp.imageUrl} alt={rp.title} />
+              <img src={mediaUrl(rp.imageUrl)} alt={rp.title} />
             {:else}
               <div class="related-img-ph">📦</div>
             {/if}
@@ -647,6 +690,10 @@
     z-index: 9999;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     max-width: calc(100vw - 32px);
+  }
+  /* Clear the fixed mobile bottom nav */
+  @media (max-width: 1023px) {
+    .pdp-toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
   }
 
   /* ── Desktop two-column layout: gallery (sticky) / info ── */
@@ -937,8 +984,54 @@
 
   /* ── Video ── */
   .pdp-video { margin-bottom: 24px; }
-  .video-wrap { aspect-ratio: 16/9; border-radius: var(--sf-radius-lg, 12px); overflow: hidden; }
-  .video-wrap iframe { width: 100%; height: 100%; border: none; }
+  .video-wrap { position: relative; aspect-ratio: 16/9; border-radius: var(--sf-radius-lg, 12px); overflow: hidden; background: #000; }
+  .video-wrap.video-short { aspect-ratio: 9/16; max-width: 360px; margin-inline: auto; }
+  .video-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+  }
+  .video-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .video-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    height: 16px;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-end;
+  }
+  .video-progress-track {
+    position: relative;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.35);
+  }
+  .video-progress-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: #fff;
+    transition: width 0.25s linear;
+  }
 
   /* ── Reviews ── */
   .pdp-reviews { margin-bottom: 24px; }

@@ -119,6 +119,7 @@
     images={imageRows}
     variants={variantRows}
     attributes={attributeRows}
+    reels={data.reels}
     onSave={handleSave}
   />
 </div>

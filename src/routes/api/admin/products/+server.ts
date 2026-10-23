@@ -1,4 +1,5 @@
 import { sumFirstGroupStock } from '$lib/utils/stock';
+import { syncProductReels } from '$lib/server/productReels';
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
@@ -111,7 +112,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     lowStockThreshold,
     images,
     variants,
-    attributes
+    attributes,
+    reels
   } = parsed.data;
 
   if (salePrice !== null && salePrice !== undefined && salePrice >= basePrice) {
@@ -213,6 +215,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }))
     );
   }
+
+  if (reels?.length) await syncProductReels(db, store.id, product.id, reels);
 
   return json({ ...product }, { status: 201 });
 };

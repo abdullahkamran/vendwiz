@@ -1,7 +1,14 @@
 import { z } from 'zod';
+import { parseVideoSource } from '$lib/utils/video';
+import { MEDIA_PATH } from '$lib/media';
 
-/** An image reference: a full https/http link, or a file uploaded through the admin (/uploads/…). */
-export const IMAGE_REF = /^(https?:\/\/\S+|\/uploads\/(?!.*\.\.)[\w\-./]+)$/;
+/**
+ * An image reference: a full https/http link, a stored upload path ("<storeId>/categories/x.webp",
+ * see $lib/media), or a legacy local upload (/uploads/…).
+ */
+export const IMAGE_REF = new RegExp(
+  `^(https?:\\/\\/\\S+|\\/uploads\\/(?!.*\\.\\.)[\\w\\-./]+|${MEDIA_PATH.source.slice(1, -1)})$`
+);
 
 export const categorySchema = z.object({
   name: z.string().min(1).max(100),
@@ -47,6 +54,14 @@ export const attributeSchema = z.object({
   value: z.string().min(1)
 });
 
+/** A product reel edited from the product form (show/hide lives on the Reels page). */
+export const productReelSchema = z.object({
+  id: z.string().optional(),
+  videoUrl: z.string().refine((u) => !!parseVideoSource(u), 'Use a YouTube or YouTube Shorts link'),
+  caption: z.string().max(300).nullable().optional(),
+  sortOrder: z.number().int().default(0)
+});
+
 export const productSchema = z.object({
   title: z.string().min(1).max(200),
   slug: z.string().min(1).max(200).regex(/^[a-z0-9-]+$/),
@@ -64,7 +79,9 @@ export const productSchema = z.object({
   lowStockThreshold: z.number().int().min(0).default(5),
   images: z.array(z.object({ url: z.string(), sortOrder: z.number() })),
   variants: z.array(variantSchema),
-  attributes: z.array(attributeSchema)
+  attributes: z.array(attributeSchema),
+  // Omitted = leave the product's reels untouched
+  reels: z.array(productReelSchema).optional()
 });
 
 export const reorderSchema = z.array(z.object({

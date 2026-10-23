@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import { goto } from '$app/navigation';
   import { cart, MAX_CART_QTY } from '$lib/stores/cart';
   import Seo from '$lib/components/storefront/Seo.svelte';
@@ -317,7 +318,7 @@
             <a href="{basePath}/products/{product.slug}" class="product-card product-card--{cardLayout}" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
               <div class="product-card-img-wrap">
                 {#if product.imageUrl}
-                  <img src={product.imageUrl} alt={product.title} class="product-card-img" />
+                  <img src={mediaUrl(product.imageUrl)} alt={product.title} class="product-card-img" />
                 {:else}
                   <div class="product-card-img-ph">📦</div>
                 {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import { cart, cartDiscount } from '$lib/stores/cart';
   import { saveRecentOrder } from '$lib/stores/recentOrders';
   import { goto } from '$app/navigation';
@@ -328,7 +329,7 @@
         <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center;">
           <div style="width:48px; height:48px; border-radius:var(--sf-radius); overflow:hidden; background:var(--sf-border); flex-shrink:0;">
             {#if item.imageUrl}
-              <img src={item.imageUrl} alt="" style="width:100%; height:100%; object-fit:cover;" />
+              <img src={mediaUrl(item.imageUrl)} alt="" style="width:100%; height:100%; object-fit:cover;" />
             {:else}
               <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:1.25rem; color:var(--sf-muted);">📦</div>
             {/if}

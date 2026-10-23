@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import type { PageData } from './$types';
   import { IMAGE_REF } from '$lib/schemas/catalog';
   import { slugify } from '$lib/utils/slug';
@@ -107,6 +108,7 @@
     try {
       const body = new FormData();
       body.append('file', file);
+      body.append('folder', 'categories');
       const res = await fetch('/api/admin/upload', { method: 'POST', body });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -244,7 +246,7 @@
             <tr>
               <td>
                 {#if cat.imageUrl}
-                  <img src={cat.imageUrl} alt={cat.name} style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid #e5e5e5;" />
+                  <img src={mediaUrl(cat.imageUrl)} alt={cat.name} style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid #e5e5e5;" />
                 {:else}
                   <span style="display:inline-block; width:40px; height:40px; background:#f3f4f6; border-radius:4px; border:1px solid #e5e5e5;"></span>
                 {/if}
@@ -347,7 +349,7 @@
           {/if}
           {#if formImageUrl}
             <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
-              <img src={formImageUrl} alt="Category thumbnail preview" style="max-width:80px; max-height:80px; object-fit:cover; border-radius:4px; border:1px solid #e5e5e5;" />
+              <img src={mediaUrl(formImageUrl)} alt="Category thumbnail preview" style="max-width:80px; max-height:80px; object-fit:cover; border-radius:4px; border:1px solid #e5e5e5;" />
               <button type="button" class="btn btn-delete btn-sm" onclick={() => { formImageUrl = ''; imageError = ''; }}>Remove</button>
             </div>
           {/if}

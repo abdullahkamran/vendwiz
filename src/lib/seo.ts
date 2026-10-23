@@ -6,6 +6,7 @@
  */
 
 import { THEME_HEX } from './theme/tokens';
+import { mediaUrl } from './media';
 
 // ─── URL helpers ─────────────────────────────────────────────────────────────
 
@@ -13,6 +14,12 @@ import { THEME_HEX } from './theme/tokens';
 export function absUrl(origin: string, path: string): string {
 	const p = path.startsWith('/') ? path : `/${path}`;
 	return `${origin}${p}`;
+}
+
+/** Absolute URL for an image: a stored upload path, a site path, or an already-absolute link. */
+export function absImage(origin: string, ref: string): string {
+	const url = mediaUrl(ref);
+	return /^https?:\/\//.test(url) ? url : absUrl(origin, url);
 }
 
 /** Strip HTML tags from a string for use in meta description content. */
@@ -81,7 +88,7 @@ export function buildSeo({
 
 	// Image: passed value → store logo → store favicon → hard-coded fallback
 	const rawImage = image || store.logoUrl || store.faviconUrl || '/favicon.svg';
-	const ogImage = rawImage.startsWith('http') ? rawImage : absUrl(origin, rawImage);
+	const ogImage = absImage(origin, rawImage);
 
 	return {
 		canonical: absUrl(origin, path),
@@ -145,7 +152,7 @@ export function productJsonLd({
 		'@type': 'Product',
 		name: title,
 		description,
-		image: image.startsWith('http') ? image : absUrl(origin, image),
+		image: absImage(origin, image),
 		url: absUrl(origin, `/products/${slug}`),
 		offers: {
 			'@type': 'Offer',

@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { categories, discountCodes } from '$lib/server/db/schema';
 import { eq, asc, and } from 'drizzle-orm';
 import { deriveBasePath } from '$lib/utils/storefront-path';
+import { storeHasReels } from '$lib/server/productReels';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
   if (!locals.isStorefront || !locals.store) {
@@ -21,6 +22,9 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     .from(categories)
     .where(and(eq(categories.storeId, store.id), eq(categories.isDefault, false)))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
+
+  // Reels only appear in the menus once the store has at least one reel to show
+  const hasReelsPromise = storeHasReels(store.id);
 
   // Load one active discount code for the promo banner (first valid one)
   const [promoCode] = await db
@@ -42,6 +46,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     store,
     categories: storeCategories,
     promoCode: promoCode ?? null,
+    hasReels: await hasReelsPromise,
     basePath
   };
 };

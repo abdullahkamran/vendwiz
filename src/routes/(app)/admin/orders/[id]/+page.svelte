@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mediaUrl } from '$lib/media';
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 	import { paymentLabel } from '$lib/paymentInfo';
@@ -105,7 +106,7 @@
 						<div class="py-3 flex items-start gap-4">
 							{#if item.imageUrl}
 								<img
-									src={item.imageUrl}
+									src={mediaUrl(item.imageUrl)}
 									alt={item.productTitle}
 									class="w-14 h-14 rounded object-cover bg-gray-100 shrink-0"
 								/>

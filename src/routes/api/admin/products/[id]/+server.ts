@@ -1,4 +1,5 @@
 import { sumFirstGroupStock } from '$lib/utils/stock';
+import { syncProductReels } from '$lib/server/productReels';
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
@@ -112,7 +113,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     lowStockThreshold,
     images,
     variants,
-    attributes
+    attributes,
+    reels
   } = parsed.data;
 
   if (salePrice !== null && salePrice !== undefined && salePrice >= basePrice) {
@@ -147,7 +149,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
           description: description ?? null,
           seoTitle: seoTitle ?? null,
           seoDescription: seoDescription ?? null,
-          youtubeUrl: youtubeUrl || null,
+          ...(youtubeUrl !== undefined && { youtubeUrl: youtubeUrl || null }),
           isPublished,
           // With variants, inventory is the combined stock of the variants, not a separate figure
           stockQty: sumFirstGroupStock(variants) ?? stockQty,
@@ -226,6 +228,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
           }))
         );
       }
+
+      if (reels) await syncProductReels(tx, store.id, params.id, reels);
 
       const [txVariants, txAttributes] = await Promise.all([
         tx.select().from(productVariants).where(eq(productVariants.productId, params.id)),

@@ -365,6 +365,22 @@ export const reviews = pgTable('reviews', {
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
+// Short product videos shown in the storefront Reels feed
+export const productReels = pgTable('product_reels', {
+	id: text('id').primaryKey(),
+	storeId: text('store_id')
+		.notNull()
+		.references(() => stores.id, { onDelete: 'cascade' }),
+	productId: text('product_id')
+		.notNull()
+		.references(() => products.id, { onDelete: 'cascade' }),
+	videoUrl: text('video_url').notNull(), // YouTube / Shorts link or a direct .mp4/.webm file URL
+	caption: text('caption'),
+	isPublished: boolean('is_published').notNull().default(true),
+	sortOrder: integer('sort_order').notNull().default(0),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const storesRelations = relations(stores, ({ one, many }) => ({

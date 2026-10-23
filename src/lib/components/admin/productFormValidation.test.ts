@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { validateProductForm, isValidSizeChartUrl, type ProductFormInput } from './productFormValidation';
 
 const ok: ProductFormInput = {
-	title: 'Mug', slug: 'mug', basePrice: 10, youtubeUrl: '', stockQty: 0, lowStockThreshold: 5,
+	title: 'Mug', slug: 'mug', basePrice: 10, stockQty: 0, lowStockThreshold: 5,
 	seoTitle: '', seoDescription: '', variants: [{ name: 'Size' }], attributes: [{ name: 'Material', value: 'Clay' }]
 };
 
@@ -26,10 +26,6 @@ describe('validateProductForm', () => {
 		const r = validateProductForm({ ...ok, seoTitle: 'x'.repeat(61), stockQty: -1 });
 		expect(r.tabs.has('seo')).toBe(true);
 		expect(r.tabs.has('inventory')).toBe(true);
-	});
-	it('validates optional youtube url only when filled', () => {
-		expect(validateProductForm({ ...ok, youtubeUrl: 'nope' }).fields.youtubeUrl).toBeTruthy();
-		expect(validateProductForm({ ...ok, youtubeUrl: 'https://youtu.be/x' }).valid).toBe(true);
 	});
 });
 

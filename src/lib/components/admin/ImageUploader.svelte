@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   type ImageRow = { id?: string; url: string; sortOrder: number };
 
   let {
@@ -18,6 +19,7 @@
   async function uploadFile(file: File): Promise<string | null> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('folder', 'products');
     try {
       const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
       if (!res.ok) {
@@ -147,7 +149,7 @@
           ondrop={(e) => onItemDrop(e, i)}
           ondragend={onItemDragEnd}
         >
-          <img src={img.url} alt="Product image {i + 1}" />
+          <img src={mediaUrl(img.url)} alt="Product image {i + 1}" />
           {#if i === 0}
             <span class="primary-badge">Primary</span>
           {/if}

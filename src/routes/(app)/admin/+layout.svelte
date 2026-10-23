@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mediaUrl } from '$lib/media';
 	import { page } from '$app/stores';
 	import { signOut } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
@@ -41,7 +42,7 @@
 		<div class="flex items-center gap-3 px-5 py-6 border-b border-[var(--color-border)]">
 			{#if data.store.logoUrl}
 				<img
-					src={data.store.logoUrl}
+					src={mediaUrl(data.store.logoUrl)}
 					alt={data.store.name}
 					class="w-8 h-8 rounded object-contain bg-[var(--color-surface-2)]"
 				/>

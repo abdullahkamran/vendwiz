@@ -16,7 +16,8 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"uploads:migrate": "node --env-file=.env scripts/migrate-uploads-to-cdn.mjs"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.63.0",
@@ -36,6 +37,7 @@
 		"vitest": "^2.1.9"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.1154.0",
 		"@lucia-auth/adapter-drizzle": "^1.1.0",
 		"@tiptap/core": "^2.14.0",
 		"@tiptap/extension-link": "^2.14.0",

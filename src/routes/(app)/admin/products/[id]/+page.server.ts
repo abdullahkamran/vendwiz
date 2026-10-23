@@ -7,6 +7,7 @@ import {
   productAttributes,
   productOptionGroups,
   productOptionValues,
+  productReels,
   stores
 } from '$lib/server/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
@@ -44,11 +45,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const rawImages = ((product.images as ProductImage[]) ?? []).sort((a, b) => a.order - b.order);
   const images = rawImages.map((img, i) => ({ id: undefined, url: img.url, sortOrder: i }));
 
-  const [variants, attributes, allCategories, optionGroupRows] = await Promise.all([
+  const [variants, attributes, allCategories, optionGroupRows, reels] = await Promise.all([
     db.select().from(productVariants).where(eq(productVariants.productId, params.id)),
     db.select().from(productAttributes).where(eq(productAttributes.productId, params.id)),
     db.select().from(categories).where(and(eq(categories.storeId, store.id), eq(categories.isDefault, false))).orderBy(asc(categories.sortOrder)),
-    db.select().from(productOptionGroups).where(eq(productOptionGroups.productId, params.id))
+    db.select().from(productOptionGroups).where(eq(productOptionGroups.productId, params.id)),
+    db
+      .select({ id: productReels.id, videoUrl: productReels.videoUrl, caption: productReels.caption, sortOrder: productReels.sortOrder })
+      .from(productReels)
+      .where(and(eq(productReels.productId, params.id), eq(productReels.storeId, store.id)))
+      .orderBy(asc(productReels.sortOrder), asc(productReels.createdAt))
   ]);
 
   // Load option values for each group (mirrors api/admin/products/[id]/+server.ts GET)
@@ -65,6 +71,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     variants,
     attributes,
     optionGroups,
+    reels: reels.map((r) => ({ ...r, caption: r.caption ?? '' })),
     categories: allCategories,
     store
   };

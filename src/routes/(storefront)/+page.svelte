@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mediaUrl } from '$lib/media';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import Seo from '$lib/components/storefront/Seo.svelte';
@@ -75,7 +76,7 @@
         aria-hidden={i !== activeSlide}
       >
         {#if slide.imageUrl}
-          <img src={slide.imageUrl} alt={slide.title} class="sf-hero-bg" />
+          <img src={mediaUrl(slide.imageUrl)} alt={slide.title} class="sf-hero-bg" />
           <div class="sf-hero-overlay"></div>
         {/if}
         <div class="sf-hero-content">
@@ -127,7 +128,7 @@
         <div class="sf-cat-card-group">
           <a href="{basePath}/products?category={cat.id}" class="sf-cat-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
             {#if cat.imageUrl}
-              <img src={cat.imageUrl} alt={cat.name} class="sf-cat-img" />
+              <img src={mediaUrl(cat.imageUrl)} alt={cat.name} class="sf-cat-img" />
             {:else}
               <div class="sf-cat-placeholder">🏷️</div>
             {/if}
@@ -171,7 +172,7 @@
         >
           <div class="sf-card-img-wrap">
             {#if product.imageUrl}
-              <img src={product.imageUrl} alt={product.title} class="sf-card-img" />
+              <img src={mediaUrl(product.imageUrl)} alt={product.title} class="sf-card-img" />
             {:else}
               <div class="sf-card-img-placeholder">📦</div>
             {/if}

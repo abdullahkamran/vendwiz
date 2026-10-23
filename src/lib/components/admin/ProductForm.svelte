@@ -3,6 +3,7 @@
   import ImageUploader from './ImageUploader.svelte';
   import VariantsEditor from './VariantsEditor.svelte';
   import { validateProductForm, TAB_ORDER } from './productFormValidation';
+  import { parseVideoSource, videoThumb } from '$lib/utils/video';
   import { sumFirstGroupStock } from '$lib/utils/stock';
   import AttributesTable from './AttributesTable.svelte';
   import { slugify } from '$lib/utils/slug';
@@ -51,11 +52,14 @@
     description: string | null;
     seoTitle: string | null;
     seoDescription: string | null;
-    youtubeUrl: string | null;
+    youtubeUrl?: string | null;
     isPublished: boolean;
     stockQty: number;
     lowStockThreshold: number;
   };
+
+  // Optional YouTube reels for the storefront Reels feed (also managed under Admin -> Reels)
+  type ReelRow = { id?: string; videoUrl: string; caption: string; sortOrder: number };
 
   let {
     product = null,
@@ -63,6 +67,7 @@
     images: initialImages = [],
     variants: initialVariants = [],
     attributes: initialAttributes = [],
+    reels: initialReels = [],
     onSave
   }: {
     product?: ProductData | null;
@@ -70,11 +75,12 @@
     images?: ImageRow[];
     variants?: VariantRow[];
     attributes?: AttributeRow[];
+    reels?: ReelRow[];
     onSave: (data: Record<string, unknown>) => Promise<void>;
   } = $props();
 
   // Active tab
-  let activeTab = $state<'basic' | 'images' | 'variants' | 'attributes' | 'inventory' | 'seo'>(
+  let activeTab = $state<'basic' | 'images' | 'variants' | 'attributes' | 'inventory' | 'seo' | 'reels'>(
     'basic'
   );
 
@@ -86,7 +92,6 @@
   // Optional sale price (empty = not on sale)
   let salePrice = $state<number | null>(product?.salePrice != null ? Number(product.salePrice) : null);
   let description = $state(product?.description ?? '');
-  let youtubeUrl = $state(product?.youtubeUrl ?? '');
   let isPublished = $state(product?.isPublished ?? true);
   let stockQty = $state(product?.stockQty ?? 0);
   let lowStockThreshold = $state(product?.lowStockThreshold ?? 5);
@@ -112,9 +117,18 @@
   // Set after a failed save attempt so invalid / missing fields show in red
   let showErrors = $state(false);
 
+  let reels = $state<ReelRow[]>(initialReels.map((r) => ({ ...r })));
+  function addReel() {
+    const next = reels.length ? Math.max(...reels.map((r) => Number(r.sortOrder) || 0)) + 1 : 0;
+    reels = [...reels, { videoUrl: '', caption: '', sortOrder: next }];
+  }
+  function removeReel(i: number) {
+    reels = reels.filter((_, idx) => idx !== i);
+  }
+
   // Mark unsaved on any change
   $effect(() => {
-    title; slug; categoryId; basePrice; salePrice; description; youtubeUrl; isPublished;
+    title; slug; categoryId; basePrice; salePrice; description; isPublished; reels;
     stockQty; lowStockThreshold; seoTitle; seoDescription;
     unsaved = true;
   });
@@ -153,8 +167,8 @@
 
   let validation = $derived(
     validateProductForm({
-      title, slug, basePrice, salePrice, youtubeUrl, stockQty: effectiveStock, lowStockThreshold, seoTitle, seoDescription,
-      variants, attributes
+      title, slug, basePrice, salePrice, stockQty: effectiveStock, lowStockThreshold, seoTitle, seoDescription,
+      variants, attributes, reels
     })
   );
   let fe = $derived(validation.fields);
@@ -176,7 +190,6 @@
         basePrice,
         salePrice: salePrice ?? null,
         description,
-        youtubeUrl: youtubeUrl || '',
         isPublished,
         stockQty: effectiveStock,
         lowStockThreshold,
@@ -184,7 +197,8 @@
         seoDescription,
         images: images.map((img, i) => ({ url: img.url, sortOrder: i })),
         variants,
-        attributes
+        attributes,
+        reels: reels.map((r) => ({ id: r.id, videoUrl: r.videoUrl.trim(), caption: r.caption.trim() || null, sortOrder: Number(r.sortOrder) || 0 }))
       });
       unsaved = false;
     } catch (err) {
@@ -200,7 +214,8 @@
     { key: 'variants', label: 'Variants' },
     { key: 'attributes', label: 'Attributes' },
     { key: 'inventory', label: 'Inventory' },
-    { key: 'seo', label: 'SEO' }
+    { key: 'seo', label: 'SEO' },
+    { key: 'reels', label: 'Reels' }
   ];
 </script>
 
@@ -299,19 +314,6 @@
             {#if showErrors && fe.salePrice}<span class="field-error-msg">{fe.salePrice}</span>{/if}
             <span class="field-hint">Must be lower than the base price. Customers see the base price crossed out.</span>
           </div>
-        </div>
-
-        <div class="form-field">
-          <label for="f-youtube">YouTube URL (optional)</label>
-          <input
-            id="f-youtube"
-            type="url"
-            bind:value={youtubeUrl}
-            placeholder="https://www.youtube.com/watch?v=..."
-            class:field-invalid={showErrors && fe.youtubeUrl}
-            aria-invalid={showErrors && !!fe.youtubeUrl}
-          />
-          {#if showErrors && fe.youtubeUrl}<span class="field-error-msg">{fe.youtubeUrl}</span>{/if}
         </div>
 
         <div class="form-field">
@@ -470,6 +472,58 @@
         {/if}
       </div>
     {/if}
+
+    <!-- Reels (optional) -->
+    {#if activeTab === 'reels'}
+      <div class="form-section">
+        <p class="field-hint reels-intro">
+          Optional. Add YouTube or YouTube Shorts videos of this product to show in the storefront Reels feed,
+          with its price and an Add to cart button. All reels can also be managed under Admin &rarr; Reels.
+        </p>
+
+        {#each reels as reel, i}
+          {@const src = parseVideoSource(reel.videoUrl)}
+          {@const bad = showErrors && !src}
+          <div class="reel-row">
+            <div class="reel-thumb">
+              {#if src}<img src={videoThumb(src)} alt="" />{:else}<span>&#9654;</span>{/if}
+            </div>
+            <div class="reel-fields">
+              <div class="form-field">
+                <label for="f-reel-url-{i}">YouTube link</label>
+                <input
+                  id="f-reel-url-{i}"
+                  type="text"
+                  inputmode="url"
+                  bind:value={reel.videoUrl}
+                  placeholder="https://www.youtube.com/shorts/..."
+                  class:field-invalid={bad}
+                  aria-invalid={bad}
+                />
+                {#if bad}
+                  <span class="field-error-msg">Enter a YouTube or YouTube Shorts link</span>
+                {:else if reel.videoUrl.trim() && src}
+                  <span class="field-hint">&#10003; {src.isShort ? 'YouTube Short' : 'YouTube video'}</span>
+                {/if}
+              </div>
+              <div class="reel-meta">
+                <div class="form-field reel-caption-field">
+                  <label for="f-reel-caption-{i}">Caption (optional)</label>
+                  <input id="f-reel-caption-{i}" type="text" maxlength="300" bind:value={reel.caption} placeholder="e.g. Just launched" />
+                </div>
+                <div class="form-field reel-order-field">
+                  <label for="f-reel-order-{i}">Order</label>
+                  <input id="f-reel-order-{i}" type="number" bind:value={reel.sortOrder} />
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn-delete btn-sm reel-remove" onclick={() => removeReel(i)} aria-label="Remove reel">Remove</button>
+          </div>
+        {/each}
+
+        <button type="button" class="btn-add" onclick={addReel}>+ Add reel</button>
+      </div>
+    {/if}
   </div>
 
   <!-- Sticky footer save bar -->
@@ -504,6 +558,35 @@
     overflow-x: auto;
     background: #fafafa;
   }
+
+  .reels-intro { display: block; margin-bottom: 1rem; }
+  .reel-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+  }
+  .reel-thumb {
+    width: 56px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+  }
+  .reel-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .reel-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .reel-meta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .reel-caption-field { flex: 1; min-width: 180px; }
+  .reel-order-field { width: 90px; }
+  .reel-remove { flex-shrink: 0; }
 
   .tab-btn {
     background: none;
@@ -558,7 +641,6 @@
 
   .form-field input[type='text'],
   .form-field input[type='number'],
-  .form-field input[type='url'],
   .form-field select,
   .form-field textarea {
     padding: 0.5rem 0.75rem;

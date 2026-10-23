@@ -2,6 +2,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { readFile } from 'fs/promises';
 import { join, resolve, sep } from 'path';
 import { THEME_HEX } from '$lib/theme/tokens';
+import { mediaUrl } from '$lib/media';
 import { normaliseBase, resolvePwaStore } from '$lib/server/pwaStore';
 
 // Per-store PWA images, rendered from the store's own favicon/logo and name:
@@ -17,7 +18,8 @@ const SIZES: Record<string, [number, number]> = {
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-async function loadSource(src: string | null | undefined, origin: string): Promise<Buffer | null> {
+async function loadSource(ref: string | null | undefined, origin: string): Promise<Buffer | null> {
+  const src = mediaUrl(ref);
   if (!src) return null;
   try {
     if (src.startsWith('/uploads/')) {
