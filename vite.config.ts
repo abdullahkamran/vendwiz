@@ -8,5 +8,5 @@ export default defineConfig({
 		// Listen on all interfaces so the dev server is reachable from phones on the LAN
 		host: true,
 		allowedHosts: ['.nip.io']
-	}
+	},
 });
