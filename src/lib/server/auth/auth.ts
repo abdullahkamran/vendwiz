@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../db';
 import * as schema from '../db/schema';
-import { BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { sendEmail } from '../email';
 
@@ -35,7 +35,7 @@ export const auth = betterAuth({
 		}
 	}),
 	baseURL: PUBLIC_APP_URL,
-	secret: BETTER_AUTH_SECRET,
+	secret: env.BETTER_AUTH_SECRET,
 	// better-auth rejects sign-in POSTs whose Origin isn't baseURL (INVALID_ORIGIN, 403).
 	// In dev the app is opened via localhost, *.localhost and whatever LAN IP the machine
 	// currently has, which rarely matches PUBLIC_APP_URL — so trust those request origins.
@@ -61,9 +61,9 @@ export const auth = betterAuth({
 	},
 	socialProviders: {
 		google: {
-			clientId: GOOGLE_CLIENT_ID,
-			clientSecret: GOOGLE_CLIENT_SECRET,
-			enabled: !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET)
+			clientId: env.GOOGLE_CLIENT_ID ?? '',
+			clientSecret: env.GOOGLE_CLIENT_SECRET ?? '',
+			enabled: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
 		}
 	},
 	session: {

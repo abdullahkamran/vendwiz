@@ -14,7 +14,8 @@
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "drizzle-kit migrate",
+		"db:migrate": "node scripts/migrate.mjs",
+		"db:seed": "node scripts/seed.mjs",
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",
 		"uploads:migrate": "node --env-file=.env scripts/migrate-uploads-to-cdn.mjs"

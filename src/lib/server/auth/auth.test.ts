@@ -1,7 +1,7 @@
 /**
  * Tests for the auth configuration wiring.
  *
- * auth.ts imports from SvelteKit virtual modules ($env/static/private,
+ * auth.ts imports from SvelteKit virtual modules ($env/dynamic/private,
  * $env/static/public) and from the database, which makes live importing
  * impractical in Vitest. Instead these tests inspect the source text to verify
  * the structural requirements that are impossible to satisfy without the
