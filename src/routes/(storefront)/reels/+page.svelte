@@ -293,12 +293,12 @@
 {/if}
 
 <style>
-  /* Feed fills the space between the sticky header (64px) and the bottom nav (60px) on mobile */
+  /* Feed fills the space between the sticky header (72px) and the bottom nav (60px) on mobile */
   .reels-page {
     margin-inline: -16px; /* full-bleed inside .sf-container */
   }
   .reels-feed {
-    height: calc(100dvh - 64px); /* refined by fitFeed() once mounted */
+    height: calc(100dvh - 72px); /* refined by fitFeed() once mounted */
     overflow-y: auto;
     scroll-snap-type: y mandatory;
     overscroll-behavior-y: contain;

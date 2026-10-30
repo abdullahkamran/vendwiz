@@ -49,7 +49,7 @@
 </svelte:head>
 
 <div class="confirm-wrap">
-  <div style="width:80px; height:80px; background:#dcfce7; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.5rem; margin:0 auto 24px;">
+  <div style="width:80px; height:80px; background:#16a34a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.5rem; margin:0 auto 24px;">
     ✓
   </div>
 
@@ -83,13 +83,12 @@
 
   <div style="display:flex; flex-direction:column; gap:12px; align-items:center;">
 
-    <a href="{basePath}/track"
-      style="padding:12px 28px; background:var(--sf-surface); color:var(--sf-text); border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
+    <!-- Opens the track page with this order already looked up -->
+    <a href="{basePath}/track{orderRef ? `?ref=${encodeURIComponent(orderRef)}` : ''}" class="confirm-btn confirm-btn--outline">
       Track Your Order
     </a>
 
-    <a href="{basePath}/products"
-      style="padding:12px 28px; background:var(--sf-primary); color:var(--sf-on-primary); border-radius:10px; text-decoration:none; font-weight:600; font-size:0.9rem;">
+    <a href="{basePath}/products" class="confirm-btn confirm-btn--primary">
       Continue Shopping
     </a>
   </div>
@@ -101,5 +100,29 @@
     margin: 0 auto;
     padding: 72px 24px 48px;
     text-align: center;
+  }
+  .confirm-btn {
+    display: inline-block;
+    min-width: 220px;
+    box-sizing: border-box;
+    padding: 12px 28px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  }
+  .confirm-btn:hover { transform: translateY(-1px); }
+  /* Outlined so it stays visible on any page background, light or dark */
+  .confirm-btn--outline {
+    border: 2px solid var(--sf-text);
+    color: var(--sf-text);
+    background: transparent;
+  }
+  .confirm-btn--outline:hover { background: var(--sf-text); color: var(--sf-bg); }
+  .confirm-btn--primary {
+    border: 2px solid var(--sf-primary);
+    background: var(--sf-primary);
+    color: var(--sf-on-primary);
   }
 </style>

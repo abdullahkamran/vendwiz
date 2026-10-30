@@ -4,8 +4,9 @@ import { storePolicies } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { renderMarkdown } from '$lib/server/markdown';
+import { defaultPrivacyPolicy } from '$lib/server/privacyPolicy';
 
-const VALID_TYPES = ['return', 'shipping', 'terms', 'faq'] as const;
+const VALID_TYPES = ['return', 'shipping', 'terms', 'faq', 'privacy'] as const;
 type PolicyType = (typeof VALID_TYPES)[number];
 
 /** Maps URL slugs to their canonical DB type values where they differ. */
@@ -23,11 +24,24 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     throw error(404, 'Store not found');
   }
 
-  const [policy] = await db
+  let [policy] = await db
     .select()
     .from(storePolicies)
     .where(and(eq(storePolicies.storeId, locals.store.id), eq(storePolicies.type, TYPE_ALIAS[type] ?? type)))
     .limit(1);
+
+  // Every store has a privacy policy (Google Play requires one for the Android app):
+  // fall back to the standard text until the owner writes their own.
+  if (type === 'privacy' && !policy?.content) {
+    policy = {
+      id: policy?.id ?? 'default-privacy',
+      storeId: locals.store.id,
+      type,
+      title: policy?.title || 'Privacy Policy',
+      content: defaultPrivacyPolicy(locals.store),
+      updatedAt: policy?.updatedAt ?? new Date()
+    };
+  }
 
   if (!policy || !policy.content) {
     throw error(404, 'Policy not found');
@@ -37,7 +51,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     return: 'Return Policy',
     shipping: 'Shipping Info',
     terms: 'Terms & Conditions',
-    faq: 'FAQ'
+    faq: 'FAQ',
+    privacy: 'Privacy Policy'
   };
 
   // Render markdown to HTML so **bold** → <strong> and pipe tables → <table>

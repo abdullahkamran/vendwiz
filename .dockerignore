@@ -1,0 +1,17 @@
+node_modules
+build
+.svelte-kit
+.git
+.vscode
+.env
+.env.*
+static/uploads
+e2e
+test-results
+playwright-report
+blob-report
+design
+specs
+*.md
+Dockerfile
+docker-compose.yml

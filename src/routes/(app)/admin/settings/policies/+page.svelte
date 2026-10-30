@@ -12,7 +12,8 @@
 		{ id: 'return_refund', label: 'Return & Refund' },
 		{ id: 'shipping', label: 'Shipping Info' },
 		{ id: 'terms', label: 'Terms of Service' },
-		{ id: 'faq', label: 'FAQ' }
+		{ id: 'faq', label: 'FAQ' },
+		{ id: 'privacy', label: 'Privacy Policy' }
 	];
 
 	let activeTab = $state('about');
@@ -107,7 +108,7 @@
 
 				<div class="space-y-4">
 					<div>
-						<label class="block text-sm font-medium text-[--color-text] mb-1" for="title-{pt.id}">
+						<label class="block text-sm font-semibold text-[--color-text] mb-1" for="title-{pt.id}">
 							Title
 						</label>
 						<input
@@ -121,9 +122,17 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-[--color-text] mb-1" for="content-{pt.id}">
+						<label class="block text-sm font-semibold text-[--color-text] mb-1" for="content-{pt.id}">
 							Content
 						</label>
+
+						{#if pt.id === 'privacy'}
+							<p class="text-xs text-[--color-text-muted] mb-2 leading-relaxed p-2 border border-[--color-border] rounded-lg bg-[--color-surface]">
+								Leave this empty to show a standard privacy policy that describes the data your store collects
+								(<a href="{data.storeUrl}/policies/privacy" target="_blank" rel="noopener" class="underline">preview</a>).
+								Google Play requires one if you publish an Android app.
+							</p>
+						{/if}
 
 						{#if pt.id === 'faq'}
 							<!-- FAQ format guide -->

@@ -3,6 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { env } from '$env/dynamic/private';
+import { building } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { sendEmail } from '../email';
 
@@ -35,7 +36,8 @@ export const auth = betterAuth({
 		}
 	}),
 	baseURL: PUBLIC_APP_URL,
-	secret: env.BETTER_AUTH_SECRET,
+	// The build imports this module with no env (e.g. in Docker); the real secret is read at startup
+	secret: building ? 'build-time-placeholder-not-used-at-runtime' : env.BETTER_AUTH_SECRET,
 	// better-auth rejects sign-in POSTs whose Origin isn't baseURL (INVALID_ORIGIN, 403).
 	// In dev the app is opened via localhost, *.localhost and whatever LAN IP the machine
 	// currently has, which rarely matches PUBLIC_APP_URL — so trust those request origins.

@@ -346,7 +346,7 @@
     }
     .cart-summary-col {
       position: sticky;
-      top: 96px;
+      top: 112px;
     }
   }
 

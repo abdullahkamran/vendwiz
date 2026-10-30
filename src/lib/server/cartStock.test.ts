@@ -42,12 +42,13 @@ describe('findStockIssues', () => {
 		const [issue] = await findStockIssues('s', [{ productId: 'p1', quantity: 6 }]);
 		expect(issue.available).toBe(5);
 		expect(issue.message).not.toMatch(/\d/);
+		expect(issue.message).toBe('Not enough stock for Mug. Please choose a smaller quantity.');
 	});
 
 	it('says "out of stock" when nothing is left', async () => {
 		rows.products = [product({ stockQty: 0 })];
 		const [issue] = await findStockIssues('s', [{ productId: 'p1', quantity: 1 }]);
-		expect(issue.message).toBe('Mug is out of stock');
+		expect(issue.message).toBe('Mug is out of stock. Please remove it from your cart.');
 	});
 
 	it('checks the selected option\'s own stock, not the product stock', async () => {

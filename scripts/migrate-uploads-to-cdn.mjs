@@ -40,7 +40,7 @@ const s3 = new S3Client({
 const sql = postgres(env('DATABASE_URL'), { max: 1 });
 
 const MIME = { webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', avif: 'image/avif' };
-const FOLDERS = 'products|variants|categories|content|branding'; // keep in sync with src/lib/media.ts
+const FOLDERS = 'products|variants|categories|content|branding|slides'; // keep in sync with src/lib/media.ts
 const LEGACY_PATH = /\/uploads\/[\w\-./]+/g;
 const RELATIVE_PATH = new RegExp(`(?<![\\w/.:-])[\\w-]+/(?:${FOLDERS})/[\\w-]+\\.[a-z0-9]+`, 'g');
 

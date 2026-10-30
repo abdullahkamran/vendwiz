@@ -36,7 +36,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     '/policies/return',
     '/policies/shipping',
     '/policies/terms',
-    '/policies/faq'
+    '/policies/faq',
+    '/policies/privacy'
   ].map((path) => `  <url><loc>${base}${path}</loc></url>`);
 
   const productUrls = publishedProducts.map((p) => {

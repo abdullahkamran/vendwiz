@@ -46,7 +46,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   let url: string;
   try {
-    url = await saveImage(buffer, { storeId: locals.store.id, folder }, { width: 1200, height: 1200, quality: 85 });
+    // Slideshow images span the full window width, so keep them larger
+    const size = folder === 'slides' ? { width: 2400, height: 1600 } : { width: 1200, height: 1200 };
+    url = await saveImage(buffer, { storeId: locals.store.id, folder }, { ...size, quality: 85 });
   } catch (err) {
     console.error('Image upload failed', err);
     return error(400, 'Could not process this image');

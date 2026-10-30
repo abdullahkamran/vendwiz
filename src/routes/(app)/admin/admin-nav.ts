@@ -17,6 +17,7 @@ export const navItems = [
 	{ href: '/admin/analytics', label: 'Analytics', icon: '📊' },
 	{ href: '/admin/shipping', label: 'Shipping & Tax', icon: '🚚' },
 	{ href: '/admin/settings', label: 'Settings', icon: '⚙️' },
+	{ href: '/admin/app', label: 'Android App', icon: '📱' },
 	{ href: '/admin/account', label: 'Account', icon: '👤' }
 ] as const;
 

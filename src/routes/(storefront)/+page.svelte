@@ -5,31 +5,39 @@
   import Seo from '$lib/components/storefront/Seo.svelte';
   import { websiteJsonLd } from '$lib/seo';
   import { buildCategoryTree } from '$lib/utils/category-tree';
+  import ProductMedia from '$lib/components/storefront/ProductMedia.svelte';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
   let store = $derived(data.store);
   let featured = $derived(data.featured);
   let categories = $derived(data.categories ?? []);
-  let promoCode = $derived(data.promoCode ?? null);
   let basePath = $derived(data.basePath ?? '');
 
   // Build tree for the category grid; slice to 6 parent nodes
   let categoryTree = $derived(buildCategoryTree(categories).slice(0, 6));
 
   // ── Slideshow hero (AC-5): auto-advances every 4s ──────────────────────────
-  const heroSlides = $derived(
-    featured.slice(0, 4).map((p) => ({
-      title: p.title,
-      imageUrl: p.imageUrl,
-      slug: p.slug
+  // The owner's own slides (Settings → Announcement) when set; otherwise the latest
+  // products, with the store name on the first slide.
+  type Slide = { title: string; description: string; imageUrl: string | null };
+  const ownSlides = $derived<Slide[]>(
+    (store.heroSlides ?? []).map((s) => ({ title: s.title, description: s.description, imageUrl: s.imageUrl }))
+  );
+  const productSlides = $derived<Slide[]>(
+    featured.slice(0, 4).map((p, i) => ({
+      title: i === 0 ? store.name : p.title,
+      description: i === 0 ? 'Discover our latest collection' : '',
+      imageUrl: p.imageUrl
     }))
   );
   // Fall back to a single generic slide if no products
-  let slides = $derived(
-    heroSlides.length > 0
-      ? heroSlides
-      : [{ title: store.name, imageUrl: null as string | null, slug: null as string | null }]
+  let slides = $derived<Slide[]>(
+    ownSlides.length > 0
+      ? ownSlides
+      : productSlides.length > 0
+        ? productSlides
+        : [{ title: store.name, description: 'Discover our latest collection', imageUrl: null }]
   );
   let activeSlide = $state(0);
   let slideInterval: ReturnType<typeof setInterval>;
@@ -76,15 +84,15 @@
         aria-hidden={i !== activeSlide}
       >
         {#if slide.imageUrl}
-          <img src={mediaUrl(slide.imageUrl)} alt={slide.title} class="sf-hero-bg" />
+          <img src={mediaUrl(slide.imageUrl)} alt={slide.title || store.name} class="sf-hero-bg" />
           <div class="sf-hero-overlay"></div>
         {/if}
         <div class="sf-hero-content">
-          {#if i === 0}
-            <h1 class="sf-hero-title">{store.name}</h1>
-            <p class="sf-hero-sub">Discover our latest collection</p>
-          {:else}
-            <h2 class="sf-hero-title">{slide.title}</h2>
+          {#if slide.title}
+            <svelte:element this={i === 0 ? 'h1' : 'h2'} class="sf-hero-title">{slide.title}</svelte:element>
+          {/if}
+          {#if slide.description}
+            <p class="sf-hero-sub">{slide.description}</p>
           {/if}
           <a href="{basePath}/products" class="sf-hero-cta">Shop Now</a>
         </div>
@@ -106,18 +114,6 @@
     {/each}
   </div>
 </section>
-
-<!-- ── Promo / Discount Code Banner (AC-5) — always rendered ─────────────── -->
-<div class="sf-promo-banner" style="background:var(--sf-surface); border:var(--sf-card-border); border-radius:var(--sf-radius);">
-  {#if promoCode}
-    <span class="sf-promo-text">
-      🎉 Use code <strong class="sf-promo-code">{promoCode.code}</strong>
-      for {promoCode.type === 'percentage' ? `${promoCode.value}% off` : `${store.currencySymbol} ${promoCode.value} off`}
-    </span>
-  {:else}
-    <span class="sf-promo-text">🛍️ Welcome to {store.name} — browse our latest arrivals!</span>
-  {/if}
-</div>
 
 <!-- ── 3-Column Category Grid (AC-5) — always rendered ───────────────────── -->
 <section class="sf-section">
@@ -165,26 +161,27 @@
 
     <div class="sf-arrivals-row">
       {#each featured as product}
-        <a
-          href="{basePath}/products/{product.slug}"
+        <div
           class="sf-product-card sf-product-card--{cardLayout}"
-          style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);"
+          style={cardLayout === 'overlay' ? 'border-radius:var(--sf-radius-lg);' : 'border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);'}
         >
           <div class="sf-card-img-wrap">
-            {#if product.imageUrl}
-              <img src={mediaUrl(product.imageUrl)} alt={product.title} class="sf-card-img" />
-            {:else}
-              <div class="sf-card-img-placeholder">📦</div>
-            {/if}
+            <ProductMedia
+              src={product.imageUrl}
+              alt={product.title}
+              href="{basePath}/products/{product.slug}"
+              shareUrl="{basePath}/products/{product.slug}"
+              shareTitle="{product.title} | {store.name}"
+            />
           </div>
-          <div class="sf-card-info">
+          <a href="{basePath}/products/{product.slug}" class="sf-card-info">
             <p class="sf-card-title">{product.title}</p>
             <p class="sf-card-price" style="color:var(--sf-primary);">{store.currencySymbol} {Number(product.basePrice).toLocaleString()}</p>
             {#if product.stockQty === 0}
               <span class="sf-badge-oos">Out of Stock</span>
             {/if}
-          </div>
-        </a>
+          </a>
+        </div>
       {/each}
     </div>
   </section>
@@ -199,15 +196,18 @@
   .sf-hero {
     position: relative;
     overflow: hidden;
-    min-height: 260px;
+    margin-inline: calc(50% - 50vw); /* edge to edge on every screen, no white strips at the sides */
   }
   .sf-hero-slides {
     position: relative;
-    min-height: 260px;
+    min-height: 320px;
   }
   .sf-hero-slide {
     position: absolute;
     inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     opacity: 0;
     transition: opacity 0.6s ease;
     pointer-events: none;
@@ -216,7 +216,24 @@
     opacity: 1;
     pointer-events: auto;
     position: relative;
-    min-height: 260px;
+    min-height: 320px;
+  }
+  /* Desktop: taller, and running up under the transparent header (104 px + 1 px border) */
+  @media (min-width: 1024px) {
+    .sf-hero {
+      margin-top: -105px; /* header height 104 px + its 1 px bottom border */
+    }
+    .sf-hero-slides,
+    .sf-hero-slide--active {
+      min-height: clamp(540px, 78vh, 760px);
+    }
+    .sf-hero-content {
+      padding: 152px 48px 88px;
+      gap: 18px;
+    }
+    .sf-hero .sf-hero-title { font-size: 4rem; }
+    .sf-hero .sf-hero-sub { font-size: 1.125rem; }
+    .sf-hero .sf-hero-cta { padding: 13px 36px; font-size: 1rem; }
   }
   .sf-hero-bg {
     position: absolute;
@@ -235,7 +252,7 @@
     position: relative;
     z-index: 2;
     text-align: center;
-    padding: 48px 24px 36px;
+    padding: 48px 24px 52px; /* bottom room for the slide dots */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -244,7 +261,9 @@
   .sf-hero-title {
     font-family: var(--sf-heading-font, system-ui);
     font-weight: var(--sf-heading-weight, 700);
-    font-size: 1.75rem;
+    font-size: 2.25rem;
+    line-height: 1.15;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
     letter-spacing: var(--sf-letter-spacing, 0);
     margin: 0;
     text-transform: var(--sf-btn-transform, none);
@@ -254,27 +273,43 @@
     opacity: 0.9;
     margin: 0;
   }
+  /* Slide text animates in each time its slide becomes active: heading rises and un-blurs,
+     then the description and button follow */
+  @keyframes sf-hero-rise {
+    from { opacity: 0; transform: translateY(28px); filter: blur(6px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+  .sf-hero-slide--active .sf-hero-title { animation: sf-hero-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .sf-hero-slide--active .sf-hero-sub { animation: sf-hero-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.18s both; }
+  .sf-hero-slide--active .sf-hero-cta { animation: sf-hero-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.34s both; }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-hero-slide--active :is(.sf-hero-title, .sf-hero-sub, .sf-hero-cta) { animation: none; }
+  }
+  /* Outline button over the slide; fills white with black text on hover */
   .sf-hero-cta {
     display: inline-block;
     padding: 10px 28px;
-    background: var(--sf-hero-fg, var(--sf-on-primary, #fff));
-    color: var(--sf-hero-bg, var(--sf-primary, #0d6efd));
+    background: transparent;
+    color: #fff;
+    border: 2px solid #fff;
     font-weight: var(--sf-btn-weight, 600);
     border-radius: var(--sf-pill, 9999px);
     text-decoration: none;
     font-size: 0.9375rem;
     text-transform: var(--sf-btn-transform, none);
-    transition: opacity 0.2s;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
-  .sf-hero-cta:hover { opacity: 0.85; }
+  .sf-hero-cta:hover,
+  .sf-hero-cta:focus-visible { background: #fff; color: #000; }
   .sf-hero-dots {
     display: flex;
     justify-content: center;
     gap: 8px;
-    padding: 12px 0 8px;
-    position: relative;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 16px;
     z-index: 3;
-    background: var(--sf-hero-bg, var(--sf-primary, #0d6efd));
   }
   .sf-hero-dot {
     width: 8px;
@@ -288,20 +323,6 @@
   }
   .sf-hero-dot--active {
     background: var(--sf-hero-fg, #fff);
-  }
-
-  /* ── Promo banner ── */
-  .sf-promo-banner {
-    margin: 16px 0;
-    padding: 14px 16px;
-    text-align: center;
-    font-size: 0.9375rem;
-    color: var(--sf-text, #212529);
-  }
-  .sf-promo-code {
-    color: var(--sf-primary, #0d6efd);
-    font-family: monospace;
-    font-size: 1rem;
   }
 
   /* ── Sections ── */
@@ -430,7 +451,7 @@
     flex-shrink: 0;
     transition: box-shadow 0.2s;
   }
-  .sf-product-card:hover { opacity: 0.9; }
+  .sf-card-info { display: block; text-decoration: none; color: inherit; }
   /* On desktop the arrivals row is a grid — cards fill columns */
   @media (min-width: 1024px) {
     .sf-product-card {
@@ -506,21 +527,6 @@
   .sf-card-img-wrap {
     overflow: hidden;
     background: var(--sf-bg, #f8f9fa);
-  }
-  .sf-card-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-  .sf-card-img-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    color: var(--sf-muted, #6c757d);
   }
   .sf-card-title {
     font-size: 0.8125rem;

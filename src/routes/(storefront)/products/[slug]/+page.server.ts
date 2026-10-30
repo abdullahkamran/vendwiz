@@ -9,7 +9,7 @@ import {
   productOptionValues,
   productReels
 } from '$lib/server/db/schema';
-import { eq, and, ne, desc, asc } from 'drizzle-orm';
+import { eq, and, ne, or, isNull, desc, asc } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { renderMarkdown } from '$lib/server/markdown';
 
@@ -55,27 +55,43 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     })
   );
 
-  // Related products (same category, exclude current, limit 4)
-  let related: (typeof products.$inferSelect & { imageUrl: string | null })[] = [];
-  if (product.categoryId) {
-    const relatedRows = await db
-      .select()
+  // Related products: same category first, topped up with the store's newest other products
+  const RELATED_LIMIT = 8;
+  const relatedCols = {
+    id: products.id,
+    title: products.title,
+    slug: products.slug,
+    basePrice: products.basePrice,
+    salePrice: products.salePrice,
+    stockQty: products.stockQty,
+    images: products.images
+  };
+  const published = and(eq(products.storeId, storeId), ne(products.id, product.id), eq(products.isPublished, true));
+  const relatedRows = product.categoryId
+    ? await db
+        .select(relatedCols)
+        .from(products)
+        .where(and(published, eq(products.categoryId, product.categoryId)))
+        .orderBy(desc(products.createdAt))
+        .limit(RELATED_LIMIT)
+    : [];
+  if (relatedRows.length < RELATED_LIMIT) {
+    const others = await db
+      .select(relatedCols)
       .from(products)
       .where(
-        and(
-          eq(products.storeId, storeId),
-          eq(products.categoryId, product.categoryId),
-          ne(products.id, product.id),
-          eq(products.isPublished, true)
-        )
+        product.categoryId
+          ? and(published, or(ne(products.categoryId, product.categoryId), isNull(products.categoryId)))
+          : published
       )
-      .limit(4);
-
-    related = relatedRows.map((p) => {
-      const imgs = ((p.images as ProductImage[]) ?? []);
-      return { ...p, imageUrl: imgs[0]?.url ?? null };
-    });
+      .orderBy(desc(products.createdAt))
+      .limit(RELATED_LIMIT - relatedRows.length);
+    relatedRows.push(...others);
   }
+  const related = relatedRows.map(({ images: imgs, ...p }) => ({
+    ...p,
+    imageUrl: ((imgs as ProductImage[]) ?? []).sort((a, b) => a.order - b.order)[0]?.url ?? null
+  }));
 
   // Product video: the product's first published reel, else a YouTube link saved on the product
   // before videos moved to Reels

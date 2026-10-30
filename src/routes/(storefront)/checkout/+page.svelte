@@ -289,13 +289,12 @@
         <h2 style="font-size:1.1rem; font-weight:700; margin:0 0 14px; color:var(--sf-text);">Payment Method</h2>
         <div role="radiogroup" aria-label="Payment method" style="display:flex; flex-direction:column; gap:10px;">
           {#each availablePaymentMethods(store) as m (m.id)}
-            <label
-              style="display:flex; align-items:flex-start; gap:12px; padding:14px 16px; cursor:pointer; background:var(--sf-bg); border-radius:var(--sf-radius-lg); border:2px solid {paymentMethod === m.id ? 'var(--sf-primary)' : 'var(--sf-border)'};"
-            >
-              <input type="radio" name="paymentMethod" value={m.id} bind:group={paymentMethod} style="margin-top:3px; accent-color:var(--sf-primary);" />
+            <label class="pay-opt" class:pay-opt--on={paymentMethod === m.id}>
+              <input type="radio" name="paymentMethod" value={m.id} bind:group={paymentMethod} class="pay-opt-input" />
+              <span class="pay-opt-dot" aria-hidden="true"></span>
               <span>
-                <span style="display:block; font-weight:600; color:var(--sf-text); font-size:0.95rem;">{m.label}</span>
-                <span style="display:block; color:var(--sf-muted); font-size:0.8125rem; margin-top:2px;">{m.description}</span>
+                <span class="pay-opt-label">{m.label}</span>
+                <span class="pay-opt-desc">{m.description}</span>
               </span>
             </label>
           {/each}
@@ -378,6 +377,40 @@
 </div>
 
 <style>
+  /* Payment method options. Selected: black with white text in light mode, white with black text
+     in dark mode. */
+  .pay-opt {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    background: var(--sf-bg);
+    color: var(--sf-text);
+    border: 2px solid var(--sf-border);
+    border-radius: var(--sf-radius-lg);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .pay-opt:hover { border-color: var(--sf-text); }
+  .pay-opt-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .pay-opt-dot {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0.6;
+  }
+  .pay-opt-label { display: block; font-weight: 600; font-size: 0.95rem; }
+  .pay-opt-desc { display: block; font-size: 0.8125rem; margin-top: 2px; opacity: 0.7; }
+  .pay-opt--on { background: #111; color: #fff; border-color: #111; }
+  .pay-opt--on .pay-opt-dot { opacity: 1; box-shadow: inset 0 0 0 3px #111, inset 0 0 0 9px currentColor; }
+  .pay-opt-input:focus-visible + .pay-opt-dot { outline: 2px solid var(--sf-primary); outline-offset: 2px; }
+  :global(html[data-dark]) .pay-opt--on { background: #fff; color: #111; border-color: #fff; }
+  :global(html[data-dark]) .pay-opt--on .pay-opt-dot { box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 9px currentColor; }
+
   .checkout-page {
     padding: 32px 0 48px;
   }
@@ -403,7 +436,7 @@
     }
     .checkout-summary-col {
       position: sticky;
-      top: 96px;
+      top: 112px;
     }
   }
 </style>

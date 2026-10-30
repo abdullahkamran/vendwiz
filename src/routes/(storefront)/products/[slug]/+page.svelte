@@ -12,6 +12,8 @@
   import { parseVideoSource } from '$lib/utils/video';
   import { nativeShare } from '$lib/utils/share';
   import VideoPlayer from '$lib/components/storefront/VideoPlayer.svelte';
+  import ProductMedia from '$lib/components/storefront/ProductMedia.svelte';
+  import { cartDrawerOpen } from '$lib/stores/ui';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
@@ -121,6 +123,9 @@
   function incQty() { if (qty < MAX_CART_QTY) qty++; }
 
   // Stock status
+  // Nothing left in any option (or of the product itself): no point asking the shopper to pick one
+  let productSoldOut = $derived((combinedStock ?? product.stockQty) === 0);
+
   let stockStatus = $derived(
     maxQty === 0 ? 'out'
     : maxQty <= product.lowStockThreshold ? 'low'
@@ -162,7 +167,8 @@
     else { buyPulse = true; setTimeout(() => (buyPulse = false), 300); }
   }
 
-  function addToCart() {
+  // openPanel: show the slide-in cart afterwards (Buy Now goes straight to the cart page instead)
+  function addToCart(openPanel = true) {
     if (stockStatus === 'out') return;
     if (!allGroupsSelected) return;
     // Build human-readable variant selections: { groupName: label ?? value }
@@ -197,11 +203,9 @@
       quantity: addQty,
       variantSelections: Object.keys(variantSelections).length > 0 ? variantSelections : undefined
     });
-    showToast(
-      addQty < qty
-        ? `Limit is ${MAX_CART_QTY} per item — added ${addQty} to your cart`
-        : `${product.title} added to cart`
-    );
+    if (addQty < qty) showToast(`Limit is ${MAX_CART_QTY} per item — added ${addQty} to your cart`);
+    else if (!openPanel) showToast(`${product.title} added to cart`);
+    if (openPanel) cartDrawerOpen.set(true);
     return true;
   }
 
@@ -209,7 +213,7 @@
     if (!allGroupsSelected) return;
     triggerPulse('buy');
     // Stay on the page when nothing could be added (the toast explains why)
-    if (addToCart() === false) return;
+    if (addToCart(false) === false) return;
     goto(`${basePath}/cart`);
   }
 
@@ -342,11 +346,12 @@
     onkeydown={(e) => e.key === 'Enter' && nextImage()}
     aria-label="Next image"
   >
-    {#if activeImage}
-      <img src={mediaUrl(activeImage)} alt={product.title} class="pdp-main-img" />
-    {:else}
-      <div class="pdp-img-ph">📦</div>
-    {/if}
+    <ProductMedia
+      src={activeImage}
+      alt={product.title}
+      shareUrl={$page.url.href}
+      shareTitle="{product.title} | {store.name}"
+    />
     {#if images.length > 1}
       <button class="pdp-gallery-prev" onclick={(e) => { e.stopPropagation(); prevImage(); }} aria-label="Previous image">‹</button>
       <button class="pdp-gallery-next" onclick={(e) => { e.stopPropagation(); nextImage(); }} aria-label="Next image">›</button>
@@ -384,7 +389,7 @@
   </div>
 
   <!-- Stock badge — hidden while option groups are unresolved -->
-  {#if allGroupsSelected}
+  {#if allGroupsSelected || productSoldOut}
     {#if stockStatus === 'out'}
       <span class="pdp-stock pdp-stock--out">Out of Stock</span>
     {:else if stockStatus === 'low'}
@@ -467,7 +472,7 @@
   </div>
 
   <!-- Helper text: shown when option groups exist and not all are selected -->
-  {#if optionGroups.length > 0 && !allGroupsSelected}
+  {#if optionGroups.length > 0 && !allGroupsSelected && !productSoldOut}
     <p class="pdp-select-hint">Select a {firstMissingGroup?.name ?? 'option'}</p>
   {/if}
 
@@ -476,7 +481,7 @@
     <button
       class="pdp-btn-atc"
       class:pdp-pulse={atcPulse}
-      onclick={addToCart}
+      onclick={() => addToCart()}
       disabled={stockStatus === 'out' || !allGroupsSelected}
       style="background:var(--sf-primary); color:var(--sf-on-primary); border-radius:var(--sf-radius); font-weight:var(--sf-btn-weight); text-transform:var(--sf-btn-transform);"
     >
@@ -655,22 +660,32 @@
 <!-- Related products -->
 {#if related.length > 0}
   <section class="pdp-related">
-    <h2 class="pdp-related-title">You Might Also Like</h2>
+    <div class="pdp-related-head">
+      <h2 class="pdp-related-title">You Might Also Like</h2>
+      <a href="{basePath}/products" class="pdp-related-all">View All →</a>
+    </div>
     <div class="related-row">
-      {#each related as rp}
-        <a href="{basePath}/products/{rp.slug}" class="related-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg);">
+      {#each related as rp (rp.id)}
+        {@const rpDiscount = saleDiscount(rp.basePrice, rp.salePrice)}
+        <div class="related-card" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
           <div class="related-img-wrap">
-            {#if rp.imageUrl}
-              <img src={mediaUrl(rp.imageUrl)} alt={rp.title} />
-            {:else}
-              <div class="related-img-ph">📦</div>
-            {/if}
+            <ProductMedia
+              src={rp.imageUrl}
+              alt={rp.title}
+              href="{basePath}/products/{rp.slug}"
+              shareUrl="{basePath}/products/{rp.slug}"
+              shareTitle="{rp.title} | {store.name}"
+            />
+            {#if rp.stockQty === 0}<span class="related-oos">Out of Stock</span>{/if}
           </div>
-          <div class="related-info">
+          <a href="{basePath}/products/{rp.slug}" class="related-info">
             <p class="related-title">{rp.title}</p>
-            <p class="related-price" style="color:var(--sf-primary);">{store.currencySymbol} {Number(rp.basePrice).toLocaleString()}</p>
-          </div>
-        </a>
+            <p class="related-price">
+              <span style="color:var(--sf-primary);">{store.currencySymbol} {applySale(Number(rp.basePrice), rpDiscount).toLocaleString()}</span>
+              {#if rpDiscount > 0}<span class="related-price-orig">{store.currencySymbol} {Number(rp.basePrice).toLocaleString()}</span>{/if}
+            </p>
+          </a>
+        </div>
       {/each}
     </div>
   </section>
@@ -710,7 +725,7 @@
     }
     .pdp-gallery {
       position: sticky;
-      top: 96px;
+      top: 112px;
       margin-bottom: 0;
     }
   }
@@ -734,16 +749,6 @@
     overflow: hidden;
     cursor: pointer;
     margin-bottom: 8px;
-  }
-  .pdp-main-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .pdp-img-ph {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 4rem;
-    color: var(--sf-muted, #9ca3af);
   }
   .pdp-gallery-prev, .pdp-gallery-next {
     position: absolute;
@@ -806,7 +811,7 @@
     font-weight: 600;
     margin-bottom: 16px;
   }
-  .pdp-stock--in { background: #dcfce7; color: #16a34a; }
+  .pdp-stock--in { background: #16a34a; color: #fff; } /* solid green badge, white text */
   .pdp-stock--low { background: #fef3c7; color: #d97706; }
   .pdp-stock--out { background: #fee2e2; color: #dc2626; }
 
@@ -821,40 +826,41 @@
   .pdp-option-selected { font-weight: 400; color: var(--sf-muted, #6c757d); }
   .pdp-options { display: flex; flex-wrap: wrap; gap: 8px; }
   .pdp-swatch {
-    width: 28px;
-    height: 28px;
+    position: relative;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     border: 3px solid transparent;
     cursor: pointer;
     outline: 2px solid transparent;
-    transition: outline 0.15s;
+    /* faint edge so white / very light colours still show against the page */
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+    transition: outline 0.15s, transform 0.15s;
   }
-  /* Sold-out colour: faded toward the page background so it reads as unavailable,
-     crossed out, and not selectable. The overlay adapts to light/dark themes. */
+  .pdp-swatch:not(:disabled):hover { transform: scale(1.08); }
+  /* Sold-out colour: muted, ringed with a dashed line and struck through diagonally, not selectable.
+     The strike line has a light halo so it reads on dark and light swatches alike. */
   .pdp-swatch--soldout {
-    position: relative;
     cursor: not-allowed;
-    filter: grayscale(0.15);
-    overflow: hidden;
-  }
-  .pdp-swatch--soldout::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--sf-bg, #fff) 30%, transparent);
+    filter: saturate(0.45) brightness(1.05);
+    opacity: 0.7;
+    outline: 1.5px dashed var(--sf-muted, #9ca3af);
+    outline-offset: 2px;
   }
   .pdp-swatch--soldout::after {
-    content: '✕';
+    content: '';
     position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--sf-text, #212529);
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1;
+    inset: -3px;
+    border-radius: 50%;
+    pointer-events: none;
+    background: linear-gradient(
+      to top right,
+      transparent calc(50% - 1.75px),
+      rgba(255, 255, 255, 0.85) calc(50% - 1.75px) calc(50% - 0.75px),
+      var(--sf-error, #dc2626) calc(50% - 0.75px) calc(50% + 0.75px),
+      rgba(255, 255, 255, 0.85) calc(50% + 0.75px) calc(50% + 1.75px),
+      transparent calc(50% + 1.75px)
+    );
   }
   .pdp-swatch--active { outline: 2px solid var(--sf-primary, #0d6efd); outline-offset: 2px; }
   .pdp-size-btn {
@@ -1079,31 +1085,69 @@
   .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ── Related ── */
-  .pdp-related { margin-bottom: 24px; }
-  .pdp-related-title { font-size: 1.125rem; font-weight: 700; margin: 0 0 16px; color: var(--sf-text, #212529); }
+  /* One scrollable row: ~2 cards visible on mobile, 4 on desktop */
+  .pdp-related {
+    margin: 16px 0 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--sf-border, #dee2e6);
+  }
+  .pdp-related-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+  .pdp-related-title {
+    font-family: var(--sf-heading-font, system-ui);
+    font-weight: var(--sf-heading-weight, 700);
+    font-size: 1.25rem;
+    margin: 0;
+    color: var(--sf-text, #212529);
+  }
+  .pdp-related-all { font-size: 0.8125rem; font-weight: 600; color: var(--sf-primary, #0d6efd); text-decoration: none; }
   .related-row {
     display: flex;
     gap: 12px;
     overflow-x: auto;
+    scroll-snap-type: x mandatory;
     scrollbar-width: none;
+    padding-bottom: 4px;
   }
   .related-row::-webkit-scrollbar { display: none; }
   .related-card {
     display: flex;
-    gap: 10px;
-    text-decoration: none;
+    flex-direction: column;
     background: var(--sf-surface, #fff);
     overflow: hidden;
-    flex-shrink: 0;
-    width: 180px;
-    padding: 10px;
+    flex: 0 0 160px;
+    scroll-snap-align: start;
   }
-  .related-img-wrap { width: 60px; height: 60px; border-radius: var(--sf-radius, 6px); overflow: hidden; flex-shrink: 0; background: var(--sf-bg, #f8f9fa); }
-  .related-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
-  .related-img-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
-  .related-info { flex: 1; min-width: 0; }
-  .related-title { font-size: 0.8125rem; font-weight: 600; color: var(--sf-text, #111827); margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .related-price { font-size: 0.875rem; font-weight: 700; margin: 0; }
+  @media (min-width: 1024px) {
+    .related-row { gap: 24px; scrollbar-width: thin; padding-bottom: 8px; }
+    .related-card { flex-basis: calc((100% - 3 * 24px) / 4); }
+  }
+  .related-img-wrap { position: relative; aspect-ratio: 1; width: 100%; overflow: hidden; }
+  .related-oos {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    z-index: 3;
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 2px 8px;
+    border-radius: var(--sf-pill, 9999px);
+  }
+  .related-info { display: block; padding: 10px; text-decoration: none; color: inherit; }
+  .related-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--sf-text, #212529);
+    margin: 0 0 4px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .related-price { font-size: 0.875rem; font-weight: 700; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+  .related-price-orig { font-size: 0.75rem; font-weight: 400; text-decoration: line-through; color: var(--sf-muted, #6c757d); }
 
   /* ── Prose ── */
   :global(.prose p) { margin: 0 0 12px; }

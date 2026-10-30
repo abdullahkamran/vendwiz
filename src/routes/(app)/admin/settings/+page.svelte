@@ -170,7 +170,7 @@
 
 		<div class="space-y-4">
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="name">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="name">
 					Store Name <span class="text-red-500">*</span>
 				</label>
 				<input
@@ -185,7 +185,7 @@
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="description">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="description">
 					Store Description
 				</label>
 				<textarea
@@ -200,7 +200,7 @@
 
 			<!-- Currency -->
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="currencyCode">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="currencyCode">
 					Currency
 				</label>
 				<select
@@ -218,7 +218,7 @@
 
 			<!-- Logo upload -->
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1">Store Logo</label>
+				<label class="block text-sm font-semibold text-[--color-text] mb-1">Store Logo</label>
 				<div class="flex items-center gap-4">
 					{#if logoUrl}
 						<img src={mediaUrl(logoUrl)} alt="Store logo" class="h-16 w-auto rounded-lg border border-[--color-border] object-contain bg-white p-1" />
@@ -246,7 +246,7 @@
 
 			<!-- Favicon upload -->
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1">Favicon</label>
+				<label class="block text-sm font-semibold text-[--color-text] mb-1">Favicon</label>
 				<div class="flex items-center gap-4">
 					{#if faviconUrl}
 						<img src={mediaUrl(faviconUrl)} alt="Favicon" class="h-8 w-8 rounded border border-[--color-border] object-contain bg-white p-0.5" />
@@ -312,7 +312,7 @@
 		{#if theme === 'custom'}
 			<div class="grid grid-cols-3 gap-4 mt-4 p-4 bg-[--color-surface-2] rounded-lg">
 				<div>
-					<label class="block text-xs font-medium text-[--color-text] mb-1" for="primaryColor">Primary Color</label>
+					<label class="block text-xs font-semibold text-[--color-text] mb-1" for="primaryColor">Primary Color</label>
 					<div class="flex gap-2 items-center">
 						<input
 							id="primaryColor"
@@ -331,7 +331,7 @@
 					</div>
 				</div>
 				<div>
-					<label class="block text-xs font-medium text-[--color-text] mb-1" for="accentColor">Accent Color</label>
+					<label class="block text-xs font-semibold text-[--color-text] mb-1" for="accentColor">Accent Color</label>
 					<div class="flex gap-2 items-center">
 						<input
 							id="accentColor"
@@ -350,7 +350,7 @@
 					</div>
 				</div>
 				<div>
-					<label class="block text-xs font-medium text-[--color-text] mb-1" for="secondaryColor">Secondary Color</label>
+					<label class="block text-xs font-semibold text-[--color-text] mb-1" for="secondaryColor">Secondary Color</label>
 					<div class="flex gap-2 items-center">
 						<input
 							id="secondaryColor"
@@ -377,7 +377,7 @@
 		<h2 class="text-lg font-semibold mb-4">SEO</h2>
 		<div class="space-y-4">
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="seoTitle">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="seoTitle">
 					Meta Title
 				</label>
 				<input
@@ -392,7 +392,7 @@
 				<p class="text-xs text-[--color-text-muted] mt-1">{seoTitle.length}/60 characters</p>
 			</div>
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="seoDescription">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="seoDescription">
 					Meta Description
 				</label>
 				<textarea

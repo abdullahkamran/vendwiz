@@ -101,6 +101,10 @@ export const stores = pgTable('stores', {
 	facebook: text('facebook'),
 	contactEmail: text('contact_email'),
 	contactPhone: text('contact_phone'),
+	// Physical shops listed under "Our Stores" in the storefront footer: [{ name, mapUrl }]
+	storeLocations: jsonb('store_locations').$type<{ name: string; mapUrl: string }[]>().notNull().default([]),
+	// Home page slideshow set by the owner: [{ imageUrl, title, description }]. Empty = product images.
+	heroSlides: jsonb('hero_slides').$type<{ imageUrl: string; title: string; description: string }[]>().notNull().default([]),
 	// Announcement bar
 	announcementEnabled: boolean('announcement_enabled').notNull().default(false),
 	announcementText: text('announcement_text'),
@@ -123,6 +127,13 @@ export const stores = pgTable('stores', {
 	// SEO
 	seoTitle: text('seo_title'),
 	seoDescription: text('seo_description'),
+	// Optional Android app (Trusted Web Activity) — see /admin/app
+	androidAppEnabled: boolean('android_app_enabled').notNull().default(false),
+	androidPackageName: text('android_package_name'), // e.g. "com.mystore.app"
+	// SHA-256 signing-certificate fingerprints, served in /.well-known/assetlinks.json
+	androidCertFingerprints: text('android_cert_fingerprints').array().notNull().default([]),
+	androidStepsDone: text('android_steps_done').array().notNull().default([]), // guide steps ticked off
+	androidPlayUrl: text('android_play_url'), // Play Store listing, linked from the storefront footer
 	// Licensing
 	isActive: boolean('is_active').notNull().default(false), // unlocked by verification code
 	verificationCode: text('verification_code'), // store the code used

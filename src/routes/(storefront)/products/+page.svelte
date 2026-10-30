@@ -1,13 +1,32 @@
 <script lang="ts">
-  import { mediaUrl } from '$lib/media';
   import { goto } from '$app/navigation';
   import { cart, MAX_CART_QTY } from '$lib/stores/cart';
+  import { cartDrawerOpen } from '$lib/stores/ui';
   import Seo from '$lib/components/storefront/Seo.svelte';
+  import ProductMedia from '$lib/components/storefront/ProductMedia.svelte';
+  import { buildCategoryTree } from '$lib/utils/category-tree';
 
   let { data }: { data: import('./$types').PageData } = $props();
 
   let items = $derived(data.items);
   let allCategories = $derived(data.categories);
+  // Filter chips list top-level categories only; picking one also shows its subcategories' products
+  let filterCategories = $derived(buildCategoryTree(allCategories));
+  // Chips toggle: click to add a category to the filter, click again to remove it. Several can be
+  // selected at once. A subcategory opened from the menu highlights (and is cleared with) its parent.
+  type FilterCategory = (typeof filterCategories)[number];
+  const familyIds = (cat: FilterCategory) => [cat.id, ...cat.children.map((c) => c.id)];
+  function chipActive(cat: FilterCategory): boolean {
+    return familyIds(cat).some((id) => categoryIds.includes(id));
+  }
+  function toggleCategory(cat: FilterCategory) {
+    if (chipActive(cat)) {
+      const family = familyIds(cat);
+      categoryIds = categoryIds.filter((id) => !family.includes(id));
+    } else {
+      categoryIds = [...categoryIds, cat.id];
+    }
+  }
   let totalPages = $derived(data.totalPages);
   let currentPage = $derived(data.page);
   let store = $derived(data.store);
@@ -15,21 +34,19 @@
 
   // Local filter state (synced from server on each navigation)
   let q = $state(data.filters.q);
-  let categoryId = $state(data.filters.categoryId);
+  let categoryIds = $state<string[]>(data.filters.categoryIds);
   let maxPrice = $state(data.filters.maxPrice);
   let inStockOnly = $state(data.filters.inStockOnly);
   let onSaleOnly = $state(data.filters.onSaleOnly);
   let sort = $state(data.filters.sort);
-  let searchInput = $state<HTMLInputElement | null>(null);
 
   // This page stays mounted when the address changes (nav link, category link, back button), so the
   // controls must follow the filters in the URL. Without this the last category you picked stayed
   // highlighted after going back to "All Products", while the list showed everything.
   $effect(() => {
     const f = data.filters;
-    // Don't overwrite what someone is still typing while their search results load
-    if (document.activeElement !== searchInput) q = f.q;
-    categoryId = f.categoryId;
+    q = f.q;
+    categoryIds = f.categoryIds;
     maxPrice = f.maxPrice;
     inStockOnly = f.inStockOnly;
     onSaleOnly = f.onSaleOnly;
@@ -41,18 +58,18 @@
   function openFilters() { filterOpen = true; }
   function closeFilters() { filterOpen = false; }
 
-  // Debounce search
-  let searchTimeout: ReturnType<typeof setTimeout>;
-  function onSearchInput() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => applyFilters(), 400);
+  // Debounced apply, for the price slider while it's being dragged
+  let applyTimeout: ReturnType<typeof setTimeout>;
+  function scheduleApply() {
+    clearTimeout(applyTimeout);
+    applyTimeout = setTimeout(() => applyFilters(), 400);
   }
 
   function applyFilters(newPage = 1) {
     filterOpen = false;
     const params = new URLSearchParams();
     if (q) params.set('q', q);
-    if (categoryId) params.set('category', categoryId);
+    if (categoryIds.length > 0) params.set('category', categoryIds.join(','));
     if (maxPrice) params.set('maxPrice', maxPrice);
     if (inStockOnly) params.set('inStock', '1');
     if (onSaleOnly) params.set('onSale', '1');
@@ -63,7 +80,7 @@
 
   function clearFilters() {
     q = '';
-    categoryId = '';
+    categoryIds = [];
     maxPrice = '';
     inStockOnly = false;
     onSaleOnly = false;
@@ -108,17 +125,40 @@
     added[item.id] = true;
     clearTimeout(addedTimers[item.id]);
     addedTimers[item.id] = setTimeout(() => { added[item.id] = false; }, 1000);
+    cartDrawerOpen.set(true);
   }
 
+  let isBold = $derived(store.theme === 'bold');
   let cardLayout = $derived(
     store.theme === 'minimal' ? 'editorial'
     : store.theme === 'bold' ? 'overlay'
     : 'vertical'
   );
 
-  let activeFiltersCount = $derived(
-    (categoryId ? 1 : 0) + (maxPrice ? 1 : 0) + (inStockOnly ? 1 : 0) + (onSaleOnly ? 1 : 0)
-  );
+  // Top of the price slider; the slider's end means "any price"
+  const PRICE_MAX = 50000;
+
+  // Active filters as removable chips above the grid. Built from the applied filters (the URL),
+  // so unapplied changes in the mobile sheet don't show until "Show results".
+  type ActiveChip = { key: string; label: string; remove: () => void };
+  let activeChips = $derived.by<ActiveChip[]>(() => {
+    const f = data.filters;
+    const names = new Map(allCategories.map((c) => [c.id, c.name]));
+    const chips: ActiveChip[] = [];
+    if (f.q) chips.push({ key: 'q', label: `Search: "${f.q}"`, remove: () => { q = ''; applyFilters(); } });
+    for (const id of f.categoryIds) {
+      const name = names.get(id);
+      if (name) chips.push({ key: `cat-${id}`, label: name, remove: () => { categoryIds = f.categoryIds.filter((x) => x !== id); applyFilters(); } });
+    }
+    if (f.maxPrice) {
+      chips.push({ key: 'price', label: `Under ${store.currencySymbol} ${Number(f.maxPrice).toLocaleString()}`, remove: () => { maxPrice = ''; applyFilters(); } });
+    }
+    if (f.inStockOnly) chips.push({ key: 'stock', label: 'In stock', remove: () => { inStockOnly = false; applyFilters(); } });
+    if (f.onSaleOnly) chips.push({ key: 'sale', label: 'On sale', remove: () => { onSaleOnly = false; applyFilters(); } });
+    return chips;
+  });
+  // Filters-button badge counts filters only, not a search made from the header
+  let activeFiltersCount = $derived(activeChips.filter((c) => c.key !== 'q').length);
 </script>
 
 <svelte:head>
@@ -131,6 +171,68 @@
   description="Browse all products at {store.name}"
 />
 
+<!-- Filter controls shared by the desktop sidebar (live: each change applies at once) and the
+     mobile sheet (changes apply with "Show results") -->
+{#snippet filterControls(live: boolean)}
+  <section class="fc-section">
+    <h3 class="fc-title">Categories</h3>
+    <div class="fc-options">
+      {#each filterCategories as cat}
+        {@const on = chipActive(cat)}
+        <button type="button" role="checkbox" aria-checked={on} class="fc-option" class:fc-option--on={on}
+          onclick={() => { toggleCategory(cat); if (live) applyFilters(); }}>
+          <span class="fc-box" aria-hidden="true">
+            {#if on}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12.5 10 17.5 19 7"/></svg>
+            {/if}
+          </span>
+          <span class="fc-option-name">{cat.name}</span>
+        </button>
+      {/each}
+    </div>
+  </section>
+
+  <section class="fc-section">
+    <div class="fc-title-row">
+      <h3 class="fc-title">Max price</h3>
+      <span class="fc-value">{maxPrice ? `${store.currencySymbol} ${Number(maxPrice).toLocaleString()}` : 'Any'}</span>
+    </div>
+    <input
+      type="range"
+      min="0"
+      max={PRICE_MAX}
+      step="500"
+      value={maxPrice || PRICE_MAX}
+      style="--pct:{((Number(maxPrice) || PRICE_MAX) / PRICE_MAX) * 100}%"
+      oninput={(e) => {
+        const v = (e.target as HTMLInputElement).value;
+        maxPrice = v === String(PRICE_MAX) ? '' : v;
+        if (live) scheduleApply();
+      }}
+      class="fc-range"
+      aria-label="Maximum price"
+    />
+    <div class="fc-range-labels">
+      <span>{store.currencySymbol} 0</span>
+      <span>{store.currencySymbol} {PRICE_MAX.toLocaleString()}+</span>
+    </div>
+  </section>
+
+  <section class="fc-section">
+    <h3 class="fc-title">Availability</h3>
+    <label class="fc-switch">
+      <span>In stock only</span>
+      <input type="checkbox" bind:checked={inStockOnly} onchange={() => live && applyFilters()} />
+      <span class="fc-switch-track" aria-hidden="true"></span>
+    </label>
+    <label class="fc-switch">
+      <span>On sale only</span>
+      <input type="checkbox" bind:checked={onSaleOnly} onchange={() => live && applyFilters()} />
+      <span class="fc-switch-track" aria-hidden="true"></span>
+    </label>
+  </section>
+{/snippet}
+
 <!-- Filter bottom sheet backdrop -->
 {#if filterOpen}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -138,70 +240,23 @@
   <div class="filter-backdrop" onclick={closeFilters}></div>
 {/if}
 
-<!-- Filter bottom sheet (AC-6) -->
+<!-- Filter bottom sheet (mobile) -->
 <div class="filter-sheet" class:filter-sheet--open={filterOpen} role="dialog" aria-modal="true" aria-label="Filters">
   <div class="filter-sheet-handle"></div>
   <div class="filter-sheet-header">
     <h2 class="filter-sheet-title">Filters</h2>
-    <button class="filter-sheet-close" onclick={closeFilters} aria-label="Close filters">✕</button>
-  </div>
-
-  <div class="filter-sheet-body">
-    <!-- Category chips -->
-    <div class="filter-group">
-      <p class="filter-label">Category</p>
-      <div class="filter-chips">
-        <button
-          class="filter-chip"
-          class:filter-chip--active={!categoryId}
-          onclick={() => { categoryId = ''; }}
-        >All</button>
-        {#each allCategories as cat}
-          <button
-            class="filter-chip"
-            class:filter-chip--active={categoryId === cat.id}
-            onclick={() => { categoryId = cat.id; }}
-          >{cat.name}</button>
-        {/each}
-      </div>
-    </div>
-
-    <!-- Max price range slider -->
-    <div class="filter-group">
-      <p class="filter-label">Max Price: {store.currencySymbol} {maxPrice || '∞'}</p>
-      <input
-        type="range"
-        min="0"
-        max="50000"
-        step="500"
-        value={maxPrice || 50000}
-        oninput={(e) => { maxPrice = (e.target as HTMLInputElement).value === '50000' ? '' : (e.target as HTMLInputElement).value; }}
-        class="filter-range"
-      />
-      <div class="filter-range-labels">
-        <span>{store.currencySymbol} 0</span>
-        <span>{store.currencySymbol} 50,000</span>
-      </div>
-    </div>
-
-    <!-- Checkboxes -->
-    <div class="filter-group">
-      <label class="filter-check">
-        <input type="checkbox" bind:checked={inStockOnly} />
-        <span>In Stock Only</span>
-      </label>
-      <label class="filter-check">
-        <input type="checkbox" bind:checked={onSaleOnly} />
-        <span>On Sale Only</span>
-      </label>
-    </div>
-  </div>
-
-  <div class="filter-sheet-footer">
-    <button class="filter-btn-clear" onclick={clearFilters}>Clear All</button>
-    <button class="filter-btn-apply" onclick={() => applyFilters()} style="background:var(--sf-primary); color:var(--sf-on-primary);">
-      Apply Filters
+    <button class="filter-sheet-close" onclick={closeFilters} aria-label="Close filters">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+      </svg>
     </button>
+  </div>
+  <div class="filter-sheet-body">
+    {@render filterControls(false)}
+  </div>
+  <div class="filter-sheet-footer">
+    <button class="filter-btn-clear" onclick={clearFilters}>Clear all</button>
+    <button class="filter-btn-apply" onclick={() => applyFilters()}>Show results</button>
   </div>
 </div>
 
@@ -209,93 +264,63 @@
 <div class="products-layout">
 
   <!-- Permanent filter sidebar (desktop only via CSS) -->
-  <aside class="products-sidebar">
-    <!-- Category -->
-    <div class="filter-group">
-      <p class="filter-label">Category</p>
-      <div class="filter-chips">
-        <button
-          class="filter-chip"
-          class:filter-chip--active={!categoryId}
-          onclick={() => { categoryId = ''; applyFilters(); }}
-        >All</button>
-        {#each allCategories as cat}
-          <button
-            class="filter-chip"
-            class:filter-chip--active={categoryId === cat.id}
-            onclick={() => { categoryId = cat.id; applyFilters(); }}
-          >{cat.name}</button>
-        {/each}
-      </div>
+  <aside class="products-sidebar" aria-label="Filters">
+    <div class="fc-head">
+      <h2 class="fc-head-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="4" y1="7" x2="20" y2="7"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="17" x2="14" y2="17"/>
+        </svg>
+        Filters
+      </h2>
+      {#if activeFiltersCount > 0}
+        <button class="fc-clear" onclick={clearFilters}>Clear all</button>
+      {/if}
     </div>
-
-    <!-- Max price -->
-    <div class="filter-group">
-      <p class="filter-label">Max Price: {store.currencySymbol} {maxPrice || '∞'}</p>
-      <input
-        type="range"
-        min="0"
-        max="50000"
-        step="500"
-        value={maxPrice || 50000}
-        oninput={(e) => { maxPrice = (e.target as HTMLInputElement).value === '50000' ? '' : (e.target as HTMLInputElement).value; onSearchInput(); }}
-        class="filter-range"
-      />
-      <div class="filter-range-labels">
-        <span>{store.currencySymbol} 0</span>
-        <span>{store.currencySymbol} 50,000</span>
-      </div>
-    </div>
-
-    <!-- Checkboxes -->
-    <div class="filter-group">
-      <label class="filter-check">
-        <input type="checkbox" bind:checked={inStockOnly} onchange={() => applyFilters()} />
-        <span>In Stock Only</span>
-      </label>
-      <label class="filter-check">
-        <input type="checkbox" bind:checked={onSaleOnly} onchange={() => applyFilters()} />
-        <span>On Sale Only</span>
-      </label>
-    </div>
-
-    {#if activeFiltersCount > 0}
-      <button class="filter-btn-clear" onclick={clearFilters}>Clear All</button>
-    {/if}
+    {@render filterControls(true)}
   </aside>
 
   <!-- Main content column -->
   <div class="products-content">
-    <!-- Search + filter trigger bar (filter btn hidden on desktop) -->
+    <!-- Toolbar: filters button (mobile) and sort. Searching is done from the header. -->
     <div class="products-topbar">
-      <input
-        type="search"
-        bind:this={searchInput}
-        bind:value={q}
-        oninput={onSearchInput}
-        placeholder="Search products…"
-        class="products-search"
-      />
-      <button class="products-filter-btn" onclick={openFilters} style="background:var(--sf-primary); color:var(--sf-on-primary);">
-        ⚙ Filters
-        {#if activeFiltersCount > 0}
-          <span class="filter-count-badge">{activeFiltersCount}</span>
-        {/if}
-      </button>
-      <select bind:value={sort} onchange={() => applyFilters()} class="products-sort">
-        <option value="newest">Newest</option>
-        <option value="price_asc">Price: Low→High</option>
-        <option value="price_desc">Price: High→Low</option>
-        <option value="az">A–Z</option>
-        <option value="za">Z–A</option>
-      </select>
+      <div class="products-tools">
+        <button class="products-filter-btn" onclick={openFilters} aria-label="Filters ({activeFiltersCount} active)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="4" y1="7" x2="20" y2="7"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="17" x2="14" y2="17"/>
+          </svg>
+          Filters
+          {#if activeFiltersCount > 0}<span class="filter-count-badge">{activeFiltersCount}</span>{/if}
+        </button>
+        <label class="products-sort-wrap">
+          <span class="products-sort-label">Sort by</span>
+          <select bind:value={sort} onchange={() => applyFilters()} class="products-sort">
+            <option value="newest">Newest</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="az">Name: A–Z</option>
+            <option value="za">Name: Z–A</option>
+          </select>
+        </label>
+      </div>
     </div>
 
-    <!-- Result count -->
-    <p class="products-count">
-      {data.total} product{data.total !== 1 ? 's' : ''}
-      {#if activeFiltersCount > 0}<button class="clear-link" onclick={clearFilters}>Clear filters</button>{/if}
-    </p>
+    <!-- Result count + active filters, each removable -->
+    <div class="products-status">
+      <p class="products-count"><strong>{data.total}</strong> product{data.total !== 1 ? 's' : ''}</p>
+      {#if activeChips.length > 0}
+        <div class="active-chips">
+          {#each activeChips as chip (chip.key)}
+            <button class="active-chip" onclick={chip.remove} aria-label="Remove filter {chip.label}">
+              {chip.label}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+                <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+              </svg>
+            </button>
+          {/each}
+          <button class="clear-link" onclick={clearFilters}>Clear all</button>
+        </div>
+      {/if}
+    </div>
 
     <!-- Product grid -->
     {#if items.length === 0}
@@ -315,15 +340,18 @@
               </div>
             {/if}
 
-            <a href="{basePath}/products/{product.slug}" class="product-card product-card--{cardLayout}" style="border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);">
+            <!-- Bold: no orange border / offset shadow behind the card -->
+            <div class="product-card product-card--{cardLayout}" style={isBold ? 'border-radius:var(--sf-radius-lg);' : 'border:var(--sf-card-border); border-radius:var(--sf-radius-lg); box-shadow:var(--sf-card-shadow);'}>
               <div class="product-card-img-wrap">
-                {#if product.imageUrl}
-                  <img src={mediaUrl(product.imageUrl)} alt={product.title} class="product-card-img" />
-                {:else}
-                  <div class="product-card-img-ph">📦</div>
-                {/if}
+                <ProductMedia
+                  src={product.imageUrl}
+                  alt={product.title}
+                  href="{basePath}/products/{product.slug}"
+                  shareUrl="{basePath}/products/{product.slug}"
+                  shareTitle="{product.title} | {store.name}"
+                />
               </div>
-              <div class="product-card-info">
+              <a href="{basePath}/products/{product.slug}" class="product-card-info">
                 <h3 class="product-card-title">{product.title}</h3>
                 <div class="product-card-pricing">
                   {#if product.salePrice}
@@ -336,8 +364,8 @@
                     <span class="badge-low-stock">Low Stock</span>
                   {/if}
                 </div>
-              </div>
-            </a>
+              </a>
+            </div>
 
             <!-- Quick add -->
             <div class="product-card-action">
@@ -383,7 +411,164 @@
 </div><!-- .products-layout -->
 
 <style>
-  /* ── Filter bottom sheet ── */
+  /* ── Filter controls (shared by the desktop sidebar and the mobile sheet) ── */
+  .fc-section {
+    padding: 18px 0;
+    border-top: 1px solid var(--sf-border, #dee2e6);
+  }
+  .fc-section:first-of-type { border-top: none; padding-top: 4px; }
+  .fc-title {
+    margin: 0 0 12px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--sf-text, #212529);
+  }
+  .fc-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .fc-title-row .fc-title { margin: 0; }
+  .fc-value {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--sf-text, #212529);
+    padding: 2px 10px;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--sf-text, #212529) 7%, transparent);
+  }
+
+  /* Category rows with a tick box (several can be selected) */
+  .fc-options { display: flex; flex-direction: column; gap: 2px; }
+  .fc-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 8px;
+    margin-inline: -8px;
+    box-sizing: content-box;
+    border: none;
+    border-radius: var(--sf-radius, 6px);
+    background: none;
+    color: var(--sf-text, #212529);
+    font: inherit;
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .fc-option:hover { background: color-mix(in srgb, var(--sf-text, #212529) 6%, transparent); }
+  .fc-box {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border-radius: 5px;
+    border: 1.5px solid var(--sf-border, #ced4da);
+    background: var(--sf-bg, #fff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .fc-option--on .fc-box {
+    background: var(--sf-primary, #0d6efd);
+    border-color: var(--sf-primary, #0d6efd);
+    color: var(--sf-on-primary, #fff);
+  }
+  .fc-option--on .fc-option-name { font-weight: 600; }
+
+  /* Price slider: track filled up to the thumb */
+  .fc-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--sf-primary, #0d6efd) 0 var(--pct, 100%),
+      var(--sf-border, #dee2e6) var(--pct, 100%) 100%
+    );
+    outline: none;
+    cursor: pointer;
+  }
+  .fc-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--sf-bg, #fff);
+    border: 2px solid var(--sf-primary, #0d6efd);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+  .fc-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--sf-bg, #fff);
+    border: 2px solid var(--sf-primary, #0d6efd);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+  .fc-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px color-mix(in srgb, var(--sf-primary, #0d6efd) 25%, transparent); }
+  .fc-range-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--sf-muted, #6c757d);
+  }
+
+  /* Availability switches */
+  .fc-switch {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    font-size: 0.875rem;
+    color: var(--sf-text, #212529);
+    cursor: pointer;
+  }
+  .fc-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  .fc-switch-track {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: var(--sf-border, #ced4da);
+    transition: background-color 0.2s ease;
+  }
+  .fc-switch-track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s ease;
+  }
+  .fc-switch input:checked + .fc-switch-track { background: var(--sf-primary, #0d6efd); }
+  .fc-switch input:checked + .fc-switch-track::after {
+    transform: translateX(16px);
+    background: var(--sf-on-primary, #fff); /* stays visible when the primary colour is light (dark mode) */
+  }
+  .fc-switch input:focus-visible + .fc-switch-track { outline: 2px solid var(--sf-primary, #0d6efd); outline-offset: 2px; }
+
+  /* ── Mobile filter sheet ── */
   .filter-backdrop {
     position: fixed;
     inset: 0;
@@ -395,9 +580,9 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--sf-surface, #fff);
+    background: var(--sf-bg, #fff);
     color: var(--sf-text, #212529);
-    border-radius: 16px 16px 0 0;
+    border-radius: 18px 18px 0 0;
     box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
     z-index: 60;
     transform: translateY(100%);
@@ -406,9 +591,7 @@
     display: flex;
     flex-direction: column;
   }
-  .filter-sheet--open {
-    transform: translateY(0);
-  }
+  .filter-sheet--open { transform: translateY(0); }
   .filter-sheet-handle {
     width: 40px;
     height: 4px;
@@ -425,89 +608,26 @@
     border-bottom: 1px solid var(--sf-border, #dee2e6);
     flex-shrink: 0;
   }
-  .filter-sheet-title {
-    font-size: 1rem;
-    font-weight: 700;
-    margin: 0;
-  }
+  .filter-sheet-title { font-size: 1.0625rem; font-weight: 700; margin: 0; }
   .filter-sheet-close {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.1rem;
     color: var(--sf-muted, #6c757d);
     padding: 4px;
+    display: flex;
   }
   .filter-sheet-body {
     flex: 1;
     overflow-y: auto;
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    padding: 12px 20px;
   }
   .filter-sheet-footer {
     display: flex;
     gap: 12px;
-    padding: 16px 20px;
+    padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--sf-border, #dee2e6);
     flex-shrink: 0;
-  }
-  .filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .filter-label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--sf-muted, #6c757d);
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .filter-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .filter-chip {
-    padding: 6px 14px;
-    border: 1px solid var(--sf-border, #dee2e6);
-    border-radius: var(--sf-pill, 9999px);
-    background: var(--sf-bg, #fff);
-    color: var(--sf-text, #212529);
-    font-size: 0.8125rem;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .filter-chip--active {
-    background: var(--sf-primary, #0d6efd);
-    color: var(--sf-on-primary, #fff);
-    border-color: var(--sf-primary, #0d6efd);
-  }
-  .filter-range {
-    width: 100%;
-    accent-color: var(--sf-primary, #0d6efd);
-  }
-  .filter-range-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--sf-muted, #6c757d);
-  }
-  .filter-check {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.9375rem;
-    cursor: pointer;
-  }
-  .filter-check input {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--sf-primary, #0d6efd);
-    cursor: pointer;
   }
   .filter-btn-clear {
     flex: 1;
@@ -516,6 +636,7 @@
     border-radius: var(--sf-radius, 6px);
     background: transparent;
     color: var(--sf-text, #212529);
+    font: inherit;
     font-weight: 600;
     cursor: pointer;
   }
@@ -524,111 +645,198 @@
     padding: 12px;
     border: none;
     border-radius: var(--sf-radius, 6px);
+    background: var(--sf-primary, #0d6efd);
+    color: var(--sf-on-primary, #fff);
+    font: inherit;
     font-weight: 700;
     cursor: pointer;
-    font-size: 0.9375rem;
   }
 
-  /* ── Top bar ── */
+  /* ── Toolbar: search / filters (mobile) / sort ── */
   .products-topbar {
     display: flex;
-    gap: 8px;
-    align-items: center;
+    flex-direction: column;
+    gap: 10px;
     margin: 16px 0 12px;
-    flex-wrap: nowrap;
   }
-  .products-search {
-    flex: 1;
-    min-width: 0;
-    border: 1px solid var(--sf-border, #dee2e6);
-    border-radius: var(--sf-radius, 6px);
-    padding: 8px 12px;
-    font-size: 0.875rem;
-    background: var(--sf-bg, #fff);
-    color: var(--sf-text, #212529);
-  }
+  .products-tools { display: flex; gap: 10px; }
   .products-filter-btn {
     position: relative;
-    padding: 8px 14px;
-    border: none;
-    border-radius: var(--sf-radius, 6px);
-    font-weight: 600;
-    font-size: 0.8125rem;
-    cursor: pointer;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-  .filter-count-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #ef4444;
-    color: #fff;
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    font-size: 0.6rem;
-    display: flex;
+    flex: 1;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-  }
-  .products-sort {
+    gap: 8px;
+    height: 42px;
+    padding: 0 16px;
     border: 1px solid var(--sf-border, #dee2e6);
-    border-radius: var(--sf-radius, 6px);
-    padding: 8px;
-    font-size: 0.8125rem;
+    border-radius: 9999px;
     background: var(--sf-bg, #fff);
     color: var(--sf-text, #212529);
-    flex-shrink: 0;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
   }
-  .products-count {
-    font-size: 0.8125rem;
-    color: var(--sf-muted, #6c757d);
-    margin: 0 0 16px;
+  .filter-count-badge {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    background: var(--sf-primary, #0d6efd);
+    color: var(--sf-on-primary, #fff);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Sort: "Sort by" label inside a pill with the select, custom chevron */
+  .products-sort-wrap {
+    position: relative;
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
+    height: 42px;
+    padding-left: 16px;
+    border: 1px solid var(--sf-border, #dee2e6);
+    border-radius: 9999px;
+    background: var(--sf-bg, #fff);
+    cursor: pointer;
   }
+  .products-sort-wrap::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--sf-muted, #6c757d);
+    border-bottom: 2px solid var(--sf-muted, #6c757d);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+  .products-sort-wrap:focus-within { border-color: var(--sf-primary, #0d6efd); }
+  .products-sort-label {
+    font-size: 0.8125rem;
+    color: var(--sf-muted, #6c757d);
+    white-space: nowrap;
+  }
+  .products-sort {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0 36px 0 6px;
+    border: none;
+    background: transparent;
+    color: var(--sf-text, #212529);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+  }
+  .products-sort option { color: #212529; background: #fff; }
+
+  /* Count + removable active-filter chips */
+  .products-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin: 0 0 18px;
+  }
+  .products-count {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--sf-muted, #6c757d);
+  }
+  .products-count strong { color: var(--sf-text, #212529); }
+  .active-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .active-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 12px;
+    border: 1px solid var(--sf-border, #dee2e6);
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--sf-text, #212529) 5%, var(--sf-bg, #fff));
+    color: var(--sf-text, #212529);
+    font: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .active-chip:hover { border-color: #e53935; color: #e53935; }
   .clear-link {
     background: none;
     border: none;
-    color: var(--sf-primary, #0d6efd);
-    cursor: pointer;
-    font-size: 0.8125rem;
     padding: 0;
+    color: var(--sf-muted, #6c757d);
+    font: inherit;
+    font-size: 0.8125rem;
+    text-decoration: underline;
+    cursor: pointer;
   }
+  .clear-link:hover { color: var(--sf-text, #212529); }
 
   /* ── Desktop: sidebar layout ── */
-  /* Mobile: no layout (sidebar hidden, content full-width) */
-  .products-layout {
-    display: block;
-  }
-  .products-sidebar {
-    display: none; /* hidden on mobile */
-  }
+  .products-layout { display: block; }
+  .products-sidebar { display: none; } /* mobile uses the sheet */
   @media (min-width: 1024px) {
     .products-layout {
       display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
+      grid-template-columns: 250px minmax(0, 1fr);
       gap: 40px;
-      padding: 0;
       align-items: start;
     }
     .products-sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
+      display: block;
       position: sticky;
-      top: 96px;
-      background: var(--sf-surface, #fff);
+      top: 112px;
+      margin-top: 16px;
+      background: var(--sf-bg, #fff);
       border: 1px solid var(--sf-border, #dee2e6);
       border-radius: var(--sf-radius-lg, 12px);
-      padding: 20px;
+      padding: 18px 20px 6px;
     }
-    /* Hide mobile filter button and sheet on desktop */
-    .products-filter-btn { display: none !important; }
-    .filter-sheet { display: none !important; }
+    .fc-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 14px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--sf-border, #dee2e6);
+    }
+    .fc-head-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--sf-text, #212529);
+    }
+    .fc-clear {
+      background: none;
+      border: none;
+      padding: 0;
+      color: #e53935;
+      font: inherit;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .fc-section:first-of-type { padding-top: 14px; }
+    /* Toolbar: sort on the right */
+    .products-topbar { flex-direction: row; align-items: center; gap: 12px; }
+    .products-tools { margin-left: auto; flex: 0 0 auto; }
+    .products-sort-wrap { flex: 0 0 auto; min-width: 250px; }
+    /* Hide the mobile filter button and sheet */
+    .products-filter-btn,
+    .filter-sheet,
     .filter-backdrop { display: none !important; }
   }
 
@@ -699,24 +907,11 @@
     overflow: hidden;
     background: var(--sf-bg, #f8f9fa);
   }
-  .product-card-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-  .product-card-img-ph {
-    width: 100%;
-    height: 100%;
-    min-height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    color: var(--sf-muted, #9ca3af);
-  }
   .product-card-info {
+    display: block;
     padding: 10px;
+    text-decoration: none;
+    color: inherit;
   }
   .product-card-title {
     font-size: 0.8125rem;
@@ -774,11 +969,26 @@
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
-    transition: transform 0.15s, background-color 0.15s, opacity 0.15s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.15s;
   }
-  .btn-add-cart--added {
-    transform: scale(1.06);
-    opacity: 0.88;
+  /* Hover: lifts slightly */
+  .btn-add-cart:not(:disabled):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  }
+  .btn-add-cart:not(:disabled):active { transform: translateY(0); box-shadow: none; }
+  /* Just added: a quick bounce */
+  .btn-add-cart--added { animation: btn-added-bounce 0.6s ease; }
+  @keyframes btn-added-bounce {
+    0% { transform: translateY(0) scale(1); }
+    25% { transform: translateY(-6px) scale(1.04); }
+    45% { transform: translateY(0) scale(0.97); }
+    65% { transform: translateY(-3px) scale(1.01); }
+    100% { transform: translateY(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn-add-cart:not(:disabled):hover { transform: none; }
+    .btn-add-cart--added { animation: none; }
   }
   .btn-add-cart:disabled {
     opacity: 0.4;

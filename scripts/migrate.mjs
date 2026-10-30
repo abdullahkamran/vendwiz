@@ -1,6 +1,7 @@
 // Applies the SQL files in drizzle/ in filename order, each once, and records them in the
 // "_migrations" table. Each file runs in its own transaction, so a failing file leaves nothing
-// half-applied and stops the run.
+// half-applied and stops the run. Afterwards it turns on row-level security for the app's tables
+// (see below).
 //
 //   pnpm db:migrate              apply pending migrations
 //   pnpm db:migrate --baseline   mark every file as applied without running it (for a database
@@ -52,6 +53,19 @@ try {
 		});
 		console.log(`applied   ${file}`);
 	}
+
+	// Supabase publishes every table in "public" through its REST API to the anon/authenticated
+	// roles. Row-level security with no policies gives those roles no rows, while the app (which
+	// connects as the tables' owner) is not subject to RLS and keeps full access. Harmless on any
+	// other Postgres. Runs every time so tables added by later migrations are covered too.
+	const open = await sql`
+		SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+		WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity
+			AND pg_get_userbyid(c.relowner) = current_user`;
+	for (const { relname } of open) {
+		await sql.unsafe(`ALTER TABLE public."${relname.replaceAll('"', '""')}" ENABLE ROW LEVEL SECURITY`);
+	}
+	if (open.length) console.log(`enabled row-level security on ${open.length} table(s)`);
 } catch (err) {
 	console.error(err.message ?? err);
 	process.exitCode = 1;

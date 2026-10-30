@@ -308,7 +308,7 @@ ${bankBlock(store, order)}`;
 		order.paymentMethod === 'bank_transfer' && hasBankDetails(store)
 			? [
 					'',
-					'Bank transfer details:',
+					'Bank Transfer Details:',
 					...bankDetailRows(store).map((r) => `${r.label}: ${r.value}`),
 					'Please send your payment screenshot to our WhatsApp so we can confirm it.'
 				]

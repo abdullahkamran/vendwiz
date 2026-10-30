@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { stores, storePolicies } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { storeBaseUrl } from '$lib/server/orderEmail';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -14,7 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		where: eq(storePolicies.storeId, store!.id)
 	});
 
-	return { store: store!, policies };
+	return { store: store!, policies, storeUrl: storeBaseUrl(store!.subdomain) };
 };
 
 export const actions: Actions = {
@@ -26,7 +27,7 @@ export const actions: Actions = {
 		const content = (data.get('content') as string)?.trim() ?? '';
 
 		// 'about' is the store's About Us page (shown at /about); the rest are the policy pages
-		const validTypes = ['about', 'return_refund', 'shipping', 'terms', 'faq'];
+		const validTypes = ['about', 'return_refund', 'shipping', 'terms', 'faq', 'privacy'];
 		if (!validTypes.includes(type)) {
 			return fail(400, { error: 'Invalid policy type', type });
 		}

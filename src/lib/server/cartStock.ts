@@ -100,10 +100,11 @@ export async function findStockIssues(storeId: string, lines: CartLine[]): Promi
 				variantSelections: line.variantSelections,
 				requested: line.quantity,
 				available,
+				// The shopper sees this next to the cart line. Don't reveal the exact stock count.
 				message:
 					available === 0
-						? `${name} is out of stock`
-						: `* ${name}`
+						? `${name} is out of stock. Please remove it from your cart.`
+						: `Not enough stock for ${name}. Please choose a smaller quantity.`
 			});
 		}
 	});

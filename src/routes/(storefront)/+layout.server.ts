@@ -1,7 +1,7 @@
 import type { LayoutServerLoad } from './$types';
 import { redirect, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { categories, discountCodes } from '$lib/server/db/schema';
+import { categories } from '$lib/server/db/schema';
 import { eq, asc, and } from 'drizzle-orm';
 import { deriveBasePath } from '$lib/utils/storefront-path';
 import { storeHasReels } from '$lib/server/productReels';
@@ -26,18 +26,6 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   // Reels only appear in the menus once the store has at least one reel to show
   const hasReelsPromise = storeHasReels(store.id);
 
-  // Load one active discount code for the promo banner (first valid one)
-  const [promoCode] = await db
-    .select({ code: discountCodes.code, value: discountCodes.value, type: discountCodes.type })
-    .from(discountCodes)
-    .where(
-      and(
-        eq(discountCodes.storeId, store.id),
-        eq(discountCodes.isActive, true)
-      )
-    )
-    .limit(1);
-
   // Derive basePath: non-empty only on path-based access (e.g. /store/mystore).
   // On subdomain access the original pathname is / or /products etc., so no match.
   const basePath = deriveBasePath(url.pathname);
@@ -45,7 +33,6 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   return {
     store,
     categories: storeCategories,
-    promoCode: promoCode ?? null,
     hasReels: await hasReelsPromise,
     basePath
   };

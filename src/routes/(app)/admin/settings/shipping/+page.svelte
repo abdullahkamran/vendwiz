@@ -51,7 +51,7 @@
 		<h2 class="text-lg font-semibold mb-4">Shipping</h2>
 		<div class="space-y-4">
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="shippingFee">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="shippingFee">
 					Flat Shipping Fee ({data.store.currencySymbol})
 				</label>
 				<input
@@ -68,7 +68,7 @@
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="freeShippingThreshold">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="freeShippingThreshold">
 					Free Shipping Threshold ({data.store.currencySymbol}, optional)
 				</label>
 				<input
@@ -91,7 +91,7 @@
 		<h2 class="text-lg font-semibold mb-4">Tax</h2>
 		<div class="space-y-4">
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="taxRate">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="taxRate">
 					Tax Rate (%)
 				</label>
 				<input
@@ -109,7 +109,7 @@
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="taxLabel">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="taxLabel">
 					Tax Label
 				</label>
 				<input

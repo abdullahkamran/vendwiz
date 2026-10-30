@@ -9,7 +9,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const storeId = locals.store!.id;
 
   const q = url.searchParams.get('q') ?? '';
-  const categoryId = url.searchParams.get('category') ?? '';
+  // One or more categories, comma-separated: ?category=a or ?category=a,b
+  const categoryIds = [...new Set((url.searchParams.get('category') ?? '').split(',').map((c) => c.trim()).filter(Boolean))];
   const maxPrice = url.searchParams.get('maxPrice');
   const inStockOnly = url.searchParams.get('inStock') === '1';
   const onSaleOnly = url.searchParams.get('onSale') === '1';
@@ -20,15 +21,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   // Build where conditions
   const conditions = [eq(products.storeId, storeId), eq(products.isPublished, true)];
   if (q) conditions.push(ilike(products.title, `%${q}%`));
-  if (categoryId) {
-    // Include products in both the selected category and any of its direct children,
-    // so browsing a parent category also shows products assigned to subcategories.
+  if (categoryIds.length > 0) {
+    // Products in any selected category or any of their direct children, so picking a parent
+    // category also shows products assigned to its subcategories.
     const childRows = await db
       .select({ id: categories.id })
       .from(categories)
-      .where(and(eq(categories.parentId, categoryId), eq(categories.storeId, storeId)));
-    const categoryIds = [categoryId, ...childRows.map((r) => r.id)];
-    conditions.push(inArray(products.categoryId, categoryIds));
+      .where(and(inArray(categories.parentId, categoryIds), eq(categories.storeId, storeId)));
+    conditions.push(inArray(products.categoryId, [...categoryIds, ...childRows.map((r) => r.id)]));
   }
   if (maxPrice) conditions.push(lte(products.basePrice, maxPrice));
   // Push in-stock / on-sale as DB-level conditions so count and pagination are accurate
@@ -102,6 +102,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     page,
     pageSize: PAGE_SIZE,
     totalPages: Math.ceil(total / PAGE_SIZE),
-    filters: { q, categoryId, maxPrice: maxPrice ?? '', inStockOnly, onSaleOnly, sort }
+    filters: { q, categoryIds, maxPrice: maxPrice ?? '', inStockOnly, onSaleOnly, sort }
   };
 };

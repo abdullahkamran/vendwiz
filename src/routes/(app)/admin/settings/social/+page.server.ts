@@ -26,6 +26,27 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid WhatsApp number format' });
 		}
 
+		// "Our Stores": parallel name / map-link fields, one pair per row. Fully blank rows are skipped.
+		// The map link is optional; without one the store is listed but not clickable.
+		const names = data.getAll('locationName').map((v) => String(v).trim());
+		const mapUrls = data.getAll('locationMapUrl').map((v) => String(v).trim());
+		const storeLocations: { name: string; mapUrl: string }[] = [];
+		for (let i = 0; i < Math.max(names.length, mapUrls.length); i++) {
+			const name = names[i] ?? '';
+			const mapUrl = mapUrls[i] ?? '';
+			if (!name && !mapUrl) continue;
+			if (!name) {
+				return fail(400, { error: 'Each store needs a name' });
+			}
+			if (mapUrl && !/^https?:\/\/\S+$/i.test(mapUrl)) {
+				return fail(400, { error: `Map link for "${name}" must start with https://` });
+			}
+			storeLocations.push({ name: name.slice(0, 100), mapUrl });
+		}
+		if (storeLocations.length > 20) {
+			return fail(400, { error: 'You can list up to 20 stores' });
+		}
+
 		await db
 			.update(stores)
 			.set({
@@ -34,6 +55,7 @@ export const actions: Actions = {
 				facebook,
 				contactEmail,
 				contactPhone,
+				storeLocations,
 				updatedAt: new Date()
 			})
 			.where(eq(stores.ownerId, locals.user!.id));

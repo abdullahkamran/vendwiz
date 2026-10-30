@@ -2,11 +2,11 @@
 
 ## Uploaded images: store paths, resolve with `mediaUrl()`
 
-Uploads (product, variant, category, Markdown content, logo/favicon images) are saved in the
+Uploads (product, variant, category, Markdown content, logo/favicon, home slideshow images) are saved in the
 database as a path relative to the media base, not as a URL:
 
 ```
-<storeId>/<folder>/<nanoid>.webp      folder = products | variants | categories | content | branding
+<storeId>/<folder>/<nanoid>.webp      folder = products | variants | categories | content | branding | slides
 ```
 
 The base is `CDN_BUCKET_BASE_URL` (e.g. `https://cdn.11devs.com/vendwiz`) when

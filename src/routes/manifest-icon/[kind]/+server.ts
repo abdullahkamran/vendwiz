@@ -8,11 +8,13 @@ import { normaliseBase, resolvePwaStore } from '$lib/server/pwaStore';
 // Per-store PWA images, rendered from the store's own favicon/logo and name:
 //   /manifest-icon/192, /manifest-icon/512            square install icons
 //   /manifest-icon/wide, /manifest-icon/narrow        install-dialog screenshots
+//   /manifest-icon/feature                            Google Play feature graphic (see /admin/app)
 const SIZES: Record<string, [number, number]> = {
   '192': [192, 192],
   '512': [512, 512],
   wide: [1280, 720],
-  narrow: [720, 1280]
+  narrow: [720, 1280],
+  feature: [1024, 500]
 };
 
 const esc = (s: string) =>

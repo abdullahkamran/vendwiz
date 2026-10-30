@@ -11,7 +11,7 @@
 import type MarkdownIt from 'markdown-it';
 
 /** The folders an upload may go into, one per kind of image. */
-export const UPLOAD_FOLDERS = ['products', 'variants', 'categories', 'content', 'branding'] as const;
+export const UPLOAD_FOLDERS = ['products', 'variants', 'categories', 'content', 'branding', 'slides'] as const;
 export type UploadFolder = (typeof UPLOAD_FOLDERS)[number];
 
 export function isUploadFolder(value: unknown): value is UploadFolder {

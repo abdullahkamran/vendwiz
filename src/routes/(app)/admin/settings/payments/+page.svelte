@@ -46,33 +46,33 @@
 
 		<div class="space-y-4">
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="bankName">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="bankName">
 					Bank name <span class="text-red-500">*</span>
 				</label>
 				<input id="bankName" name="bankName" type="text" maxlength="100" bind:value={bankName} class="w-full text-sm" placeholder="e.g. HBL, Meezan Bank" />
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="bankAccountTitle">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="bankAccountTitle">
 					Account title <span class="text-red-500">*</span>
 				</label>
 				<input id="bankAccountTitle" name="bankAccountTitle" type="text" maxlength="100" bind:value={bankAccountTitle} class="w-full text-sm" placeholder="Name on the account" />
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="bankAccountNumber">
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="bankAccountNumber">
 					Account number <span class="text-red-500">*</span>
 				</label>
 				<input id="bankAccountNumber" name="bankAccountNumber" type="text" maxlength="50" bind:value={bankAccountNumber} class="w-full text-sm" placeholder="e.g. 0123-4567890-01" />
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="bankIban">IBAN (optional)</label>
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="bankIban">IBAN (optional)</label>
 				<input id="bankIban" name="bankIban" type="text" maxlength="50" bind:value={bankIban} class="w-full text-sm" placeholder="e.g. PK36 SCBL 0000 0011 2345 6702" />
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium text-[--color-text] mb-1" for="bankBranch">Branch (optional)</label>
+				<label class="block text-sm font-semibold text-[--color-text] mb-1" for="bankBranch">Branch (optional)</label>
 				<input id="bankBranch" name="bankBranch" type="text" maxlength="100" bind:value={bankBranch} class="w-full text-sm" placeholder="Branch name or code" />
 			</div>
 		</div>

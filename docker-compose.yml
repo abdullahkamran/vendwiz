@@ -1,0 +1,55 @@
+# Production stack for a single VPS. Database: Supabase (DATABASE_URL). Images: Cloudflare R2.
+#
+#   app      the SvelteKit server, reachable only inside this network
+#   migrate  applies pending migrations, then exits; app starts only if it succeeded
+#   tunnel   Cloudflare Tunnel: serves the app on your domain and all store subdomains with HTTPS,
+#            with no open ports or certificates on the server
+#   backup   daily pg_dump of the database to a private R2 bucket
+#
+# All settings come from .env next to this file (see .env.example). Deploy / update:
+#   git pull && docker compose up -d --build
+
+x-app: &app
+  build:
+    context: .
+    args:
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL in .env}
+      VITE_ROOT_DOMAIN: ${VITE_ROOT_DOMAIN:?set VITE_ROOT_DOMAIN in .env}
+  image: vendwiz-app
+  env_file: .env
+
+services:
+  migrate:
+    <<: *app
+    command: ["node", "scripts/migrate.mjs"]
+    restart: "no"
+
+  app:
+    <<: *app
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r => process.exit(r.status < 500 ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.3
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    restart: unless-stopped
+    depends_on:
+      - app
+
+  backup:
+    image: postgres:17-alpine
+    entrypoint: ["sh", "/backup.sh"]
+    volumes:
+      - ./scripts/backup.sh:/backup.sh:ro
+    env_file: .env
+    restart: unless-stopped

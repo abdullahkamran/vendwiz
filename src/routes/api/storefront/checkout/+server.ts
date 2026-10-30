@@ -138,18 +138,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   // ── Stock check before order insert ──────────────────────────────────────
+  // Shown on the checkout page; says what to do without revealing the exact stock count.
+  const stockError = (item: (typeof items)[number], left: number) => {
+    const options = Object.entries(item.variantSelections ?? {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+    const name = options ? `${item.title} (${options})` : item.title;
+    return left <= 0
+      ? `${name} is out of stock. Please remove it from your cart and try again.`
+      : `Not enough stock for ${name}. Please go back to your cart, choose a smaller quantity and try again.`;
+  };
   for (const item of items) {
     const hasVariant = item.variantSelections && Object.keys(item.variantSelections).length > 0;
     if (hasVariant) {
       const key = `${item.productId}_${JSON.stringify(item.variantSelections)}`;
       const v = variantResolutionMap.get(key);
       if (v && v.stockQty < item.quantity) {
-        return json({ error: `${item.title} is out of stock` }, { status: 400 });
+        return json({ error: stockError(item, v.stockQty) }, { status: 400 });
       }
     } else {
       const stock = stockMap.get(item.productId);
       if (stock !== undefined && stock < item.quantity) {
-        return json({ error: `${item.title} is out of stock` }, { status: 400 });
+        return json({ error: stockError(item, stock) }, { status: 400 });
       }
     }
   }
