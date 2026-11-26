@@ -8,6 +8,7 @@ export default defineConfig({
 	out: './drizzle',
 	dialect: 'postgresql',
 	dbCredentials: {
-		url: process.env.DATABASE_URL!
+		// Direct (non-pooled) connection: drizzle-kit needs session features the pooler lacks.
+		url: (process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL)!
 	}
 });

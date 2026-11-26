@@ -7,7 +7,8 @@
 //   pnpm db:migrate --baseline   mark every file as applied without running it (for a database
 //                                whose schema is already up to date, e.g. an existing dev database)
 //
-// DATABASE_URL comes from the environment, or from .env when one exists.
+// DATABASE_URL_UNPOOLED (Neon's direct connection) or else DATABASE_URL comes from the environment,
+// or from .env when one exists. Migrations must not go through a transaction-mode pooler.
 import { readdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -15,7 +16,7 @@ import postgres from 'postgres';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
 
-const url = process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!url) {
 	console.error('DATABASE_URL is not set');
 	process.exit(1);

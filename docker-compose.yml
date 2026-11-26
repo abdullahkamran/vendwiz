@@ -1,4 +1,4 @@
-# Production stack for a single VPS. Database: Supabase (DATABASE_URL). Images: Cloudflare R2.
+# Production stack for a single VPS. Database: Neon (DATABASE_URL pooled, DATABASE_URL_UNPOOLED for backups). Images: Cloudflare R2.
 #
 #   app      the SvelteKit server, reachable only inside this network
 #   migrate  applies pending migrations, then exits; app starts only if it succeeded
@@ -47,7 +47,7 @@ services:
       - app
 
   backup:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     entrypoint: ["sh", "/backup.sh"]
     volumes:
       - ./scripts/backup.sh:/backup.sh:ro

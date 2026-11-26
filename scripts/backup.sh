@@ -1,8 +1,8 @@
 #!/bin/sh
 # Daily database backup to a PRIVATE S3-compatible bucket (Cloudflare R2). Runs as the "backup"
-# service in docker-compose.yml (postgres:17-alpine image): one dump at start, then every 24 hours.
+# service in docker-compose.yml (postgres:18-alpine image; pg_dump must be >= the server version): one dump at start, then every 24 hours.
 #
-# Dumps only the "public" schema (the app's tables), not Supabase's own schemas, so the file
+# Dumps only the "public" schema (the app's tables), not the provider's own schemas, so the file
 # restores into any Postgres:
 #   pg_restore --no-owner --no-privileges -d "$DATABASE_URL" vendwiz-<timestamp>.dump
 #
@@ -10,7 +10,9 @@
 # Delete old dumps with a lifecycle rule on the bucket (R2 → bucket → Settings → Object lifecycle).
 set -eu
 
-: "${DATABASE_URL:?DATABASE_URL is not set}"
+# pg_dump needs a direct connection, not a transaction-mode pooler: Neon's DATABASE_URL_UNPOOLED
+# when set, otherwise DATABASE_URL
+db_url="${DATABASE_URL_UNPOOLED:-${DATABASE_URL:?DATABASE_URL is not set}}"
 : "${BACKUP_S3_BUCKET:?BACKUP_S3_BUCKET is not set}"
 
 # R2 credentials: a token scoped to the backup bucket, falling back to the media upload token
@@ -26,7 +28,7 @@ command -v aws >/dev/null || apk add --no-cache aws-cli >/dev/null
 
 while true; do
 	name="vendwiz-$(date -u +%Y-%m-%dT%H%M).dump"
-	if pg_dump "$DATABASE_URL" --schema=public --format=custom --no-owner --no-privileges -f "/tmp/$name" &&
+	if pg_dump "$db_url" --schema=public --format=custom --no-owner --no-privileges -f "/tmp/$name" &&
 		aws s3 cp "/tmp/$name" "s3://$BACKUP_S3_BUCKET/backups/$name" --endpoint-url "$endpoint" --only-show-errors; then
 		echo "$(date -u) backed up $name ($(du -h "/tmp/$name" | cut -f1))"
 	else
